@@ -24,7 +24,9 @@
 #include <AsyncTCP.h> //allow updates over WIFI
 #include <ESPAsyncWebServer.h> . //allow updates over WIFI
 #include <ElegantOTA.h> .  //allow updates over WIFI
-
+#include <RTCx.h> // real time clock
+#include <INA3221.h> // 3 channel analog input card specialized for BMS      Note that if something not working, i installed 2 versions of this, and both seem to use the same line of code here . "RT" seems to have alarms, regular one no 
+#include "SiC45x.h" // Vishay buck converter (heart of system!)
 
 // User Adjustable Variables
 
