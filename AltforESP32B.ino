@@ -3,6 +3,8 @@
 //Next tasks: 
 //Add If statemenets for different sources of the required inputs (ie does battery voltage come from ADS1115, VictronVEDirect, NMEA2K, etc)
 //PID control for approaching temperature limit/ psuedocode for overall control strategy
+//Test CAN
+//Web based interface for editing parameters and displaying sensor data (gauges)
 
 
 #include <TinyGPSPlus.h> // for NMEA0183 parsing, probably can remove as it has no relevance to alternator
