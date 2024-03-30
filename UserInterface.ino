@@ -1,20 +1,15 @@
 /*********
-  X Engineering March 2024
   This is the beginning of a user interface to configure and display sensor readings from the Regulator.
-  The display readings are done with ServerSentEvents
-  The configuration parameters are uploaded with HTTP_GET requests.  The parameters are also stored permanently in SPIFFS so they remain after a power cycle.
-  For now, there are no real hardware sensors, so the sensor readings are spoofed using variable N which increments continuously.   
-  It should not be difficult from here to make the sensor data real. 
+  The display readings is done with ServerSentEvents
+  The configuration parameters are uploaded with HTTP_GET requests.  They are also stored permanently in SPIFFS so they remain after a power cycle
 
-*************************
   Code skeleton came from the below source:
-  Rui Santos
-  Complete project details at https://RandomNerdTutorials.com/esp32-esp8266-input-data-html-form/
+  Rui Santos Complete project details at https://RandomNerdTutorials.com/esp32-esp8266-input-data-html-form/
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files.
   The above copyright notice and this permission notice shall be included in all
   copies or substantial portions of the Software.
-  **** Beware the write limitation for EEProm*** (not an issue here)
+
 *********/
 
 #include <Arduino.h>
@@ -39,7 +34,6 @@ unsigned long timerDelay = 500;
 float AlternatorTemperature;
 float FieldDutyCycle;
 float BatteryVoltage;
-int N = 1;
 
 const char* TLimit = "TemperatureLimitF";
 const char* FieldCurrentSetp = "FieldCurrentSetpointAmps";
@@ -56,35 +50,42 @@ const char index_html[] PROGMEM = R"rawliteral(
       setTimeout(function(){ document.location.reload(false); }, 1000);   
     }
   </script></head><body>
+  <h1><b>Alternator Status and Controls</b></h1>
+  <hr/>
+
+    <h2>Configuration Settings</h2>
+
   <form action="/get" target="hidden-form">
-    TemperatureLimitF (current value %TemperatureLimitF%): <input type="number " name="TemperatureLimitF">
+    Alternator Temperature Limit (F) (current value %TemperatureLimitF%): <input type="number " name="TemperatureLimitF">
     <input type="submit" value="Submit" onclick="submitMessage()">
   </form><br>
   <form action="/get" target="hidden-form">
-    FieldCurrentSetpointAmps (current value %FieldCurrentSetpointAmps%): <input type="number " name="FieldCurrentSetpointAmps">
+    Field Current Target (A) (current value %FieldCurrentSetpointAmps%): <input type="number " name="FieldCurrentSetpointAmps">
     <input type="submit" value="Submit" onclick="submitMessage()">
   </form><br>
   <form action="/get" target="hidden-form">
-    FullChargeVoltage (current value %FullChargeVoltage%): <input type="number " name="FullChargeVoltage">
+    Fully Charged Voltage (V) (current value %FullChargeVoltage%): <input type="number " name="FullChargeVoltage">
     <input type="submit" value="Submit" onclick="submitMessage()">
   </form>
   <iframe style="display:none" name="hidden-form"></iframe>
+<hr/>
 
-
-
+    <h2>Sensor Data and Other Outputs</h2>
  <div class="content">
     <div class="cards">
       <div class="card">
-        <p><i class="fas fa-thermometer-half" style="color:#059e8a;"></i> AlternatorTemperature</p><p><span class="reading"><span id="AltTempID">%AlternatorTemperature%</span> &deg;C</span></p>
+        <p><i class="fas fa-thermometer-half" style="color:#059e8a;"></i> ALTERNATOR TEMPERATURE</p><p><span class="reading"><span id="AltTempID">%ALTERNATORTEMPERATURE%</span> &deg;C</span></p>
       </div>
       <div class="card">
-        <p><i class="fas fa-angle-double-down" style="color:#00add6;"></i> FieldDutyCycle</p><p><span class="reading"><span id="FieldDutyCycleID">%FieldDutyCycle%</span> &percnt;</span></p>
+        <p><i class="fas fa-angle-double-down" style="color:#00add6;"></i> FIELD DUTY CYCLE</p><p><span class="reading"><span id="FieldDutyCycleID">%FIELDDUTYCYCLE%</span> &percnt;</span></p>
       </div>
       <div class="card">
-        <p><i class="fas fa-battery-three-quarters" style="color:#e1e437;"></i> BatteryVoltage</p><p><span class="reading"><span id="BatteryVoltageID">%BatteryVoltage%</span> V</span></p>
+        <p><i class="fas fa-battery-three-quarters" style="color:#e1e437;"></i> BATTERY VOLTAGE</p><p><span class="reading"><span id="BatteryVoltageID">%BATTERYVOLTAGE%</span> V</span></p>
       </div>
     </div>
   </div>
+  <hr/>
+
 <script>
 if (!!window.EventSource) {
  var source = new EventSource('/events');
@@ -139,9 +140,10 @@ void initWiFi() {
 }
 
 void getSensorReadings() {
-  AlternatorTemperature = 1;
-  FieldDutyCycle = 2.3;
-  BatteryVoltage = 3.42;
+
+  AlternatorTemperature = analogRead(34);
+  FieldDutyCycle = analogRead(35);
+  BatteryVoltage = analogRead(36);
 }
 
 void notFound(AsyncWebServerRequest *request) {
@@ -149,33 +151,33 @@ void notFound(AsyncWebServerRequest *request) {
 }
 
 String readFile(fs::FS &fs, const char * path) {
-  Serial.printf("Reading file: %s\r\n", path);
+ // Serial.printf("Reading file: %s\r\n", path); //UNCOMMENT FOR DEBUGGING
   File file = fs.open(path, "r");
   if (!file || file.isDirectory()) {
     Serial.println("- empty file or failed to open file");
     return String();
   }
-  Serial.println("- read from file:");
+ // Serial.println("- read from file:");
   String fileContent;
   while (file.available()) {
     fileContent += String((char)file.read());
   }
   file.close();
-  Serial.println(fileContent);
+ // Serial.println(fileContent);//UNCOMMENT FOR DEBUGGING
   return fileContent;
 }
 
 void writeFile(fs::FS &fs, const char * path, const char * message) {
-  Serial.printf("Writing file: %s\r\n", path);
+ // Serial.printf("Writing file: %s\r\n", path);//UNCOMMENT FOR DEBUGGING
   File file = fs.open(path, "w");
   if (!file) {
     Serial.println("- failed to open file for writing");
     return;
   }
   if (file.print(message)) {
-    Serial.println("- file written");
+  //  Serial.println("- file written");//UNCOMMENT FOR DEBUGGING
   } else {
-    Serial.println("- write failed");
+ //   Serial.println("- write failed");//UNCOMMENT FOR DEBUGGING
   }
   file.close();
 }
@@ -184,13 +186,13 @@ void writeFile(fs::FS &fs, const char * path, const char * message) {
 String processor(const String& var) {
   getSensorReadings();
 
-  if (var == "AlternatorTemperature") {
+  if (var == "ALTERNATORTEMPERATURE") {
     return String(AlternatorTemperature);
   }
-  else if (var == "FieldDutyCycle") {
+  else if (var == "FIELDDUTYCYCLE") {
     return String(FieldDutyCycle);
   }
-  else if (var == "BatteryVoltage") {
+  else if (var == "BATTERYVOLTAGE") {
     return String(BatteryVoltage);
   }
 
@@ -240,7 +242,8 @@ void setup() {
     else {
       inputMessage = "No message sent";
     }
-    Serial.println(inputMessage);
+   // Serial.println(inputMessage);  //UNCOMMENT FOR DEBUGGING
+   
     request->send(200, "text/text", inputMessage);
   });
   server.onNotFound(notFound);
@@ -266,10 +269,6 @@ void loop() {
   float yourFullChargeVoltage = readFile(SPIFFS, "/FullChargeVoltage.txt").toFloat();
   if ((millis() - lastTime) > timerDelay) {
     getSensorReadings();
-    AlternatorTemperature = AlternatorTemperature + N;
-    N = N + yourTemperatureLimitF;
-    FieldDutyCycle = FieldDutyCycle + 0.1 * N;
-    BatteryVoltage = BatteryVoltage + N * .001;
     // Send Events to the Web Client with the Sensor Readings
     events.send("ping", NULL, millis());
     events.send(String(AlternatorTemperature).c_str(), "AlternatorTemperature", millis());
@@ -279,7 +278,7 @@ void loop() {
     lastTime = millis();
 
 
-    delay(1000);
+    // delay(100);
   }
 
 }
