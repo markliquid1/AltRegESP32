@@ -6,6 +6,8 @@ www.xengineering.net
 and
 https://www.cruisersforum.com/forums/f14/open-source-arduino-alternator-regulator-282939.html
 
+Contact me at mark@xengineering.net 
+
 File descriptions:
 AltforESP32b ----- this is an incomplete first draft of the software to run on ESP32.  This is somewhat useless right now because it requires a lot of hardware to test
 
