@@ -5,10 +5,10 @@
 // March 30, 2024
 // GPL-3.0 License
 
-// ***IMPORTANT REMINDER    BATTERIES WILL NOT CHARGE IF ALT Temp <20F or Battery less than 8 Volts ***
+// ***IMPORTANT REMINDER    BATTERIES WILL NOT CHARGE IF Alt Temp <20F or Battery less than 8 Volts without Override ***
 
 //Next tasks:
-//PID control for approaching temperature limit/ psuedocode for overall control strategy
+//PID Control 
 
 //---------------LIBRARIES------------------------------------------------------------------------------------------------------------------------
 #include <TinyGPSPlus.h> // for NMEA0183 parsing, probably can remove as it has no relevance to alternator
@@ -27,7 +27,7 @@
 #include <esp_wifi.h> // this one is needed for turning wifi "sleep mode" off permanently for better Wifi reliability 
 #include <AsyncTCP.h> //allow updates over WIFI
 #include <ESPAsyncWebServer.h> . //allow updates over WIFI
-//#include <ElegantOTA.h> .  //allow program re-flashing over WIFI-- currently not working due to program being >50% size of available memory.  Plus this is a big library.
+//#include <ElegantOTA.h> .  //allow program re-flashing over WIFI-- currently not implemented but was working at one point in a differnet file
 #include <RTCx.h> // real time clock
 #include <INA3221.h> // 3 channel analog input card specialized for BMS      Note that if something not working, i installed 2 versions of this, and both seem to use the same line of code here . "RT" seems to have alarms, regular one no 
 #include "SiC45x.h" // Vishay buck converter (heart of system!)
@@ -39,19 +39,27 @@ const char* ssid = "MN2G";
 const char* password = "5FENYC8PDW";
 
 int Tthreshold = 165; //Temperature at which the alternator will scale back (F)
-int lowamps = 20; // Amps target on slow charge setting
-int highamps = 45; // Amps target on fast charge setting
-int Athreshold = 45; // store the selected Amp target ( Clean this up later)
-float VthresholdH = 14.3; // over volt threshold
-float VthresholdL = 8.0; // under volt threshold
+int lowamps = 20; // Amps target on "slow" charge setting
+int highamps = 45; // Amps target on "fast" charge setting
 
-bool VeDataOn = 0; // If you are using VeDirect set this to 1
+float VthresholdH = 14.3; // over volt threshold, stop charging above here
+float VthresholdL = 8.0; // under volt threshold, prevent charging below here
+
+bool VeDataOn = 0; // If you are using VeDirect for anything set this to 1
 bool VeDataforVoltageOn = 0; //and want to use it as the source of Battery Voltage
 bool VeDataforCurrentOn = 0; //and want to use it as the source of Battery Current
 
-bool NMEA2KOn = 0; // If you are using a NMEA2K network  set to 1
-bool NMEA2KVoltageOn = 0; //and want to use it as the source of Battery Voltage
-bool NMEA2KVCurrentOn = 0; //and want to use it as the source of Battery Current
+bool NMEA2KOn = 0; // If you are using NMEA2K for anhything set this to 1
+bool NMEA2KBatteryVoltageOn = 0; //If you are using a NMEA2K network and want to use it as the source of Battery Voltage
+bool NMEA2KCurrentOn = 0; //If you are using a NMEA2K network and want to use it as the source of Battery Current
+
+bool INA3221BatteryCurrentOn = 0; // If you want to make use of a battery shunt connected to the ESP32/INA3221 chip
+
+bool LM2907RPMOn  = 0; // if you want to use alternator calculated RPM for any reason (such as broken belt detector or RPM based charge table), set to 1
+bool NMEA2KRPMOn = 0; // same deal but for RPM from NMEA2K network
+
+bool SwitchSource = 0; // Set to zero give physical hardware switches control.  Set to 1 to give web interface control
+
 
 //----------------Variables used by program.  Some of these can be made local variables at some point if memory an issue--------------------------------------------
 
@@ -59,28 +67,39 @@ bool NMEA2KVCurrentOn = 0; //and want to use it as the source of Battery Current
 float VictronVoltage = 0; // battery reading from VeDirect
 float INA3221Volts = 0; // battery reading from INA3221
 float ADS1115Volts = 0; // battery reading from ADS1115
+float NMEA2KBatteryVoltage = 0; // battery reading from NMEA2K
 float BatteryVoltage = 0; //This will be the chosen one we control off of
 
 //Alternator Current and RPM
-float VictronCurrent = 0;// current as measured by victron
-float ADS1115Current = 0; // current as measured by ADS1115
-float curntValue = 0; //  This will be the chosen one we control off of
-int AltRPM=0; // alternator RPM
+int AmpTarget; // store the selected Amp target- after all checks, this is the final target setpoint
+float VictronCurrent = 0;// battery current as measured by victron
+float ADS1115Current = 0; // Alternator current as measured by ADS1115
+float NMEA2KCurrent = 0; // Battery current as measured by NMEA2K
+float INA3221BatteryCurrent=0; // Battery current as measured by ESP32/INA3221 chip
+float curntValue = 0; //  This will be the chosen alternator current we control off of
+int LM2907RPM = 0; //  RPM from built in frequency converter
+int NMEA2KRPM = 0; //  RPM from NMEA2K
+int RPM = 0; // primary RPM reading we control off of
 
 //Battery Current
-float INA3221Shunt = 0;
+float BatteryCurrent = 0; // final one used for control in the case of a battery based goal
+
 
 //Temperature Related
 float AlternatorTemperature = 0;
 
-//Various Switches
-bool SwitchSource = 0; // Set to zero give physical hardware switches control.  Set to 1 to give web interface control
-//HardwareInputs
-bool HiLowMode = 0; 
-bool LimpHomeMode=0;
-bool ForceFloat=0;
-bool KillCharge=0;
-bool KillChargeFromExternalBMS=0;
+
+//Used to make sure engine is spinning if going to keep supplying field current by function EngienOfforSlipBeltCheck()
+unsigned long start_millis;
+bool ThisIsTheFirstTime = 1;
+
+
+//HardwareSwitches
+bool HiLowMode = 0; // Select high or low amps to target.  High can be used for maximum charge rate, while low can be general use when Solar is generall enough
+bool LimpHomeMode = 0; // DANGER: This mode will override having a valid temperature sensor, voltage reading, current reading, etc, and do the best it can to charge at a low field current of your choice (hard coded)
+bool ForceFloat = 0; // In this mode, the alterantor will target Zero amps (or a value of your choice, hard-coded) at the battery shunt
+bool KillCharge = 0; // This switch is used to manually turn off the field (stop charging)
+bool KillChargeFromExternalBMS = 0; // This is the same functionality as above, but originating from an outside source such as 3rd party BMS
 
 //-------------//Misc pre-setup code that don't need frequent changes----------------------------------------------------------------------------------------------------
 //CAN Tx/Rx pin #'s on ESP32 GPIO
@@ -138,15 +157,15 @@ void setup()
 
 void loop() {
 
-  ReadSensors(); // 
-  GetSetUp(); // misc things that need to be done 
-  SafetyChecks(); // Check if all inputs are present and reasonable
+  ReadSensors(); //
+  GetSetUp(); // misc things that need to be done
+  AreTheReadingsRealistic(); // Check if all desired inputs are present and reasonable
+  EngienOfforSlipBeltCheck();
   AdjustCurrent(); // Adjust altenrator ouput current setpoint based on a number of factors
-  UpdateDisplay(); // 
+  UpdateDisplay(); //
 }
-
 //--------------------FUNCTIONS--------------------------------------------------------------------------------------------------------
-void ReadSensors() {        
+void ReadSensors() {
   ReadNMEA2K();//read data from NMEA2K network CAN connection
   ReadVEData();//read Data from Victron VeDirect
   ReadNMEA0183(); //read NMEA0183 readings from serial port 1
@@ -156,52 +175,109 @@ void ReadSensors() {
   ReadADS1115(); // read voltage readings from ADS1115
   ReadSwitches();// poll the various on/off switches
   ReadRPM();// read engine speed from W post on alternator (Stator)
+
 }
 void GetSetUp() {
   //This function takes care of figuring out some preliminary info
   if (HiLowMode == 0) {
-    Athreshold = highamps;
+    AmpTarget = highamps;
   }
   if (HiLowMode == 1) {
-    Athreshold = lowamps;
+    AmpTarget = lowamps;
   }
-
-  BatteryVoltage = 14; //This will be the one we control off of
-
+  if (VeDataforVoltageOn == 1) {
+    BatteryVoltage = VictronVoltage;
+  }
+  else if (NMEA2KBatteryVoltageOn) {
+    BatteryVoltage = NMEA2KBatteryVoltage;
+  }
+  else {
+    BatteryVoltage = INA3221Volts;
+  }
+  if (VeDataforCurrentOn == 1) {
+    curntValue = VictronCurrent;
+  }
+  else if (NMEA2KCurrentOn == 1) {
+    curntValue = NMEA2KCurrent;
+  }
+  else {
+    curntValue = ADS1115Current;
+  }
+  if (NMEA2KRPMOn == 1) {
+    RPM = NMEA2KRPM;
+  }
+  else {
+    RPM = LM2907RPM;
+  }
+  if (NMEA2KCurrentOn == 1) {
+    BatteryCurrent = NMEA2KCurrent;
+  }
+  if (INA3221BatteryCurrentOn == 1) {
+    BatteryCurrent = INA3221BatteryCurrent;
+  }
 }
-void SafetyChecks() {
-  if (AlternatorTemperature > Tthreshold) {
-    //display.print("OVERHEAT");
-    // Serial.println("OVERHEATING");
-    //delay(60000); // pause control by 1 minute to allow cooling
+void AreTheReadingsRealistic() {    //*may need to prevent excessive display updates in this section with a "display error message" function?
+  if (AlternatorTemperature > 350 || AlternatorTemperature < 20) {
+    //Temperature out of range
   }
-
-  if (AlternatorTemperature < 20) {    // There is probably an issue with Thermistor
-    //display.print("TOO COLD");
-    // Serial.println("TOO COLD");
-    //delay(60000); // pause control by 1 minute then try again
+  if (BatteryVoltage > VthresholdH || BatteryVoltage < VthresholdL) {
+    //
   }
-
-  if (BatteryVoltage > VthresholdH) {
-    //display.print("HIGH VOLTS");
-    //Serial.println("VOLTS HIGH");
-    //delay(600000); // pause control by 10 minutes
+  if (curntValue < -20 || curntValue > 500) {
+    //
   }
-
-  if (BatteryVoltage < VthresholdL) {
-    //display.print("LOW VOLTS");
-    //Serial.println("Volts Low");
-    //delay(600000); // pause control by 10 minutes
+  if (BatteryCurrent < -500 || BatteryCurrent > 500) {
+    //
   }
-
-  if (curntValue < -20) {
-    //display.print("NO AMPS");    // current sensor is probably broken
-    //Serial.println("BROKEN CURRENT SENSOR");
-    //delay(60000); // pause control by 1 minutes
+}
+void EngienOfforSlipBeltCheck() {
+  if (LM2907RPMOn == 1 && NMEA2KRPMOn == 1) {// % if the sensors are said to be present
+    if (abs(LM2907RPM - NMEA2KRPM) > 500) { // if they differ by more than 500 RPM
+      // Sound alarm 1x every 5 seconds
+      // Alert display that belt is slipping
+    }
+    if (LM2907RPM < 300) {
+      //Alert display that the engine is not spinning according to LM2907 chip
+      AmpTarget = 0; // refuse to charge
+    }
+    if (NMEA2KRPM < 300) {
+      //Alert display that the engine is not spinning according to NMEA2K
+      AmpTarget = 0; // refuse to charge
+    }
+  }
+  if (LM2907RPMOn == 0 && NMEA2KRPMOn == 1) {
+    if (NMEA2KRPM < 300) {
+      //Alert display that the engine is not spinning according to NMEA2K
+      AmpTarget = 0; // refuse to charge
+    }
+  }
+  if (LM2907RPMOn == 1 && NMEA2KRPMOn == 0) { // if the sensors are said to be present
+    if (LM2907RPM < 300) {
+      //Alert display that the engine is not spinning according to LM2907 chip
+      AmpTarget = 0; // refuse to charge
+    }
+  }
+  // In all cases, if there is a field and no measured amps for more than 100ms, then the engine is not spinning, and a 10 second delay is warranted
+  if (AmpTarget > 10 && curntValue < 5) {
+    if (ThisIsTheFirstTime == 1) { //if this is the first time finding a strange lack of charging
+      static unsigned long start_millis = millis(); // start timer
+      ThisIsTheFirstTime = 0; // the timer has been started, it's not the first time, we're counting time now
+    }
+    if ( millis() - start_millis > 100) { // if the condition does not self-correct within 100 milliseconds (ie current goes up, or setpoint goes down)
+      //report to display              //*may need to prevent this from happening too frequently with a "display error message" function?
+      AmpTarget = 0; // refuse to charge
+    }
+    if (millis() - start_millis > 10000) { // if it has been more than 10 seconds
+      AmpTarget = 15; //try charging again
+      ThisIsTheFirstTime = 1; // and get ready to re-check for output
+    }
+  }
+  else {   // if the condition corrected itself, prepare to restart the timer next time the discrepancy is noticed again.
+    ThisIsTheFirstTime = 1;
   }
 }
 void AdjustCurrent() {
- 
+
   // Pseudocode
   //Is alternator temperature good?
   // Battery temperature good?
@@ -228,9 +304,19 @@ void UpdateDisplay() {
     display.display();
   }
 }
+
+//Called from function "ReadSensors()"
 void ReadNMEA2K() {
   if (NMEA2KOn == 1) {
-    //Insert Code Here
+    if (NMEA2KRPMOn == 1 ) {
+      //Code
+    }
+    if (NMEA2KBatteryVoltageOn == 1 ) {
+      //Code
+    }
+    if (NMEA2KCurrentOn == 1) {
+      //Code
+    }
   }
 }
 void ReadVEData() {
@@ -294,7 +380,7 @@ void ReadNMEA0183() {
     //    display.drawString(70, 55, SpeedOverGround.value());
     //
     //    display.display();
-    //    delay(10);
+
   }
 }
 void ReadDigTempSensor() {
@@ -309,24 +395,26 @@ void ReadDigTempSensor() {
   }
 }
 void ReadINA3221() {
-  INA3221Volts = 0; // battery reading from INA3221
-  INA3221Shunt = 0; // shunt current reading
+  INA3221Volts = 0; // battery voltage reading from INA3221
+  INA3221BatteryCurrent = 0; // shunt current reading (battery current)
 }
 void ReadADS1115() {
   ADS1115Volts = 0; // battery reading from ADS1115
   ADS1115Current = 0;
 }
 void ReadSwitches() {
+  if (SwitchSource == 0) { // if this is set to 1, you can only make changes thru the Web Interface, besides Limp Home Mode, which is always allowed
     HiLowMode = digitalRead(A1); // Check which charge mode is selected, either fast or slow
-    LimpHomeMode=0;
-    ForceFloat=0;
-    KillCharge=0;
-    KillChargeFromExternalBMS=0;
+    ForceFloat = digitalRead(A3);
+    KillCharge = digitalRead(A4);
+    KillChargeFromExternalBMS = digitalRead(A5);
+  }
+  LimpHomeMode = digitalRead(A2);
 }
 void ReadRPM() {
-  AltRPM=0;
+  RPM = 0;
 }
-void PrintData() {
+void PrintData() { //This prints all victron data received to the serial monitor, put this in "Loop" for debugging if needed
   for ( int i = 0; i < myve.veEnd; i++ ) {
     Serial.print(myve.veName[i]);
     Serial.print(i);
