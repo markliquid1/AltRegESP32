@@ -1,3 +1,5 @@
+// This code works, but doens't have great SIC450 settings
+
 #include <OneWire.h>            // temp sensors
 #include <DallasTemperature.h>  // temp sensors
 #include <SPI.h>                // display
@@ -36,7 +38,7 @@ float ChargingVoltageTarget = 0;          // This is what the code really uses. 
 float interval = 0.1;                     // voltage step to adjust field target by, each time the loop runs.  Larger numbers = faster response, less stability
 float FieldAdjustmentInterval = 500;      // The regulator field output is updated once every this many milliseconds
 float AlternatorTemperatureLimitF = 150;  // the offset appears to be +40 to +50 to get max alternator metal temp, depending on temp sensor installation, so 150 here will produce a metal temp ~200F
-int ManualFieldToggle = 1;                // set to 1 to enable manual control of regulator field output, helpful for debugging
+int ManualFieldToggle = 0;                // set to 1 to enable manual control of regulator field output, helpful for debugging
 float ManualVoltageTarget = 1;            // voltage target corresponding to the toggle above
 int SwitchControlOverride = 1;            // set to 1 for web interface switches to override physical switch panel
 int ForceFloat = 0;                       // set to 1 to force the float voltage to be the charging target
@@ -425,6 +427,7 @@ void setup() {
 
   pinMode(4, OUTPUT);  // This pin is used to provide a high signal to SiC450 Enable pin
 
+initWiFi(); // just leave this here
 
   //NMEA2K
   OutputStream = &Serial;
