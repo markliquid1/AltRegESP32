@@ -11,10 +11,10 @@ ADS1115_lite adc(ADS1115_DEFAULT_ADDRESS);
 INA228 INA(0x40);
 #include "SiC45x.h"  // heart of system, DC/DC converter chip
 SiC45x sic45x(0x1D);
-//DONT MOVE THE BELOW 6 LINES AROUND, HAVE TO STAY IN ORDER!!
+//DONT MOVE THE NEXT 6 LINES AROUND, MUST STAY IN THIS ORDER
 #include <Arduino.h>                  // maybe not needed, was in NMEA2K example I copied
-#define ESP32_CAN_RX_PIN GPIO_NUM_16  // If you use ESP32 and do not have TX on default IO X, uncomment this and and modify definition to match your CAN TX pin.
-#define ESP32_CAN_TX_PIN GPIO_NUM_17  // If you use ESP32 and do not have RX on default IO X, uncomment this and and modify definition to match your CAN TX pin.
+#define ESP32_CAN_RX_PIN GPIO_NUM_16  //
+#define ESP32_CAN_TX_PIN GPIO_NUM_17  //
 #include <NMEA2000_CAN.h>
 #include <N2kMessages.h>
 #include <N2kMessagesEnumToStr.h>  // questionably needed
@@ -25,28 +25,30 @@ SiC45x sic45x(0x1D);
 
 // Settings
 
-// Replace next 2 lines with your WiFi network credentials
+// Replace next 2 lines with your own WiFi network credentials
 const char *ssid = "MN2G";
 const char *password = "5FENYC8PDW";
 
-float TargetAmps = 55;
+float TargetAmps = 55;  //Normal alternator output, for best performance, set ot something that just barely won't overheat
 float TargetFloatVoltage = 13.9;
 float TargetBulkVoltage = 14.5;
 float ChargingVoltageTarget = 0;          // This is what the code really uses. It gets set to TargetFloatVoltage or TargetBulkVoltage later on
 float interval = 0.1;                     // voltage step to adjust field target by, each time the loop runs.  Larger numbers = faster response, less stability
 float FieldAdjustmentInterval = 500;      // The regulator field output is updated once every this many milliseconds
-float AlternatorTemperatureLimitF = 150;  // the offset appears to be +40 to +50 to get max alternator metal temp, depending on temp sensor installation, so 150 here will produce a metal temp ~200F
+float MinimumFieldVoltage = 2;            // A min value here ensures that engine speed can be measured even with no alternator output commanded.  (This is only enforced when Ignition input is high)
+float AlternatorTemperatureLimitF = 150;  // the offset appears to be +40 to +50 to get true max alternator external metal temp, depending on temp sensor installation, so 150 here will produce a metal temp ~200F
 int ManualFieldToggle = 1;                // set to 1 to enable manual control of regulator field output, helpful for debugging
 float ManualVoltageTarget = 1;            // voltage target corresponding to the toggle above
 int SwitchControlOverride = 1;            // set to 1 for web interface switches to override physical switch panel
 int ForceFloat = 0;                       // set to 1 to force the float voltage to be the charging target
 int OnOff = 1;                            // 0 is charger off, 1 is charger On
+int Ignition = 1;                         // This will eventually be an over-rideable digital input
 int HiLow = 1;                            // 0 will be a low setting, 1 a high setting
 int LimpHome = 3;                         // 1 will set to limp home mode, whatever that gets set up to be
 float vout = 0.5;                         // default field output voltage
 int FaultCheckToggle = 0;                 // Set to 1 to get a serial print out over 20 seconds of error data, delete later
-int resolution = 12;                      // for OneWire measurement
-float fffr = 1200;                        // this is the switching frequency for SIC450
+int resolution = 12;                      // for OneWire temp sensor measurement
+float fffr = 1200;                        // this is the switching frequency for SIC450 in khz units
 int VeDataOn = 0;                         // Set to 1 if VE serial data exists
 
 // Used to blink ESPDuino built in Red LED every 2 seconds for reference as a heartbeat of sorts
@@ -78,7 +80,8 @@ float HeadingNMEA = 0;     // Just here to test NMEA functionality
 // variables used to show how long each loop takes
 unsigned long starttime;
 unsigned long endtime;
-unsigned long LoopTime;
+int LoopTime;         // must not use unsigned long becasue cant run String() on an unsigned long and that's done by the wifi code
+int MaximumLoopTime;  // must not use unsigned long becasue cant run String() on an unsigned long and that's done by the wifi code
 
 //"Blink without delay" style timer variables used to control how often differnet parts of code execute
 static unsigned long prev_millis4;    // used to delay checking of faults in the SiC450
@@ -87,7 +90,7 @@ static unsigned long prev_millis22;   // used to delay sampling of sic450
 static unsigned long prev_millis3;    // used to delay sampling of ADS1115 to every 2 seconds for example
 static unsigned long prev_millis2;    // used to delay sampling of temp sensor to every 2 seconds for example
 static unsigned long prev_millis33;   // used to delay sampling of Serial Data (ve direct)
-static unsigned long prev_millis743;  // used to read NMEA2K Network Every 15 seconds
+static unsigned long prev_millis743;  // used to read NMEA2K Network Every X seconds
 static unsigned long prev_millis5;    // used to initiate wifi data exchange
 
 // pre-setup stuff
@@ -109,12 +112,9 @@ Adafruit_SSD1306 display(128, 64, 23, 18, 19, -1, 5);
 VeDirectFrameHandler myve;
 
 // WIFI STUFF
-AsyncWebServer server(80);
-// Create an Event Source on /events
-AsyncEventSource events("/events");
-// Timer variables
-unsigned long lastTime = 0;
-unsigned long timerDelay = 500;
+AsyncWebServer server(80);               // Create AsyncWebServer object on port 80
+AsyncEventSource events("/events");      // Create an Event Source on /events
+unsigned long webgaugesinterval = 1000;  // delay in ms between sensor updates on webpage
 
 const char *TLimit = "TemperatureLimitF";  //TLimit is a pointer to an immutable String "TemperatureLimitF"
 const char *ManualV = "ManualVoltage";
@@ -190,7 +190,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                   </form>
                   <hr>
                   <form action="/get" target="hidden-form">
-                     Field Adjustment Interval (ms)) (current value %interval1%): <input type="number " name="FieldAdjustmentInterval1">
+                     Field Adjustment Interval (ms)) (current value %FieldAdjustmentInterval1%): <input type="number " name="FieldAdjustmentInterval1">
                      <input type="submit" value="Submit" onclick="submitMessage()">
                   </form>
                </td>
@@ -267,7 +267,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                <hr/>
                <div class="cards">
                <div class="card">
-               <p> Alternator Temperature</p><p><span class="reading"><span id="AltTempID">%ALTERNATORTEMPERATUREF%</span> &deg;C</span></p>
+               <p> Alternator Temperature</p><p><span class="reading"><span id="AltTempID">%ALTERNATORTEMPERATUREF%</span> &deg;F</span></p>
                </div>
                <hr/>
                <div class="card">
@@ -288,6 +288,11 @@ const char index_html[] PROGMEM = R"rawliteral(
                   <div class="card">
                      <p> Loop Time</p>
                      <p><span class="reading"><span id="LoopTimeID">%LOOPTIME%</span> uS;</span></p>
+                  </div>
+                  <hr/>
+                  <div class="card">
+                     <p> Maximum Loop Time</p>
+                     <p><span class="reading"><span id="MaximumLoopTimeID">%MAXIMUMLOOPTIME%</span> uS;</span></p>
                   </div>
                   <hr/>
                   <div class="card">
@@ -341,7 +346,11 @@ const char index_html[] PROGMEM = R"rawliteral(
              source.addEventListener('LoopTime', function(e) {
               console.log("LoopTime", e.data);
               document.getElementById("LoopTimeID").innerHTML = e.data;
-             }, false);          
+             }, false);   
+             source.addEventListener('MaximumLoopTime', function(e) {
+              console.log("MaximumLoopTime", e.data);
+              document.getElementById("MaximumLoopTimeID").innerHTML = e.data;
+             }, false); 
               source.addEventListener('RPM', function(e) {
               console.log("RPM", e.data);
               document.getElementById("RPMID").innerHTML = e.data;
@@ -469,7 +478,6 @@ void setup() {
 
   ChargingVoltageTarget = TargetFloatVoltage;
 
-
   //SIC450
   //The range of settings allowed for each register varies stupidly with this chip, must stay within the below limits:
   //The VIN_OV_FAULT_LIMIT,VIN_UV_WARN_LIMIT  range is 1 V to 80 V, resolution is 0.5 V
@@ -484,7 +492,6 @@ void setup() {
   sic45x.setVinOff(5);                   // The VIN_OFF command sets the value of the input voltage, in volt, at which the PMBus unit, once operation has started, should stop power conversion
   sic45x.setVoutMax(14);                 // The VOUT_MAX command sets an upper limit on the output voltage the unit cancommand regardless of any other commands or combinations 1.953 mV resolution 0.3 to 14 range
   sic45x.setVoutTransitionRate(0.0625);  // this is millivolts per microsecond and the lowest speed allowed. Highest would be .125 and resolution is .0625
-  sic45x.setFrequencySwitch(fffr);       //range is 300 kHz to 1500 kHz, resolution is 50 kHz,
   sic45x.setInterleave(SIC45X_INTERLEAVE_MODE_MASTER);
   sic45x.setVoutOvFaultResponse(SIC45X_VOUT_OV_FAULT_RESPONSE_OVRSP_CONTINUE);  // The PMBus device continues operation without interruption
   sic45x.setVoutUvFaultResponse(SIC45X_VOUT_UV_FAULT_RESPONSE_UVRSP_CONTINUE);  // The device continues operation without interruption
@@ -501,18 +508,19 @@ void setup() {
   sic45x.setOnOffConfiguration(SIC45X_ON_OFF_CONFIGURATION_EN_REQUIRE);         // Regulator requires the EN pin to be asserted to start the unit
   sic45x.setOnOffConfiguration(SIC45X_ON_OFF_CONFIGURATION_ENPOL_HIGH);         // EN signal is active high
   sic45x.setOnOffConfiguration(SIC45X_ON_OFF_CONFIGURATION_OFFB1_IMMEDIATE);    // Regulator turns off immediately
-                                                                                //Temporary setup specific stuff
-  sic45x.setVoutScaleLoop(SIC45X_VOUT_SCALE_LOOP_0V3_1V8);                      // get ready to output 0.5V for now
-  sic45x.setFrequencySwitch(fffr);                                              //range is 300 kHz to 1500 kHz, resolution is 50 kHz,
-  sic45x.setPowerGoodOn(vout * 0.9);                                            // .9    Try deleting this later
-  sic45x.setPowerGoodOff(vout * 0.85);                                          // .85   Try deleting this later
-  sic45x.setVoutOvFaultLimit(vout * 1.15);                                      //    I think this one is required
-  sic45x.setVoutOvWarnLimit(vout * 1.1);                                        // 110  Try deleting this later
-  sic45x.setVoutUvWarnLimit(vout * 0.9);                                        // .9 Try delting this later
-  sic45x.setVoutUvFaultLimit(vout * 0.8);                                       // .8 Try deleting this later
-  sic45x.setVoutMarginLow(vout * 0.95);                                         //.95   Try delting this later
-  sic45x.setVoutMarginHigh(vout * 1.05);                                        //105 Try deleting this later
-  sic45x.setVoutCommand(vout);                                                  // Update the field voltage, during setup, it's 0.5V
+  //Temporary setup specific stuff
+  sic45x.setVoutScaleLoop(SIC45X_VOUT_SCALE_LOOP_0V3_1V8);  // get ready to output 0.5V for now
+  sic45x.setFrequencySwitch(fffr);                          //range is 300 kHz to 1500 kHz, resolution is 50 kHz,
+  sic45x.setPowerGoodOn(vout * 0.9);                        // .9    Try deleting this later
+  sic45x.setPowerGoodOff(vout * 0.85);                      // .85   Try deleting this later
+  sic45x.setVoutOvFaultLimit(vout * 1.15);                  //    I think this one is required
+  sic45x.setVoutOvWarnLimit(vout * 1.1);                    // 110  Try deleting this later
+  sic45x.setVoutUvWarnLimit(vout * 0.9);                    // .9 Try delting this later
+  sic45x.setVoutUvFaultLimit(vout * 0.8);                   // .8 Try deleting this later
+  sic45x.setVoutMarginLow(vout * 0.95);                     //.95   Try delting this later
+  sic45x.setVoutMarginHigh(vout * 1.05);                    //105 Try deleting this later
+  sic45x.setVoutCommand(vout);                              // Update the field voltage, during setup, it's 0.5V
+
 
   //ADS1115
   //Connection check
@@ -555,7 +563,7 @@ void setup() {
     Serial.println("WiFi Failed!");
     return;
   }
-  // Serial.println();
+  Serial.println();
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
 
@@ -570,7 +578,7 @@ void setup() {
     request->send_P(200, "text/html", index_html, processor);
   });
 
-  // Send a GET request to <ESP_IP>/get?TemperatureLimitF=<inputMessage>
+  // Send a GET request to <ESP_IP>
   server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request) {
     String inputMessage;
     if (request->hasParam(TLimit)) {
@@ -753,12 +761,15 @@ void loop() {
   FaultCheck();
   BlinkLED();
   SendWifiData();                          // break this out later to a different timed blink without delay thing
-  if (millis() - prev_millis743 > 5000) {  // every 5 seconds
+  if (millis() - prev_millis743 > 5000) {  // every 5 seconds check CAN network (this might need adjustment)
     NMEA2000.ParseMessages();
     prev_millis743 = millis();
   }
   endtime = micros();  //Record a start time for demonstration
-  LoopTime = starttime - endtime;
+  LoopTime = (endtime - starttime);
+  if (LoopTime > MaximumLoopTime) {
+    MaximumLoopTime = LoopTime;
+  }
 }
 void BlinkLED() {
   currentMillissss = millis();
@@ -776,57 +787,62 @@ void BlinkLED() {
   digitalWrite(ledPin, ledState);
 }
 void AdjustSic450() {
+  if (Ignition == 1 && OnOff == 1) {
+    digitalWrite(4, SIC450Enabler);  // Enable the SIC450
 
-  // if.. bla bla bla.   ... power saving opportunity later to disable if some conditions not met
-  if (millis() - prev_millis22 > FieldAdjustmentInterval) {  // adjust SIC450 every half second
+    if (millis() - prev_millis22 > FieldAdjustmentInterval) {  // adjust SIC450 every half second
 
-    //The below code is only used when engine is running and we want field to adjust to meet the alternator amps target
-    if (ManualFieldToggle == 0) {
-      if (MeasuredAmps < TargetAmps && vout < (14 - interval)) {
-        vout = vout + interval;
+      //The below code is only used when engine is running and we want field to adjust to meet the alternator amps target
+      if (ManualFieldToggle == 0) {
+        if (MeasuredAmps < TargetAmps && vout < (14 - interval)) {
+          vout = vout + interval;
+        }
+        if (MeasuredAmps > TargetAmps && vout > (MinimumFieldVoltage + interval)) {
+          vout = vout - interval;
+        }
+        // HAVE TO MAKE SURE THESE VALUES DON'T GET TOO LOW FOR SIC450 COMMAND VALIDITY.   THIS LOGIC IS ALSO NOT GREAT IF INTERVAL GETS BIG FOR ANY REASON
+        if (AlternatorTemperatureF > AlternatorTemperatureLimitF && vout > (MinimumFieldVoltage + 2 * interval)) {
+          vout = vout - (2 * interval);  // if no *2, the adjustments offset, so this makes the Temp correction win
+        }
+        if (BatteryV > ChargingVoltageTarget && vout > (MinimumFieldVoltage + 3 * interval)) {
+          vout = vout - (3 * interval);  // if no *3, the adjustments offset, so this makes the Temp correction win
+        }
+        prev_millis22 = millis();
+      } else {
+        vout = ManualVoltageTarget;
       }
-      if (MeasuredAmps > TargetAmps && vout > (0.3 + interval)) {
-        vout = vout - interval;
-      }
-      // HAVE TO MAKE SURE THESE VALUES DON'T GET TOO LOW FOR SIC450 COMMAND VALIDITY
-      if (AlternatorTemperatureF > AlternatorTemperatureLimitF && vout > (0.3 + interval)) {
-        vout = vout - (2 * interval);  // if no *2, the adjustments offset, so this makes the Temp correction win
-      }
-      if (BatteryV > ChargingVoltageTarget && vout > (0.3 + interval)) {
-        vout = vout - (3 * interval);  // if no *3, the adjustments offset, so this makes the Temp correction win
-      }
-      //sic45x.setVoutCommand(vout);
-      prev_millis22 = millis();
-    } else {
-      vout = ManualVoltageTarget;
-    }
-    // adjust limits, not discussed in datasheeet but at least some of these (VOUT_SCALE_LOOP, OV_FAULT_LIMIT are necessary for stability
-    sic45x.setPowerGoodOn(vout * 0.9);        // .9    Try deleting this later
-    sic45x.setPowerGoodOff(vout * 0.85);      // .85   Try deleting this later
-    sic45x.setVoutOvFaultLimit(vout * 1.15);  //    I think this one is required
-    sic45x.setVoutOvWarnLimit(vout * 1.1);    // 110  Try deleting this later
-    sic45x.setVoutUvWarnLimit(vout * 0.9);    // .9 Try delting this later
-    sic45x.setVoutUvFaultLimit(vout * 0.8);   // .8 Try deleting this later
-    sic45x.setVoutMarginLow(vout * 0.95);     //.95   Try delting this later
-    sic45x.setVoutMarginHigh(vout * 1.05);    //105 Try deleting this later
-    //VOUT_SCALE_LOOP
-    if (vout < 1.8) {
-      sic45x.setVoutScaleLoop(SIC45X_VOUT_SCALE_LOOP_0V3_1V8);
-    }
-    if (vout >= 1.8 && vout < 3.3) {
-      sic45x.setVoutScaleLoop(SIC45X_VOUT_SCALE_LOOP_1V8_3V3);
-    }
-    if (vout >= 3.3 && vout < 5) {
-      sic45x.setVoutScaleLoop(SIC45X_VOUT_SCALE_LOOP_3V3_5V0);
-    }
-    if (vout >= 5) {
-      sic45x.setVoutScaleLoop(SIC45X_VOUT_SCALE_LOOP_5V0_12V0);
-    }
 
-    sic45x.setFrequencySwitch(fffr);  //range is 300 kHz to 1500 kHz, resolution is 50 kHz,
-    digitalWrite(4, SIC450Enabler);   // Enable the SIC450... power saving opportunity later
-    sic45x.setVoutCommand(vout);      // Update the field voltage
-    sic45x.sendClearFaults();         // may or may not be a good idea, testing will determine
+      // adjust limits, not discussed in datasheeet but at least some of these (VOUT_SCALE_LOOP, OV_FAULT_LIMIT are necessary for stability
+      // sic45x.setPowerGoodOn(vout * 0.9);        // .9    Try deleting this later
+      // sic45x.setPowerGoodOff(vout * 0.85);      // .85   Try deleting this later
+      sic45x.setVoutOvFaultLimit(vout * 1.15);  //    I think this one is required
+                                                //  sic45x.setVoutOvWarnLimit(vout * 1.1);    // 110  Try deleting this later
+                                                // sic45x.setVoutUvWarnLimit(vout * 0.9);    // .9 Try delting this later
+                                                //  sic45x.setVoutUvFaultLimit(vout * 0.8);   // .8 Try deleting this later
+                                                //  sic45x.setVoutMarginLow(vout * 0.95);     //.95   Try delting this later
+                                                //  sic45x.setVoutMarginHigh(vout * 1.05);    //105 Try deleting this later
+
+      //VOUT_SCALE_LOOP, according to Vishay, this matters.   Most of my early testing was between 5 and 12V, so I was possibly just in blissful ignorance before learning this
+      if (vout < 1.8) {
+        sic45x.setVoutScaleLoop(SIC45X_VOUT_SCALE_LOOP_0V3_1V8);
+      }
+      if (vout >= 1.8 && vout < 3.3) {
+        sic45x.setVoutScaleLoop(SIC45X_VOUT_SCALE_LOOP_1V8_3V3);
+      }
+      if (vout >= 3.3 && vout < 5) {
+        sic45x.setVoutScaleLoop(SIC45X_VOUT_SCALE_LOOP_3V3_5V0);
+      }
+      if (vout >= 5) {
+        sic45x.setVoutScaleLoop(SIC45X_VOUT_SCALE_LOOP_5V0_12V0);
+      }
+
+      sic45x.setFrequencySwitch(fffr);  //range is 300 kHz to 1500 kHz, resolution is 50 kHz,
+      sic45x.setVoutCommand(vout);      // Update the field voltage
+      sic45x.sendClearFaults();         // may or may not be a good idea, testing will determine
+    }
+  } else {
+    sic45x.setOperation(SIC45X_OPERATION_ON_OFF_DISABLED);  // Output is disabled
+    vout = MinimumFieldVoltage;                             // start over from a low field voltage when it comes time to turn back on
   }
 }
 void FaultCheck() {
@@ -872,7 +888,7 @@ void FaultCheck() {
   }
 }
 void ReadAnalogInputs() {
-  if (millis() - prev_millis3 > 10000) {  // every 2 seconds read ads1115 and INA228
+  if (millis() - prev_millis3 > 1000) {  // every 1 seconds read ads1115 and INA228
     //The mux setting must be set every time each channel is read, there is NOT a separate function call for each possible mux combination.
     adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_0);  //Set single ended mode between AIN0 and GND
     //manually trigger the conversion
@@ -911,11 +927,11 @@ void ReadAnalogInputs() {
     //Serial.println(Channel3V);
     prev_millis3 = millis();
 
-    vvout = (sic45x.getReadVout());
-    iiout = (sic45x.getReadIout());
-    DutyCycle = (sic45x.getReadDutyCycle());
+    // vvout = (sic45x.getReadVout());
+    // iiout = (sic45x.getReadIout());
+    // DutyCycle = (sic45x.getReadDutyCycle());
 
-    Serial.println();
+    //Serial.println();
     //Serial.print("INA228 Battery Voltage: ");
     IBV = INA.getBusVoltage();
     // Serial.println(IBV);
@@ -927,7 +943,7 @@ void ReadAnalogInputs() {
   }
 }
 void ReadTemperatureData() {
-  if (millis() - prev_millis2 > 10000) {                  // read temperature
+  if (millis() - prev_millis2 > 5000) {                   // read temperature every 5 seconds
     AlternatorTemperatureF = sensors.getTempFByIndex(0);  // fetch temperature
     sensors.requestTemperatures();                        // immediately after fetching the temperature we request a new sample in the async modus
                                                           // Serial.print("Alternator Temperature:");
@@ -936,7 +952,7 @@ void ReadTemperatureData() {
   }
 }
 void UpdateDisplay() {
-  if (millis() - prev_millis66 > 10000) {
+  if (millis() - prev_millis66 > 3000) {  // update display every 3 seconds
     //  PrintData(); // this function prints everything available to serial monitor
     display.clearDisplay();
     display.setCursor(0, 0);
@@ -994,7 +1010,7 @@ void UpdateDisplay() {
   }
 }
 void ReadVEData() {
-  if (millis() - prev_millis33 > 10000) {
+  if (millis() - prev_millis33 > 1000) {  // read VE data every 1 second
     if (VeDataOn == 1) {
       while (Serial2.available()) {
         myve.rxData(Serial2.read());
@@ -1435,6 +1451,8 @@ String processor(const String &var) {
     return String(vvout);
   } else if (var == "LOOPTIME") {
     return String(LoopTime);
+  } else if (var == "MAXIMUMLOOPTIME") {
+    return String(MaximumLoopTime);
   } else if (var == "FIELDAMPS") {
     return String(iiout);
   }
@@ -1461,7 +1479,7 @@ void initWiFi() {
 }
 
 void SendWifiData() {
-  if (millis() - prev_millis5 > 2000) {  // every 2 seconds
+  if (millis() - prev_millis5 > webgaugesinterval) {
 
     // Send Events to the Web Client with the Sensor Readings
     events.send("ping", NULL, millis());
@@ -1475,10 +1493,43 @@ void SendWifiData() {
     events.send(String(Bcur).c_str(), "Bcur", millis());
     events.send(String(VictronVoltage).c_str(), "VictronVoltage", millis());
     events.send(String(LoopTime).c_str(), "LoopTime", millis());
+    events.send(String(MaximumLoopTime).c_str(), "MaximumLoopTime", millis());
     events.send(String(HeadingNMEA).c_str(), "HeadingNMEA", millis());
     events.send(String(vvout).c_str(), "vvout", millis());
     events.send(String(iiout).c_str(), "iiout", millis());
 
     prev_millis5 = millis();
   }
+}
+
+void debounce() {
+  int reading = digitalRead(buttonPin);
+
+  // If the switch changed, due to noise or pressing:
+  if (reading != lastButtonState) {
+    // reset the debouncing timer
+    lastDebounceTime = millis();
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    // whatever the reading is at, it's been there for longer than the debounce
+    // delay, so take it as the actual current state:
+
+    // if the button state has changed:
+    if (reading != buttonState) {
+      buttonState = reading;
+
+      // only toggle the LED if the new button state is HIGH
+      if (buttonState == HIGH) {
+        ledState = !ledState;
+      }
+    }
+  }
+
+  // set the LED:
+  digitalWrite(ledPin, ledState);
+
+  // save the reading. Next time through the loop, it'll be the lastButtonState:
+  lastButtonState = reading;
+
 }
