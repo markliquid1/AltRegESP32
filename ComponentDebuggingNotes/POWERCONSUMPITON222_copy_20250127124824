@@ -1,0 +1,779 @@
+// This is a basic test of shutting off Wifi to save power
+// A lot of I/O stripped out to just leave Wifi and webpage related things
+
+#include <OneWire.h>            // temp sensors
+#include <DallasTemperature.h>  // temp sensors
+#include <SPI.h>                // display
+#include <Wire.h>               // unknown if needed, but probably
+#include <Adafruit_GFX.h>       // display
+#include <Adafruit_SSD1306.h>   // display
+#include <ADS1115_lite.h>       // measuring 4 analog inputs
+ADS1115_lite adc(ADS1115_DEFAULT_ADDRESS);
+#include "VeDirectFrameHandler.h"  // for victron communication
+#include "INA228.h"
+INA228 INA(0x40);
+#include "SiC45x.h"  // heart of system, DC/DC converter chip
+SiC45x sic45x(0x1D);
+//DONT MOVE THE BELOW 6 LINES AROUND, HAVE TO STAY IN ORDER!!
+#include <Arduino.h>                  // maybe not needed, was in NMEA2K example I copied
+#define ESP32_CAN_RX_PIN GPIO_NUM_16  // If you use ESP32 and do not have TX on default IO X, uncomment this and and modify definition to match your CAN TX pin.
+#define ESP32_CAN_TX_PIN GPIO_NUM_17  // If you use ESP32 and do not have RX on default IO X, uncomment this and and modify definition to match your CAN TX pin.
+#include <NMEA2000_CAN.h>
+#include <N2kMessages.h>
+#include <N2kMessagesEnumToStr.h>  // questionably needed
+#include <WiFi.h>
+#include <AsyncTCP.h>           // for wifi stuff
+#include <LittleFS.h>           // for wifi stuff
+#include <ESPAsyncWebServer.h>  // for wifi stuff
+//#include "esp_timer.h"          // to measure loop time, might not need, delete someday
+
+
+// Settings
+
+// Replace next 2 lines with your WiFi network credentials
+const char *ssid = "MN2G";
+const char *password = "5FENYC8PDW";
+
+float TargetAmps = 55;
+float TargetFloatVoltage = 13.9;
+float TargetBulkVoltage = 14.5;
+float ChargingVoltageTarget = 0;          // This is what the code really uses. It gets set to TargetFloatVoltage or TargetBulkVoltage later on
+float interval = 0.1;                     // voltage step to adjust field target by, each time the loop runs.  Larger numbers = faster response, less stability
+float FieldAdjustmentInterval = 500;      // The regulator field output is updated once every this many milliseconds
+float AlternatorTemperatureLimitF = 150;  // the offset appears to be +40 to +50 to get max alternator metal temp, depending on temp sensor installation, so 150 here will produce a metal temp ~200F
+int ManualFieldToggle = 0;                // set to 1 to enable manual control of regulator field output, helpful for debugging
+float ManualVoltageTarget = 1;            // voltage target corresponding to the toggle above
+int SwitchControlOverride = 1;            // set to 1 for web interface switches to override physical switch panel
+int ForceFloat = 0;                       // set to 1 to force the float voltage to be the charging target
+int OnOff = 1;                            // 0 is charger off, 1 is charger On
+int HiLow = 1;                            // 0 will be a low setting, 1 a high setting
+int LimpHome = 3;                         // 1 will set to limp home mode, whatever that gets set up to be
+float vout = 1.1;                         // default field output voltage
+int FaultCheckToggle = 0;                 // Set to 1 to get a serial print out over 20 seconds of error data, delete later
+int resolution = 12;                      // for OneWire measurement
+float fffr = 1200;                        // this is the switching frequency for SIC450
+int VeDataOn = 0;                         // Set to 1 if VE serial data exists
+
+int previousMillisZZ = 0;  // bs for getting power consumption down
+int intervalZZ = 60000;    // bs for getting power consumption down
+uint32_t Freq = 0;         // bs for getting power consumption down
+
+
+//Variables to store measurements
+float Raw;                //Each channel of ADS1115 is temporarily stored here, pre engineering units
+float Channel0V;          // voltage divider is 20... same as BatteryV
+float BatteryV;           // as read by ADS115
+float Channel1V;          // voltage divider is 2, partial step towards getting MeasuredAmps
+float MeasuredAmps = 10;  // alternator output current
+float Channel2V;          // voltage divider is 2---- wired internally to LM2907
+float Channel3V;          // voltage divider is an empty socket for user installation
+float ShuntVoltage_mV;    // Battery shunt voltage from INA228
+float Bcur;               // battery shunt current from INA228
+float IBV;                // Ina 228 battery voltage
+float DutyCycle;          // SIC outout %
+float vvout;              // SIC output volts
+float iiout;              // SIC output current
+float RPM;                // from LM2907
+float AlternatorTemperatureF = 0;
+float VictronVoltage = 0;  // battery reading from VeDirect
+float HeadingNMEA = 0;     // Just here to test NMEA functionality
+
+// variables used to show how long each loop takes
+uint64_t starttime;
+uint64_t endtime;
+uint64_t LoopTime;
+
+//"Blink without delay" style timer variables used to control how often differnet parts of code execute
+static unsigned long prev_millis4;    // used to delay checking of faults in the SiC450
+static unsigned long prev_millis66;   //used to delay the updating of the display
+static unsigned long prev_millis22;   // used to delay sampling of sic450
+static unsigned long prev_millis3;    // used to delay sampling of ADS1115 to every 2 seconds for example
+static unsigned long prev_millis2;    // used to delay sampling of temp sensor to every 2 seconds for example
+static unsigned long prev_millis33;   // used to delay sampling of Serial Data (ve direct)
+static unsigned long prev_millis743;  // used to read NMEA2K Network Every 15 seconds
+static unsigned long prev_millis5;    // used to initiate wifi data exchange
+
+
+
+//SIC450 control
+bool SIC450Enabler = 1;
+
+
+// WIFI STUFF
+AsyncWebServer server(80);
+// Create an Event Source on /events
+AsyncEventSource events("/events");
+// Timer variables
+unsigned long lastTime = 0;
+unsigned long timerDelay = 500;
+
+const char *TLimit = "TemperatureLimitF";  //TLimit is a pointer to an immutable String "TemperatureLimitF"
+const char *ManualV = "ManualVoltage";
+const char *FullChargeV = "FullChargeVoltage";
+const char *TargetA = "TargetAmpz";
+const char *FrequencyP = "SwitchingFrequency";
+const char *TFV = "TargetFloatVoltage1";
+const char *Intt = "interval1";
+const char *FAI = "FieldAdjustmentInterval1";
+const char *MFT = "ManualFieldToggle1";
+const char *SCO = "SwitchControlOverride1";
+const char *FF = "ForceFLoat1";
+const char *OO = "OnOff1";
+const char *HL = "HiLow1";
+const char *LH = "LimpHome1";
+
+// HTML web page
+// Note: for simplicity, everything needed to build the web page is contained in the variable "index_html"
+//It will eventually be more practical to have separate HTML, CSS and JavaScript files uploaded to the ESP32 filesystem
+//and then reference them in the code
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE HTML> 
+         <html>
+            <head>
+               <title>X Engineering Alt Controller Browser Interface</title>
+               <meta name="viewport" content="width=device-width, initial-scale=1">
+               <script>
+                  function submitMessage() {
+                    setTimeout(function(){ document.location.reload(false); }, 500);   
+                  }
+               
+      </script>
+      </head>
+      <body>
+         <h2>Settings</h2>
+         <style>
+            table, th, td {
+            border: 1px solid black;
+            border-radius: 10px;
+            }
+         </style>
+         <table>
+            <tr>
+               <td>
+                  <form action="/get" target="hidden-form">
+                     Alternator Temperature Limit (F) (current value %TemperatureLimitF%): <input type="text" name="TemperatureLimitF">
+                     <input type="submit" value="Submit" onclick="submitMessage()">
+                  </form>
+                  <hr>
+                  <form action="/get" target="hidden-form">
+                     Bulk Voltage Target (current value %FullChargeVoltage%): <input type="number " name="FullChargeVoltage">
+                     <input type="submit" value="Submit" onclick="submitMessage()">
+                  </form>
+                  <hr>
+                  <form action="/get" target="hidden-form">
+                     Target Amps (A) (current value %TargetAmpz%): <input type="number " name="TargetAmpz">
+                     <input type="submit" value="Submit" onclick="submitMessage()">
+                  </form>
+                  <hr>
+                  <form action="/get" target="hidden-form">
+                     Controller Field Switching Frequency (hz) (current value %SwitchingFrequency%): <input type="number " name="SwitchingFrequency">
+                     <input type="submit" value="Submit" onclick="submitMessage()">
+                  </form>
+                  <hr>
+                  <form action="/get" target="hidden-form">
+                     Float Voltage Target (V) (current value %TargetFloatVoltage1%): <input type="number " name="TargetFloatVoltage1">
+                     <input type="submit" value="Submit" onclick="submitMessage()">
+                  </form>
+                  <hr>
+                  <form action="/get" target="hidden-form">
+                     Field Adjustment Step Size (V) (current value %interval1%): <input type="number " name="interval1">
+                     <input type="submit" value="Submit" onclick="submitMessage()">
+                  </form>
+                  <hr>
+                  <form action="/get" target="hidden-form">
+                     Field Adjustment Interval (ms)) (current value %interval1%): <input type="number " name="FieldAdjustmentInterval1">
+                     <input type="submit" value="Submit" onclick="submitMessage()">
+                  </form>
+               </td>
+               <td>
+                  <form action="/get" target="hidden-form">
+                     Manual Field Control Toggle (current value %ManualFieldToggle1%): <input type="number " name="ManualFieldToggle1">
+                     <input type="submit" value="Submit" onclick="submitMessage()">
+                  </form>
+                  <hr>
+                  <form action="/get" target="hidden-form">
+                     Manual Voltage Setpoint (V) (current value %ManualVoltage%): <input type="number " name="ManualVoltage">
+                     <input type="submit" value="Submit" onclick="submitMessage()">
+                  </form>
+                  <hr>
+                  <form action="/get" target="hidden-form">
+                     Physical Switch Panel Override (current value %SwitchControlOverride1%): <input type="number " name="SwitchControlOverride1">
+                     <input type="submit" value="Submit" onclick="submitMessage()">
+                  </form>
+                  <hr>
+                  <form action="/get" target="hidden-form">
+                     On/Off (current value %OnOff1%): <input type="number " name="OnOff1">
+                     <input type="submit" value="Submit" onclick="submitMessage()">
+                  </form>
+                  <hr>
+                  <form action="/get" target="hidden-form">
+                     Low(0)/High(1) Mode (current value %HiLow1%): <input type="number " name="HiLow1">
+                     <input type="submit" value="Submit" onclick="submitMessage()">
+                  </form>
+                  <hr>
+                  <form action="/get" target="hidden-form">
+                     Limp Home Mode (current value %LimpHome1%): <input type="number " name="LimpHome1">
+                     <input type="submit" value="Submit" onclick="submitMessage()">
+                  </form>
+               </td>
+            </tr>
+         </table>
+         <iframe style="display:none" name="hidden-form"></iframe>
+         <hr/>
+         <h2>Sensor and Output Data </h2>
+         <style>
+            table, th, td {
+            border: 1px solid black;
+            border-radius: 10px;
+            }
+         </style>
+         <table>
+            <tr>
+               <td>
+                  <div class="content">
+                     <div class="card">
+                        <p> ADS Battery Voltage</p>
+                        <p><span class="reading"><span id="BatteryVID">%BATTERYV%</span> V</span></p>
+                     </div>
+                     <hr/>
+                     <div class="card">
+                        <p> Victron Battery Voltage</p>
+                        <p><span class="reading"><span id="VictronVoltageID">%VVOLT%</span> V</span></p>
+                     </div>
+                     <hr/>
+                     <div class="card">
+                        <p> INA Battery Voltage</p>
+                        <p><span class="reading"><span id="IBVID">%IBVV%</span> V</span></p>
+                     </div>
+                     <hr/>
+                     <div class="card">
+                        <p> ADS Ch3 Voltage</p>
+                        <p><span class="reading"><span id="ADS3ID">%ADSCH3VLTS%</span> V</span></p>
+                     </div>
+               </td>
+               <td>
+               <div class="card">
+               <p> ADS Alternator Current</p><p><span class="reading"><span id="MeasAmpsID">%MEASA%</span> A</span></p>
+               </div>
+               <hr/>
+               <div class="cards">
+               <div class="card">
+               <p> Alternator Temperature</p><p><span class="reading"><span id="AltTempID">%ALTERNATORTEMPERATUREF%</span> &deg;F</span></p>
+               </div>
+               <hr/>
+               <div class="card">
+               <p> INA Battery Current</p><p><span class="reading"><span id="BCurrID">%BCURR%</span> A</span></p>
+               </div>
+               <hr/>
+               <div class="card">
+               <p> Engine Speed</p><p><span class="reading"><span id="RPMID">%RPMM%</span> rev/min</span></p>
+               </div>
+               <hr/>
+               <div class="card">
+               <p> GPS Heading</p><p><span class="reading"><span id="GPSHID">%GPSH%</span> &deg</span></p>
+               </div>
+               </div>
+               </div>
+               </td>
+               <td>
+                  <div class="card">
+                     <p> Loop Time</p>
+                     <p><span class="reading"><span id="LoopTimeID">%LOOPTIME%</span> uS;</span></p>
+                  </div>
+                  <hr/>
+                  <div class="card">
+                     <p> Controller Field Duty Cycle</p>
+                     <p><span class="reading"><span id="DutyCycleID">%DUTYCYCLE%</span> &percnt;</span></p>
+                  </div>
+                  <hr/>
+                  <div class="card">
+                     <p> Controller Field Voltage</p>
+                     <p><span class="reading"><span id="FieldVoltsID">%FIELDVOLTS%</span> V</span></p>
+                  </div>
+                  <hr/>
+                  <div class="card">
+                     <p> Controller Field Current</p>
+                     <p><span class="reading"><span id="FieldAmpsID">%FIELDAMPS%</span> A</span></p>
+                  </div>
+               </td>
+            </tr>
+         </table>
+         <script>
+            if (!!window.EventSource) {
+             var source = new EventSource('/events');
+            
+             source.addEventListener('open', function(e) {
+              console.log("Events Connected");
+             }, false);
+             source.addEventListener('error', function(e) {
+              if (e.target.readyState != EventSource.OPEN) {
+                console.log("Events Disconnected");
+              }
+             }, false);
+             source.addEventListener('message', function(e) {
+              console.log("message", e.data);
+             }, false);
+             source.addEventListener('AlternatorTemperatureF', function(e) {
+              console.log("AlternatorTemperatureF", e.data);
+              document.getElementById("AltTempID").innerHTML = e.data;
+             }, false);
+             source.addEventListener('DutyCycle', function(e) {
+              console.log("DutyCycle", e.data);
+              document.getElementById("DutyCycleID").innerHTML = e.data;
+             }, false);
+             source.addEventListener('BatteryV', function(e) {
+              console.log("BatteryV", e.data);
+              document.getElementById("BatteryVID").innerHTML = e.data;
+             }, false);
+             source.addEventListener('MeasuredAmps', function(e) {
+              console.log("MeasuredAmps", e.data);
+              document.getElementById("MeasAmpsID").innerHTML = e.data;
+             }, false);
+             source.addEventListener('LoopTime', function(e) {
+              console.log("LoopTime", e.data);
+              document.getElementById("LoopTimeID").innerHTML = e.data;
+             }, false);          
+              source.addEventListener('RPM', function(e) {
+              console.log("RPM", e.data);
+              document.getElementById("RPMID").innerHTML = e.data;
+             }, false);
+              source.addEventListener('Channel3V', function(e) {
+              console.log("Channel3V", e.data);
+              document.getElementById("ADS3ID").innerHTML = e.data;
+             }, false);
+               source.addEventListener('IBV', function(e) {
+              console.log("IBV", e.data);
+              document.getElementById("IBVID").innerHTML = e.data;
+             }, false);
+                source.addEventListener('BCURR', function(e) {
+              console.log("Bcur", e.data);
+              document.getElementById("BCurrID").innerHTML = e.data;
+             }, false);
+                 source.addEventListener('GPSH', function(e) {
+              console.log("HeadingNMEA", e.data);
+              document.getElementById("GPSHID").innerHTML = e.data;
+             }, false);
+                source.addEventListener('VVOLT', function(e) {
+              console.log("VictronVoltage", e.data);
+              document.getElementById("VictronVoltageID").innerHTML = e.data;
+             }, false);
+                source.addEventListener('FIELDVOLTS', function(e) {
+              console.log("vvout", e.data);
+              document.getElementById("FieldVoltsID").innerHTML = e.data;
+             }, false);
+                 source.addEventListener('FIELDAMPS', function(e) {
+              console.log("iiout", e.data);
+              document.getElementById("FieldAmpsID").innerHTML = e.data;
+             }, false);
+            }
+         </script>
+   </body>
+</html>
+)rawliteral";
+
+
+
+
+void setup() {
+
+  setCpuFrequencyMhz(240);
+
+  Serial.begin(115200);
+  delay(500);
+
+  pinMode(4, OUTPUT);  // This pin is used to provide a high signal to SiC450 Enable pin
+
+  initWiFi();  // just leave this here
+
+  ChargingVoltageTarget = TargetFloatVoltage;
+
+  //WIFI STUFF
+  // Initialize LittleFS
+  if (!LittleFS.begin(true)) {
+    Serial.println("An Error has occurred while mounting LittleFS");
+    return;
+  }
+
+  if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("WiFi Failed!");
+    return;
+  }
+
+
+  //Send web page with input fields to client
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send_P(200, "text/html", index_html, processor);
+  });
+
+  // Send a GET request to <ESP_IP>/get?TemperatureLimitF=<inputMessage>
+  server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request) {
+    String inputMessage;
+    if (request->hasParam(TLimit)) {
+      inputMessage = request->getParam(TLimit)->value();
+      writeFile(LittleFS, "/TemperatureLimitF.txt", inputMessage.c_str());  //Converts the contents of a String as a C-style null-terminated string.
+      AlternatorTemperatureLimitF = inputMessage.toInt();
+    } else if (request->hasParam(ManualV)) {
+      inputMessage = request->getParam(ManualV)->value();
+      writeFile(LittleFS, "/ManualVoltage.txt", inputMessage.c_str());
+      ManualVoltageTarget = inputMessage.toFloat();
+    } else if (request->hasParam(FullChargeV)) {
+      inputMessage = request->getParam(FullChargeV)->value();
+      writeFile(LittleFS, "/FullChargeVoltage.txt", inputMessage.c_str());
+      ChargingVoltageTarget = inputMessage.toFloat();
+    } else if (request->hasParam(TargetA)) {
+      inputMessage = request->getParam(TargetA)->value();
+      writeFile(LittleFS, "/TargetAmpz.txt", inputMessage.c_str());
+      TargetAmps = inputMessage.toFloat();
+    } else if (request->hasParam(FrequencyP)) {
+      inputMessage = request->getParam(FrequencyP)->value();
+      writeFile(LittleFS, "/SwitchingFrequency.txt", inputMessage.c_str());
+      fffr = inputMessage.toInt();
+    } else if (request->hasParam(TFV)) {
+      inputMessage = request->getParam(TFV)->value();
+      writeFile(LittleFS, "/TargetFloatVoltage1.txt", inputMessage.c_str());
+      TargetFloatVoltage = inputMessage.toFloat();
+    } else if (request->hasParam(Intt)) {
+      inputMessage = request->getParam(Intt)->value();
+      writeFile(LittleFS, "/interval1.txt", inputMessage.c_str());
+      interval = inputMessage.toFloat();
+    } else if (request->hasParam(FAI)) {
+      inputMessage = request->getParam(FAI)->value();
+      writeFile(LittleFS, "/FieldAdjustmentInterval1.txt", inputMessage.c_str());
+      FieldAdjustmentInterval = inputMessage.toFloat();
+    } else if (request->hasParam(MFT)) {
+      inputMessage = request->getParam(MFT)->value();
+      writeFile(LittleFS, "/ManualFieldToggle1.txt", inputMessage.c_str());
+      ManualFieldToggle = inputMessage.toInt();
+    } else if (request->hasParam(SCO)) {
+      inputMessage = request->getParam(SCO)->value();
+      writeFile(LittleFS, "/SwitchControlOverride1.txt", inputMessage.c_str());
+      SwitchControlOverride = inputMessage.toInt();
+    } else if (request->hasParam(FF)) {
+      inputMessage = request->getParam(FF)->value();
+      writeFile(LittleFS, "/ForceFloat1.txt", inputMessage.c_str());
+      ForceFloat = inputMessage.toInt();
+    } else if (request->hasParam(OO)) {
+      inputMessage = request->getParam(OO)->value();
+      writeFile(LittleFS, "/OnOff1.txt", inputMessage.c_str());
+      OnOff = inputMessage.toInt();
+    } else if (request->hasParam(HL)) {
+      inputMessage = request->getParam(HL)->value();
+      writeFile(LittleFS, "/HiLow1.txt", inputMessage.c_str());
+      HiLow = inputMessage.toInt();
+    } else if (request->hasParam(LH)) {
+      inputMessage = request->getParam(LH)->value();
+      writeFile(LittleFS, "/LimpHome1.txt", inputMessage.c_str());
+      LimpHome = inputMessage.toInt();
+    }
+
+    else {
+      inputMessage = "No message sent";
+    }
+
+    // Serial.println(inputMessage);
+    request->send(200, "text/text", inputMessage);
+  });
+
+  server.onNotFound(notFound);
+
+  // Handle Web Server Events
+  events.onConnect([](AsyncEventSourceClient *client) {
+    if (client->lastId()) {
+      Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
+    }
+    // send event with message "hello!", id current millis
+    // and set reconnect delay to 1 second
+    client->send("hello!", NULL, millis(), 10000);
+  });
+  server.addHandler(&events);
+  server.begin();
+
+  // If there are not settings in Flash memoery (files don't exist yet), populate them with the hardcoded values
+  bool TempLimitfileexists = LittleFS.exists("/TemperatureLimitF.txt");
+  if (!TempLimitfileexists) {
+    //String stringOne = String(13);                        // Convert an Integer to a String
+    //String stringOne = String(5.69, 2);                      // Convert a float to a string with 2 decimal places
+    String stringAlternatorTemperatureLimitF = String(AlternatorTemperatureLimitF);
+    writeFile2("/TemperatureLimitF.txt", stringAlternatorTemperatureLimitF.c_str());
+  }
+  bool ManualVfileexists = LittleFS.exists("/ManualVoltage.txt");
+  if (!ManualVfileexists) {
+    String stringManualVV = String(ManualVoltageTarget, 2);
+    writeFile2("/ManualVoltage.txt", stringManualVV.c_str());
+  }
+  bool FCVfileexists = LittleFS.exists("/FullChargeVoltage.txt");
+  if (!FCVfileexists) {
+    String stringFCV = String(ChargingVoltageTarget, 2);
+    writeFile2("/FullChargeVoltage.txt", stringFCV.c_str());
+  }
+  bool TAfileexists = LittleFS.exists("/TargetAmpz.txt");
+  if (!TAfileexists) {
+    String stringTA = String(TargetAmps, 2);
+    writeFile2("/TargetAmpz.txt", stringTA.c_str());
+  }
+  bool Freqfileexists = LittleFS.exists("/SwitchingFrequency.txt");
+  if (!Freqfileexists) {
+    String stringFreq = String(fffr);
+    writeFile2("/SwitchingFrequency.txt", stringFreq.c_str());
+  }
+  bool TFVfileexists = LittleFS.exists("/TargetFloatVoltage1.txt");
+  if (!TFVfileexists) {
+    String stringTFV = String(TargetFloatVoltage);
+    writeFile2("/TargetFloatVoltage1.txt", stringTFV.c_str());
+  }
+  bool intervalfileexists = LittleFS.exists("/interval1.txt");
+  if (!intervalfileexists) {
+    String stringInterval = String(interval);
+    writeFile2("/interval1.txt", stringInterval.c_str());
+  }
+  bool Fintervalfileexists = LittleFS.exists("/FieldAdjustmentInterval1.txt");
+  if (!Fintervalfileexists) {
+    String stringFAI = String(FieldAdjustmentInterval);
+    writeFile2("/FieldAdjustmentInterval1.txt", stringFAI.c_str());
+  }
+  bool MFTexists = LittleFS.exists("/ManualFieldToggle1.txt");
+  if (!MFTexists) {
+    String stringMFT = String(ManualFieldToggle);
+    writeFile2("/ManualFieldToggle1.txt", stringMFT.c_str());
+  }
+  bool SCOexists = LittleFS.exists("/SwitchControlOverride1.txt");
+  if (!SCOexists) {
+    String stringSCO = String(SwitchControlOverride);
+    writeFile2("/SwitchControlOverride1.txt", stringSCO.c_str());
+  }
+  bool FFexists = LittleFS.exists("/ForceFloat1.txt");
+  if (!FFexists) {
+    String stringFF = String(ForceFloat);
+    writeFile2("/ForceFloatl1.txt", stringFF.c_str());
+  }
+  bool OOexists = LittleFS.exists("/OnOff1.txt");
+  if (!OOexists) {
+    String stringOO = String(OnOff);
+    writeFile2("/OnOff1.txt", stringOO.c_str());
+  }
+  bool HLexists = LittleFS.exists("/HiLow1.txt");
+  if (!HLexists) {
+    String stringHL = String(HiLow);
+    writeFile2("/HiLow1.txt", stringHL.c_str());
+  }
+  bool LHexists = LittleFS.exists("/LimpHome1.txt");
+  if (!LHexists) {
+    String stringLH = String(LimpHome);
+    writeFile2("/LimpHome1.txt", stringLH.c_str());
+  }
+  //Update some variable swith values from ESP32 Flash memory
+  AlternatorTemperatureLimitF = readFile(LittleFS, "/TemperatureLimitF.txt").toInt();
+  ManualVoltageTarget = readFile(LittleFS, "/ManualVoltage.txt").toFloat();
+  ChargingVoltageTarget = readFile(LittleFS, "/FullChargeVoltage.txt").toFloat();
+  TargetAmps = readFile(LittleFS, "/TargetAmpz.txt").toFloat();
+  fffr = readFile(LittleFS, "/SwitchingFrequency.txt").toInt();
+  TargetFloatVoltage = readFile(LittleFS, "/TargetFloatVoltage1.txt").toFloat();
+  interval = readFile(LittleFS, "/interval1.txt").toFloat();
+  FieldAdjustmentInterval = readFile(LittleFS, "/FieldAdjustmentInterval1.txt").toFloat();
+  ManualFieldToggle = readFile(LittleFS, "/ManualFieldToggle1.txt").toInt();
+  SwitchControlOverride = readFile(LittleFS, "/SwitchControlOverride1.txt").toInt();
+  ForceFloat = readFile(LittleFS, "/ForceFloat1.txt").toInt();
+  OnOff = readFile(LittleFS, "/OnOff1.txt").toInt();
+  HiLow = readFile(LittleFS, "/HiLow1.txt").toInt();
+  LimpHome = readFile(LittleFS, "/LimpHome1.txt").toInt();
+}
+
+void loop() {
+  starttime = esp_timer_get_time();  //Record a start time for demonstration
+
+  VictronVoltage = VictronVoltage + .001;
+
+
+  if (millis() - previousMillisZZ >= intervalZZ) {
+    previousMillisZZ = millis();
+
+    if (getCpuFrequencyMhz() == 240) {
+      // try to shut downn wifi
+      setCpuFrequencyMhz(10);
+      WiFi.mode(WIFI_OFF);
+      Serial.println("wifi has been turned off");
+    }
+
+    else {
+      // turn it back on
+      setCpuFrequencyMhz(240);
+      initWiFi();  // 2nd time using this, first is in setup
+      Serial.println("Wifi is reinitialized");
+      if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+        Serial.println("WiFi Failed!");
+        return;
+      }
+    }
+    Freq = getCpuFrequencyMhz();
+    Serial.print("CPU Freq = ");
+    Serial.println(Freq);
+    Serial.println();
+    Serial.println();
+
+  }
+
+  SendWifiData();  // break this out later to a different timed blink without delay thing
+  endtime = esp_timer_get_time();  //Record a start time for demonstration
+  LoopTime = (endtime - starttime);
+}
+
+//WIFI STUFF
+void notFound(AsyncWebServerRequest *request) {
+  request->send(404, "text/plain", "Not found");
+}
+
+String readFile(fs::FS &fs, const char *path) {
+  // Serial.printf("Reading file: %s\r\n", path);
+  File file = fs.open(path, "r");
+  if (!file || file.isDirectory()) {
+    Serial.println("- empty file or failed to open file");
+    return String();
+  }
+  // Serial.println("- read from file:");
+  String fileContent;
+  while (file.available()) {
+    fileContent += String((char)file.read());
+  }
+  file.close();
+  // Serial.println(fileContent);
+  return fileContent;
+}
+
+void writeFile(fs::FS &fs, const char *path, const char *message) {
+  // Serial.printf("Writing file: %s\r\n", path);
+  File file = fs.open(path, "w");
+  if (!file) {
+    Serial.println("- failed to open file for writing");
+    return;
+  }
+  if (file.print(message)) {
+    //  Serial.println("- file written");
+  } else {
+    Serial.println("- write failed");
+  }
+  delay(2);  // Make sure the CREATE and LASTWRITE times are different Delte later?
+  file.close();
+}
+void writeFile2(const char *path, const char *message) {
+  //  Serial.printf("Writing file: %s\n", path);
+
+  File file = LittleFS.open(path, "w");
+  if (!file) {
+    Serial.println("Failed to open file for writing");
+    return;
+  }
+  if (file.print(message)) {
+    //   Serial.println("File written");
+  } else {
+    Serial.println("Write failed");
+  }
+  delay(2);  // Make sure the CREATE and LASTWRITE times are different Delte later?
+  file.close();
+}
+
+//The processor() is responsible for searching for placeholders in the HTML text and replacing them with actual values saved on LittleFS.
+String processor(const String &var) {
+  //Serial.println(var);
+  //First, the "settings"
+  if (var == "TemperatureLimitF") {
+    return readFile(LittleFS, "/TemperatureLimitF.txt");
+  } else if (var == "ManualVoltage") {
+    return readFile(LittleFS, "/ManualVoltage.txt");
+  } else if (var == "FullChargeVoltage") {
+    return readFile(LittleFS, "/FullChargeVoltage.txt");
+  } else if (var == "TargetAmpz") {
+    return readFile(LittleFS, "/TargetAmpz.txt");
+  } else if (var == "SwitchingFrequency") {
+    return readFile(LittleFS, "/SwitchingFrequency.txt");
+  } else if (var == "TargetFloatVoltage1") {
+    return readFile(LittleFS, "/TargetFloatVoltage1.txt");
+  } else if (var == "interval1") {
+    return readFile(LittleFS, "/interval1.txt");
+  } else if (var == "FieldAdjustmentInterval1") {
+    return readFile(LittleFS, "/FieldAdjustmentInterval1.txt");
+  } else if (var == "ManualFieldToggle1") {
+    return readFile(LittleFS, "/ManualFieldToggle1.txt");
+  } else if (var == "SwitchControlOverride1") {
+    return readFile(LittleFS, "/SwitchControlOverride1.txt");
+  } else if (var == "ForceFloat1") {
+    return readFile(LittleFS, "/ForceFloat1.txt");
+  } else if (var == "OnOff1") {
+    return readFile(LittleFS, "/OnOff1.txt");
+  } else if (var == "HiLow1") {
+    return readFile(LittleFS, "/HiLow1.txt");
+  } else if (var == "LimpHome1") {
+    return readFile(LittleFS, "/LimpHome1.txt");
+  }
+
+  //Then, the live sensor readings
+  else if (var == "ALTERNATORTEMPERATUREF") {
+    return String(AlternatorTemperatureF);
+  } else if (var == "DUTYCYCLE") {
+    return String(DutyCycle);
+  } else if (var == "BATTERYV") {
+    return String(BatteryV);
+  } else if (var == "MEASA") {
+    return String(MeasuredAmps);
+  } else if (var == "RPMM") {
+    return String(RPM);
+  } else if (var == "ADSCH3VLTS") {
+    return String(Channel3V);
+  } else if (var == "IBVV") {
+    return String(IBV);
+  } else if (var == "BCURR") {
+    return String(Bcur);
+  } else if (var == "VVOLT") {
+    return String(VictronVoltage);
+  } else if (var == "GPSH") {
+    return String(HeadingNMEA);
+  } else if (var == "FIELDVOLTS") {
+    return String(vvout);
+  } else if (var == "LOOPTIME") {
+    return String(LoopTime);
+  } else if (var == "FIELDAMPS") {
+    return String(iiout);
+  }
+
+  return String();
+}
+
+
+// Initialize WiFi
+void initWiFi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  // Serial.print("Connecting to WiFi ..");
+  while (WiFi.status() != WL_CONNECTED) {
+    //  Serial.print('.');
+    delay(500);
+  }
+  // Serial.println(WiFi.localIP());
+  // Serial.println();
+  // Serial.print("IP Address: ");
+  // Serial.println(WiFi.localIP());
+  // Serial.print("RRSI (lower absolute value is better!): ");
+  // Serial.println(WiFi.RSSI());
+}
+
+void SendWifiData() {
+  if (millis() - prev_millis5 > 2000) {  // every 2 seconds
+
+    // Send Events to the Web Client with the Sensor Readings
+    events.send("ping", NULL, millis());
+    events.send(String(AlternatorTemperatureF).c_str(), "AlternatorTemperatureF", millis());
+    events.send(String(DutyCycle).c_str(), "DutyCycle", millis());
+    events.send(String(BatteryV).c_str(), "BatteryV", millis());
+    events.send(String(MeasuredAmps).c_str(), "MeasuredAmps", millis());
+    events.send(String(RPM).c_str(), "RPM", millis());
+    events.send(String(Channel3V).c_str(), "Channel3V", millis());
+    events.send(String(IBV).c_str(), "IBV", millis());
+    events.send(String(Bcur).c_str(), "Bcur", millis());
+    events.send(String(VictronVoltage).c_str(), "VictronVoltage", millis());
+    events.send(String(LoopTime).c_str(), "LoopTime", millis());
+    events.send(String(HeadingNMEA).c_str(), "HeadingNMEA", millis());
+    events.send(String(vvout).c_str(), "vvout", millis());
+    events.send(String(iiout).c_str(), "iiout", millis());
+
+    prev_millis5 = millis();
+  }
+}
