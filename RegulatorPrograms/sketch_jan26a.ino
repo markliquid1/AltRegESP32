@@ -1,3 +1,4 @@
+// Check line 557 if any wifi related problems
 #include <OneWire.h>            // temp sensors
 #include <DallasTemperature.h>  // temp sensors
 #include <SPI.h>                // display
@@ -51,12 +52,9 @@ int resolution = 12;                      // for OneWire temp sensor measurement
 float fffr = 1200;                        // this is the switching frequency for SIC450 in khz units
 int VeDataOn = 0;                         // Set to 1 if VE serial data exists
 
-// Used to blink ESPDuino built in Red LED every 2 seconds for reference as a heartbeat of sorts
-int ledPin = 2;
-bool ledState = LOW;
-unsigned long currentMillissss = 0;
-unsigned long previousMillissss = 0;
-unsigned long interval22 = 2000;
+int previousMillisZZ = 0;  // Temporary, for getting power consumption down
+int intervalZZ = 60000;    // Turn WiFi on and off every 60 seconds (until there's an Ignition signal controlling it)
+uint32_t Freq = 0;         // ESP32 switching Frequency in case we want to report it for debugging
 
 //Variables to store measurements
 float Raw;              //Each channel of ADS1115 is temporarily stored here, pre engineering units
@@ -429,11 +427,10 @@ void HandleNMEA2000Msg(const tN2kMsg &N2kMsg);
 
 
 void setup() {
+  setCpuFrequencyMhz(240);
   Serial.begin(115200);
-  delay(500);
-
+  delay(500); // not sure if this is needed
   pinMode(4, OUTPUT);  // This pin is used to provide a high signal to SiC450 Enable pin
-
   initWiFi();  // just leave it here
 
   //NMEA2K
@@ -557,8 +554,8 @@ void setup() {
 
   //WIFI STUFF
 
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
+  //WiFi.mode(WIFI_STA);         // delete this someday, it happens in Wifi.init anyway
+  //WiFi.begin(ssid, password);  // delete this someday, it happens in Wifi.init anyway
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("WiFi Failed!");
     return;
@@ -752,14 +749,40 @@ void setup() {
 }
 void loop() {
 
-starttime = esp_timer_get_time();  //Record a start time for demonstration
+  starttime = esp_timer_get_time();  //Record a start time for demonstration
   ReadAnalogInputs();
   ReadTemperatureData();
   ReadVEData();  //read Data from Victron VeDirect
   AdjustSic450();
   UpdateDisplay();
   FaultCheck();
-  BlinkLED();
+
+  /// Replace this later with control from Ignition Signal
+  //This turns wifi off every 60 seconds just to prove that it will be a power savings
+  if (millis() - previousMillisZZ >= intervalZZ) {
+    previousMillisZZ = millis();
+    if (getCpuFrequencyMhz() == 240) {
+      // try to shut downn wifi
+      setCpuFrequencyMhz(10);
+      WiFi.mode(WIFI_OFF);
+      Serial.println("wifi has been turned off");
+    } else {
+      // turn it back on
+      setCpuFrequencyMhz(240);
+      initWiFi();  // 2nd time using this, first is in setup
+      Serial.println("Wifi is reinitialized");
+      if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+        Serial.println("WiFi Failed!");
+        return;
+      }
+    }
+    Freq = getCpuFrequencyMhz();
+    Serial.print("CPU Freq = ");
+    Serial.println(Freq);
+    Serial.println();
+    Serial.println();
+  }
+
   SendWifiData();                          // break this out later to a different timed blink without delay thing
   if (millis() - prev_millis743 > 5000) {  // every 5 seconds check CAN network (this might need adjustment)
     NMEA2000.ParseMessages();
@@ -771,21 +794,7 @@ starttime = esp_timer_get_time();  //Record a start time for demonstration
     MaximumLoopTime = LoopTime;
   }
 }
-void BlinkLED() {
-  currentMillissss = millis();
-  if (currentMillissss - previousMillissss >= interval22) {
-    // save the last time you blinked the LED
-    previousMillissss = currentMillissss;
-    // if the LED is off turn it on and vice-versa:
-    if (ledState == LOW) {
-      ledState = HIGH;
-    } else {
-      ledState = LOW;
-    }
-  }
-  // set the LED with the ledState of the variable:
-  digitalWrite(ledPin, ledState);
-}
+
 void AdjustSic450() {
   if (Ignition == 1 && OnOff == 1) {
     digitalWrite(4, SIC450Enabler);  // Enable the SIC450
