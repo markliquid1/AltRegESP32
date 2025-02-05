@@ -20,9 +20,9 @@ SiC45x sic45x(0x1D);
 #include <N2kMessages.h>
 #include <N2kMessagesEnumToStr.h>  // questionably needed
 #include <WiFi.h>
-#include <AsyncTCP.h>           // for wifi stuff
+#include <AsyncTCP.h>           // for wifi stuff, important, don't ever update, use mathieucarbou github repository
 #include <LittleFS.h>           // for wifi stuff
-#include <ESPAsyncWebServer.h>  // for wifi stuff
+#include <ESPAsyncWebServer.h>  // for wifi stuff, important, don't ever update, use mathieucarbou github repository
 
 // Settings
 
@@ -55,6 +55,9 @@ int VeDataOn = 0;                         // Set to 1 if VE serial data exists
 int previousMillisZZ = 0;  // Temporary, for getting power consumption down
 int intervalZZ = 60000;    // Turn WiFi on and off every 60 seconds (until there's an Ignition signal controlling it)
 uint32_t Freq = 0;         // ESP32 switching Frequency in case we want to report it for debugging
+int previousMillisBLINK;   // used for blinking LED test can delete later
+int intervalBLINK = 4000;  // used for blinking LED test can delete later
+bool ledState;             // used for blinking LED test can delete later
 
 //Variables to store measurements
 float Raw;              //Each channel of ADS1115 is temporarily stored here, pre engineering units
@@ -553,9 +556,6 @@ void setup() {
   sensors.requestTemperatures();
 
   //WIFI STUFF
-
-  //WiFi.mode(WIFI_STA);         // delete this someday, it happens in Wifi.init anyway
-  //WiFi.begin(ssid, password);  // delete this someday, it happens in Wifi.init anyway
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("WiFi Failed!");
     return;
@@ -788,6 +788,20 @@ void loop() {
     NMEA2000.ParseMessages();
     prev_millis743 = millis();
   }
+  if (millis() - previousMillisBLINK >= intervalBLINK) {     // every 4 seconds, turn LED on or off
+        // if the LED is off turn it on and vice-versa:
+    if (ledState == LOW) {
+      ledState = HIGH;
+
+    } 
+    else {
+      ledState = LOW;
+    }
+    digitalWrite(2, ledState);
+    previousMillisBLINK = millis();
+    Serial.println("swithced");
+  }
+   
   endtime = esp_timer_get_time();  //Record a start time for demonstration
   LoopTime = (endtime - starttime);
   if (LoopTime > MaximumLoopTime) {
