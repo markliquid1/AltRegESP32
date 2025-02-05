@@ -1,4 +1,3 @@
-// Check line 557 if any wifi related problems
 #include <OneWire.h>            // temp sensors
 #include <DallasTemperature.h>  // temp sensors
 #include <SPI.h>                // display
