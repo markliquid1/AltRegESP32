@@ -31,6 +31,8 @@ const char *password = "5FENYC8PDW";
 
 //delete this later
 int powersavemode = 0;
+int INADisconnected = 0;
+int ADS1115Disconnected = 0;
 
 float TargetAmps = 55;  //Normal alternator output, for best performance, set ot something that just barely won't overheat
 float TargetFloatVoltage = 13.9;
@@ -83,9 +85,9 @@ float HeadingNMEA = 0;     // Just here to test NMEA functionality
 // variables used to show how long each loop takes
 uint64_t starttime;
 uint64_t endtime;
-int LoopTime;         // must not use unsigned long becasue cant run String() on an unsigned long and that's done by the wifi code
-int MaximumLoopTime;  // must not use unsigned long becasue cant run String() on an unsigned long and that's done by the wifi code
-int prev_millis7888=0; // used to reset the meximum loop time
+int LoopTime;             // must not use unsigned long becasue cant run String() on an unsigned long and that's done by the wifi code
+int MaximumLoopTime;      // must not use unsigned long becasue cant run String() on an unsigned long and that's done by the wifi code
+int prev_millis7888 = 0;  // used to reset the meximum loop time
 
 //"Blink without delay" style timer variables used to control how often differnet parts of code execute
 static unsigned long prev_millis4;    // used to delay checking of faults in the SiC450
@@ -205,6 +207,7 @@ void setup() {
 
   if (!INA.begin()) {
     Serial.println("Could not connect INA. Fix and Reboot");
+    INADisconnected = 1;
     // while (1)
     ;
   }
@@ -274,6 +277,7 @@ void setup() {
   //Connection check
   if (!adc.testConnection()) {
     Serial.println("ADS1115 Connection failed");
+    ADS1115Disconnected=1;
     // return;
   }
   //Gain parameter.
@@ -321,7 +325,6 @@ void setup() {
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(LittleFS, "/index.html", "text/html", false, processor);
-    Serial.println("we sent a processor request");
   });
 
 
@@ -496,19 +499,18 @@ void setup() {
   OnOff = readFile(LittleFS, "/OnOff1.txt").toInt();
   HiLow = readFile(LittleFS, "/HiLow1.txt").toInt();
   LimpHome = readFile(LittleFS, "/LimpHome1.txt").toInt();
-
 }
 
 void loop() {
 
   starttime = esp_timer_get_time();  //Record a start time for demonstration
-  
+
   ReadAnalogInputs();
   ReadTemperatureData();
- //ReadVEData();  //read Data from Victron VeDirect
-  AdjustSic450();
- // UpdateDisplay();
- // FaultCheck();
+  //ReadVEData();  //read Data from Victron VeDirect
+  //AdjustSic450();
+  // UpdateDisplay();
+  // FaultCheck();
 
 
   if (powersavemode == 1) {
@@ -538,7 +540,7 @@ void loop() {
 
   SendWifiData();                          // break this out later to a different timed blink without delay thing
   if (millis() - prev_millis743 > 5000) {  // every 5 seconds check CAN network (this might need adjustment)
-   // NMEA2000.ParseMessages();
+                                           // NMEA2000.ParseMessages();
     prev_millis743 = millis();
   }
   if (millis() - previousMillisBLINK >= intervalBLINK) {  // every 4 seconds, turn LED on or off
@@ -670,57 +672,60 @@ void FaultCheck() {
 }
 void ReadAnalogInputs() {
   if (millis() - prev_millis3 > 1000) {  // every 1 seconds read ads1115 and INA228
-    //The mux setting must be set every time each channel is read, there is NOT a separate function call for each possible mux combination.
-    adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_0);  //Set single ended mode between AIN0 and GND
-    //manually trigger the conversion
-    adc.triggerConversion();    //Start a conversion.  This immediatly returns
-    Raw = adc.getConversion();  //This polls the ADS1115 and wait for conversion to finish, THEN returns the value
-    endtime = micros();
-    //Channel0V = Raw / 32768 * 6.144 * 20.242914979757085;
-    //Serial.print(Channel0V);
-    Channel0V = Raw / 32768 * 6.144 * 20.24291;
-    BatteryV = Channel0V;
-    if (BatteryV > 14.5) {
-      ChargingVoltageTarget = TargetFloatVoltage;
+    if (ADS1115Disconnected == 0) {
+      //The mux setting must be set every time each channel is read, there is NOT a separate function call for each possible mux combination.
+      adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_0);  //Set single ended mode between AIN0 and GND
+      //manually trigger the conversion
+      adc.triggerConversion();    //Start a conversion.  This immediatly returns
+      Raw = adc.getConversion();  //This polls the ADS1115 and wait for conversion to finish, THEN returns the value
+      endtime = micros();
+      //Channel0V = Raw / 32768 * 6.144 * 20.242914979757085;
+      //Serial.print(Channel0V);
+      Channel0V = Raw / 32768 * 6.144 * 20.24291;
+      BatteryV = Channel0V;
+      if (BatteryV > 14.5) {
+        ChargingVoltageTarget = TargetFloatVoltage;
+      }
+
+      adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_1);
+      adc.triggerConversion();
+      Raw = adc.getConversion();
+      Channel1V = Raw / 32768 * 6.144 * 2;
+      MeasuredAmps = (2.5 - Channel1V) * 80;
+      //Serial.print("      Measured Amps: ");
+      //Serial.print(MeasuredAmps);
+
+      adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_2);
+      adc.triggerConversion();
+      Raw = adc.getConversion();
+      Channel2V = Raw / 32768 * 6.144 * 2133.2 * 2;
+      RPM = Channel2V;
+      // Serial.print("       Ch 2 Volts: ");
+      // Serial.print(Channel2V);
+
+      adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_3);
+      adc.triggerConversion();
+      Raw = adc.getConversion();
+      Channel3V = Raw / 32768 * 6.144 * 833;
+      //Serial.print("       Ch 3 HZ: ");
+      //Serial.println(Channel3V);
+      prev_millis3 = millis();
     }
-
-    adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_1);
-    adc.triggerConversion();
-    Raw = adc.getConversion();
-    Channel1V = Raw / 32768 * 6.144 * 2;
-    MeasuredAmps = (2.5 - Channel1V) * 80;
-    //Serial.print("      Measured Amps: ");
-    //Serial.print(MeasuredAmps);
-
-    adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_2);
-    adc.triggerConversion();
-    Raw = adc.getConversion();
-    Channel2V = Raw / 32768 * 6.144 * 2133.2 * 2;
-    RPM = Channel2V;
-    // Serial.print("       Ch 2 Volts: ");
-    // Serial.print(Channel2V);
-
-    adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_3);
-    adc.triggerConversion();
-    Raw = adc.getConversion();
-    Channel3V = Raw / 32768 * 6.144 * 833;
-    //Serial.print("       Ch 3 HZ: ");
-    //Serial.println(Channel3V);
-    prev_millis3 = millis();
-
     // vvout = (sic45x.getReadVout());
     // iiout = (sic45x.getReadIout());
     // DutyCycle = (sic45x.getReadDutyCycle());
 
-    //Serial.println();
-    //Serial.print("INA228 Battery Voltage: ");
-    IBV = INA.getBusVoltage();
-    // Serial.println(IBV);
-    // Serial.print("INA228 Battery Bcur (Amps): ");
-    ShuntVoltage_mV = INA.getShuntVoltage_mV();
-    Bcur = ShuntVoltage_mV * 10;
-    //Serial.print(Bcur);
-    //Serial.println();
+    if (INADisconnected == 0) {
+      //Serial.println();
+      //Serial.print("INA228 Battery Voltage: ");
+      IBV = INA.getBusVoltage();
+      // Serial.println(IBV);
+      // Serial.print("INA228 Battery Bcur (Amps): ");
+      ShuntVoltage_mV = INA.getShuntVoltage_mV();
+      Bcur = ShuntVoltage_mV * 10;
+      //Serial.print(Bcur);
+      //Serial.println();
+    }
   }
 }
 void ReadTemperatureData() {
