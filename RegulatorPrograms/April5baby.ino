@@ -1,3 +1,15 @@
+// With NO HARDWARE connected
+// 5000 to 6000 uS is the longest that the loop should take during a 10 second span, except on a 1st cycle or cycle that writes an update to ESP32.
+// more typical is 7us        This is with most stuff disabled
+// updating the display brings it up to 14k uS, it's a very slow operation (at least this was the case w/ no hardware, probably same w/ hardware)
+// AdjustSic450 brings the typical time up to 820uS and the max time up to 7000uS.   Still acceptable
+
+// WITH Hardware:
+// Something brings the time up to half a second.    Turned off ReadAnaloginputs and now we're at 5 minimum 30K maximum
+// turned off temperature and VE data .    This brought it back down to 5000 and 4
+// Need to implement temperature in a non-blocking way
+
+
 #include <OneWire.h>            // temp sensors
 #include <DallasTemperature.h>  // temp sensors
 #include <SPI.h>                // display
@@ -210,6 +222,8 @@ void setup() {
     INADisconnected = 1;
     // while (1)
     ;
+  } else {
+    INADisconnected = 0;
   }
 
   // at least 0.27 seconds for an update with these settings for moving average and conversion time
@@ -277,8 +291,10 @@ void setup() {
   //Connection check
   if (!adc.testConnection()) {
     Serial.println("ADS1115 Connection failed");
-    ADS1115Disconnected=1;
+    ADS1115Disconnected = 1;
     // return;
+  } else {
+    ADS1115Disconnected = 0;
   }
   //Gain parameter.
   adc.setGain(ADS1115_REG_CONFIG_PGA_6_144V);
@@ -506,7 +522,7 @@ void loop() {
   starttime = esp_timer_get_time();  //Record a start time for demonstration
 
   ReadAnalogInputs();
-  ReadTemperatureData();
+  // ReadTemperatureData();
   //ReadVEData();  //read Data from Victron VeDirect
   //AdjustSic450();
   // UpdateDisplay();
