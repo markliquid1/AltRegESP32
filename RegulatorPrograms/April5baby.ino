@@ -1,3 +1,6 @@
+// Long term notes
+// at the end, go back and make the temp reading normal again, since I think the only improvement came from making the separate thread
+
 // With NO HARDWARE connected
 // 5000 to 6000 uS is the longest that the loop should take during a 10 second span, except on a 1st cycle or cycle that writes an update to ESP32.
 // more typical is 7us        This is with most stuff disabled
@@ -5,10 +8,11 @@
 // AdjustSic450 brings the typical time up to 820uS and the max time up to 7000uS.   Still acceptable
 
 // WITH Hardware:
-// Something brings the time up to half a second.    Turned off ReadAnaloginputs and now we're at 5 minimum 30K maximum
+// Something brings the time up to half a second.
+//Turned off ReadAnaloginputs and now we're at 5 minimum 30K maximum
 // turned off temperature and VE data .    This brought it back down to 5000 and 4
-// Need to implement temperature in a non-blocking way
-
+// Temperature seprated into a unique task brought maximum down to 25k ish and typical to 2K ish.  I still get some big lags
+// Read analog inputs turned off, no hardware has had no change.  Down to 7ms max loop time. Next thing to try is unblocking the INA228
 
 #include <OneWire.h>            // temp sensors
 #include <DallasTemperature.h>  // temp sensors
@@ -44,7 +48,12 @@ const char *password = "5FENYC8PDW";
 //delete this later
 int powersavemode = 0;
 int INADisconnected = 0;
-int ADS1115Disconnected = 0;
+int WifiHeartBeat = 0;
+int VeTime = 0;
+int SendWifiTime = 0;
+int AnalogReadTime = 0; // this is the present 
+int AnalogReadTime2 = 0; // this is the maximum ever
+
 
 float TargetAmps = 55;  //Normal alternator output, for best performance, set ot something that just barely won't overheat
 float TargetFloatVoltage = 13.9;
@@ -71,45 +80,46 @@ int VeDataOn = 0;                         // Set to 1 if VE serial data exists
 int previousMillisZZ = 0;  // Temporary, for getting power consumption down
 int intervalZZ = 60000;    // Turn WiFi on and off every 60 seconds (until there's an Ignition signal controlling it)
 uint32_t Freq = 0;         // ESP32 switching Frequency in case we want to report it for debugging
-int previousMillisBLINK;   // used for blinking LED test can delete later
-int intervalBLINK = 4000;  // used for blinking LED test can delete later
-bool ledState;             // used for blinking LED test can delete later
+int previousMillisBLINK;   // used for heartbeat blinking LED test can delete later
+int intervalBLINK = 1000;  // used for heartbeat blinking LED test can delete later
+bool ledState;             // used for heartbeat blinking LED test can delete later
 
 //Variables to store measurements
-float Raw;              //Each channel of ADS1115 is temporarily stored here, pre engineering units
-float Channel0V;        // voltage divider is 20... same as BatteryV
-float BatteryV;         // as read by ADS115
-float Channel1V;        // voltage divider is 2, partial step towards getting MeasuredAmps
-float MeasuredAmps;     // alternator output current
-float Channel2V;        // voltage divider is 2---- wired internally to LM2907
-float Channel3V;        // voltage divider is an empty socket for user installation
 float ShuntVoltage_mV;  // Battery shunt voltage from INA228
 float Bcur;             // battery shunt current from INA228
 float IBV;              // Ina 228 battery voltage
 float DutyCycle;        // SIC outout %
 float vvout;            // SIC output volts
 float iiout;            // SIC output current
-float RPM;              // from LM2907
-float AlternatorTemperatureF = 0;
-float VictronVoltage = 0;  // battery reading from VeDirect
-float HeadingNMEA = 0;     // Just here to test NMEA functionality
+float AlternatorTemperatureF = NAN;
+TaskHandle_t tempTaskHandle = NULL;  // make a separate cpu task for temp reading because it's so slow
+float VictronVoltage = 0;            // battery reading from VeDirect
+float HeadingNMEA = 0;               // Just here to test NMEA functionality
+
+// ADS1115
+int16_t Raw = 0;
+float Channel0V, Channel1V, Channel2V, Channel3V;
+float BatteryV, MeasuredAmps, RPM;
+int ADS1115Disconnected = 0;
 
 // variables used to show how long each loop takes
 uint64_t starttime;
 uint64_t endtime;
 int LoopTime;             // must not use unsigned long becasue cant run String() on an unsigned long and that's done by the wifi code
+int WifiStrength;         // must not use unsigned long becasue cant run String() on an unsigned long and that's done by the wifi code
 int MaximumLoopTime;      // must not use unsigned long becasue cant run String() on an unsigned long and that's done by the wifi code
 int prev_millis7888 = 0;  // used to reset the meximum loop time
 
 //"Blink without delay" style timer variables used to control how often differnet parts of code execute
-static unsigned long prev_millis4;    // used to delay checking of faults in the SiC450
-static unsigned long prev_millis66;   //used to delay the updating of the display
-static unsigned long prev_millis22;   // used to delay sampling of sic450
-static unsigned long prev_millis3;    // used to delay sampling of ADS1115 to every 2 seconds for example
-static unsigned long prev_millis2;    // used to delay sampling of temp sensor to every 2 seconds for example
-static unsigned long prev_millis33;   // used to delay sampling of Serial Data (ve direct)
-static unsigned long prev_millis743;  // used to read NMEA2K Network Every X seconds
-static unsigned long prev_millis5;    // used to initiate wifi data exchange
+static unsigned long prev_millis4;   // used to delay checking of faults in the SiC450
+static unsigned long prev_millis66;  //used to delay the updating of the display
+static unsigned long prev_millis22;  // used to delay sampling of sic450
+static unsigned long prev_millis3;   // used to delay sampling of ADS1115 to every 2 seconds for example
+//static unsigned long prev_millis2;    // used to delay sampling of temp sensor to every 2 seconds for example
+static unsigned long prev_millis33;    // used to delay sampling of Serial Data (ve direct)
+static unsigned long prev_millis743;   // used to read NMEA2K Network Every X seconds
+static unsigned long prev_millis5;     // used to initiate wifi data exchange
+static unsigned long lastINARead = 0;  // don't read the INA228 needlessly often
 
 // pre-setup stuff
 // onewire    Data wire is connetec to the Arduino digital pin 13
@@ -119,6 +129,7 @@ OneWire oneWire(ONE_WIRE_BUS);
 // Pass our oneWire reference to Dallas Temperature sensor
 DallasTemperature sensors(&oneWire);
 DeviceAddress tempDeviceAddress;
+
 
 //SIC450 control
 bool SIC450Enabler = 1;
@@ -130,9 +141,9 @@ Adafruit_SSD1306 display(128, 64, 23, 18, 19, -1, 5);
 VeDirectFrameHandler myve;
 
 // WIFI STUFF
-AsyncWebServer server(80);               // Create AsyncWebServer object on port 80
-AsyncEventSource events("/events");      // Create an Event Source on /events
-unsigned long webgaugesinterval = 1000;  // delay in ms between sensor updates on webpage
+AsyncWebServer server(80);              // Create AsyncWebServer object on port 80
+AsyncEventSource events("/events");     // Create an Event Source on /events
+unsigned long webgaugesinterval = 500;  // delay in ms between sensor updates on webpage
 
 const char *TLimit = "TemperatureLimitF";  //TLimit is a pointer to an immutable String "TemperatureLimitF"
 const char *ManualV = "ManualVoltage";
@@ -186,6 +197,17 @@ Stream *OutputStream;
 
 void HandleNMEA2000Msg(const tN2kMsg &N2kMsg);
 
+//ADS1115 more pre-setup crap
+enum ADS1115_State {
+  ADS_IDLE,
+  ADS_WAITING_FOR_CONVERSION
+};
+
+ADS1115_State adsState = ADS_IDLE;
+uint8_t adsCurrentChannel = 0;
+unsigned long adsStartTime = 0;
+const unsigned long ADSConversionDelay = 155;  // 125 ms for 8 SPS but... Recommendation:Raise ADSConversionDelay to 150 or 160 ms — this gives ~20–30% margin without hurting performance much.     Can change this back later
+
 
 
 
@@ -226,9 +248,9 @@ void setup() {
     INADisconnected = 0;
   }
 
-  // at least 0.27 seconds for an update with these settings for moving average and conversion time
+  // at least 529ms for an update with these settings for average and conversion time
   INA.setMode(11);                       // Bh = Continuous shunt and bus voltage
-  INA.setAverage(5);                     //0h = 1, 1h = 4, 2h = 16, 3h = 64, 4h = 128, 5h = 256, 6h = 512, 7h = 1024     Applies to all channels
+  INA.setAverage(4);                     //0h = 1, 1h = 4, 2h = 16, 3h = 64, 4h = 128, 5h = 256, 6h = 512, 7h = 1024     Applies to all channels
   INA.setBusVoltageConversionTime(5);    // Sets the conversion time of the bus voltage measurement: 0h = 50 µs, 1h = 84 µs, 2h = 150 µs, 3h = 280 µs, 4h = 540 µs, 5h = 1052 µs, 6h = 2074 µs, 7h = 4120 µs
   INA.setShuntVoltageConversionTime(5);  // Sets the conversion time of the bus voltage measurement: 0h = 50 µs, 1h = 84 µs, 2h = 150 µs, 3h = 280 µs, 4h = 540 µs, 5h = 1052 µs, 6h = 2074 µs, 7h = 4120 µs
 
@@ -290,7 +312,7 @@ void setup() {
   //ADS1115
   //Connection check
   if (!adc.testConnection()) {
-    Serial.println("ADS1115 Connection failed");
+    Serial.println("ADS1115 Connection failed and would have triggered a return if it wasn't commented out");
     ADS1115Disconnected = 1;
     // return;
   } else {
@@ -318,14 +340,17 @@ void setup() {
 
   //onewire
   sensors.begin();
+  sensors.setResolution(12);
   sensors.getAddress(tempDeviceAddress, 0);
-  sensors.setResolution(tempDeviceAddress, resolution);
-  sensors.setWaitForConversion(false);
-  sensors.requestTemperatures();
+  if (sensors.getDeviceCount() == 0) {
+    Serial.println("WARNING: No DS18B20 sensors found on the bus.");
+    sensors.setWaitForConversion(false);  // this is critical!
+  }
+
 
   //WIFI STUFF
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.println("WiFi Failed!");
+    Serial.println("WiFi Failed and triggered a return!");
     return;
   }
   Serial.println();
@@ -334,7 +359,7 @@ void setup() {
 
   // Initialize LittleFS
   if (!LittleFS.begin(true)) {
-    Serial.println("An Error has occurred while mounting LittleFS");
+    Serial.println("An Error has occurred while mounting LittleFS and triggered a return");
     return;
   }
 
@@ -515,15 +540,38 @@ void setup() {
   OnOff = readFile(LittleFS, "/OnOff1.txt").toInt();
   HiLow = readFile(LittleFS, "/HiLow1.txt").toInt();
   LimpHome = readFile(LittleFS, "/LimpHome1.txt").toInt();
+
+  // This one worked (~7ms max loop time with analog inputs off) )but I'm trying core 0 to see if it's better
+  // xTaskCreatePinnedToCore(
+  //   TempTask,
+  //   "TempTask",
+  //   4096,
+  //   NULL,
+  //   1,
+  //   &tempTaskHandle,
+  //   1  // run on core 1 (user app core)
+  // );
+
+  xTaskCreatePinnedToCore(
+    TempTask,
+    "TempTask",
+    4096,
+    NULL,
+    0,  // Priority lower than normal (execute if nothing else to do, all the 1's are idle)
+    &tempTaskHandle,
+    0  // Run on Core 0, which is the one doing Wifi and system tasks, and theoretically has more idle points than Core 1 and "loop()"
+  );
 }
 
 void loop() {
 
   starttime = esp_timer_get_time();  //Record a start time for demonstration
-
+  //yield();
   ReadAnalogInputs();
-  // ReadTemperatureData();
+  // yield();
+
   //ReadVEData();  //read Data from Victron VeDirect
+
   //AdjustSic450();
   // UpdateDisplay();
   // FaultCheck();
@@ -556,11 +604,10 @@ void loop() {
 
   SendWifiData();                          // break this out later to a different timed blink without delay thing
   if (millis() - prev_millis743 > 5000) {  // every 5 seconds check CAN network (this might need adjustment)
-                                           // NMEA2000.ParseMessages();
+    NMEA2000.ParseMessages();
     prev_millis743 = millis();
   }
-  if (millis() - previousMillisBLINK >= intervalBLINK) {  // every 4 seconds, turn LED on or off
-                                                          // if the LED is off turn it on and vice-versa:
+  if (millis() - previousMillisBLINK >= intervalBLINK) {  // every 1 seconds, turn LED on or off
     if (ledState == LOW) {
       ledState = HIGH;
 
@@ -569,20 +616,20 @@ void loop() {
     }
     digitalWrite(2, ledState);
     previousMillisBLINK = millis();
-    // Serial.println("switched");
   }
 
   endtime = esp_timer_get_time();  //Record a start time for demonstration
   LoopTime = (endtime - starttime);
-
+  //Serial.println(LoopTime);
   if (LoopTime > MaximumLoopTime) {
     MaximumLoopTime = LoopTime;
   }
 
-  if (millis() - prev_millis7888 > 10000) {  // every 10 seconds reset the maximum loop time
+  if (millis() - prev_millis7888 > 3000) {  // every 2 seconds reset the maximum loop time
     MaximumLoopTime = 0;
     prev_millis7888 = millis();
   }
+  //Serial.println(MaximumLoopTime);
 }
 
 void AdjustSic450() {
@@ -686,54 +733,18 @@ void FaultCheck() {
     prev_millis4 = millis();
   }
 }
+
+
 void ReadAnalogInputs() {
-  if (millis() - prev_millis3 > 1000) {  // every 1 seconds read ads1115 and INA228
-    if (ADS1115Disconnected == 0) {
-      //The mux setting must be set every time each channel is read, there is NOT a separate function call for each possible mux combination.
-      adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_0);  //Set single ended mode between AIN0 and GND
-      //manually trigger the conversion
-      adc.triggerConversion();    //Start a conversion.  This immediatly returns
-      Raw = adc.getConversion();  //This polls the ADS1115 and wait for conversion to finish, THEN returns the value
-      endtime = micros();
-      //Channel0V = Raw / 32768 * 6.144 * 20.242914979757085;
-      //Serial.print(Channel0V);
-      Channel0V = Raw / 32768 * 6.144 * 20.24291;
-      BatteryV = Channel0V;
-      if (BatteryV > 14.5) {
-        ChargingVoltageTarget = TargetFloatVoltage;
-      }
 
-      adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_1);
-      adc.triggerConversion();
-      Raw = adc.getConversion();
-      Channel1V = Raw / 32768 * 6.144 * 2;
-      MeasuredAmps = (2.5 - Channel1V) * 80;
-      //Serial.print("      Measured Amps: ");
-      //Serial.print(MeasuredAmps);
 
-      adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_2);
-      adc.triggerConversion();
-      Raw = adc.getConversion();
-      Channel2V = Raw / 32768 * 6.144 * 2133.2 * 2;
-      RPM = Channel2V;
-      // Serial.print("       Ch 2 Volts: ");
-      // Serial.print(Channel2V);
-
-      adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_3);
-      adc.triggerConversion();
-      Raw = adc.getConversion();
-      Channel3V = Raw / 32768 * 6.144 * 833;
-      //Serial.print("       Ch 3 HZ: ");
-      //Serial.println(Channel3V);
-      prev_millis3 = millis();
-    }
-    // vvout = (sic45x.getReadVout());
-    // iiout = (sic45x.getReadIout());
-    // DutyCycle = (sic45x.getReadDutyCycle());
-
+  if (millis() - lastINARead >= 900) {  // could go down to 600 here
     if (INADisconnected == 0) {
       //Serial.println();
       //Serial.print("INA228 Battery Voltage: ");
+      int start33 = micros();  // Start timing analog input reading
+
+      lastINARead = millis();
       IBV = INA.getBusVoltage();
       // Serial.println(IBV);
       // Serial.print("INA228 Battery Bcur (Amps): ");
@@ -741,18 +752,163 @@ void ReadAnalogInputs() {
       Bcur = ShuntVoltage_mV * 10;
       //Serial.print(Bcur);
       //Serial.println();
+
+      int end33 = micros();              // End timing
+      AnalogReadTime2 = end33 - start33;  // Store elapsed time
+      if (AnalogReadTime2>AnalogReadTime){
+        AnalogReadTime=AnalogReadTime2;
+      }
+
     }
   }
-}
-void ReadTemperatureData() {
-  if (millis() - prev_millis2 > 5000) {                   // read temperature every 5 seconds
-    AlternatorTemperatureF = sensors.getTempFByIndex(0);  // fetch temperature
-    sensors.requestTemperatures();                        // immediately after fetching the temperature we request a new sample in the async modus
-                                                          // Serial.print("Alternator Temperature:");
-                                                          // Serial.println(AlternatorTemperatureF);
-    prev_millis2 = millis();
+
+  //ADS1115 reading is based on trigger→wait→read   so as to not waste time.  That is way the below is so complicated
+  if (ADS1115Disconnected != 0) return;
+  Serial.println("theADS1115 was not connected and triggered a return");
+
+  unsigned long now = millis();
+
+  switch (adsState) {
+    case ADS_IDLE:
+      switch (adsCurrentChannel) {
+        case 0: adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_0); break;
+        case 1: adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_1); break;
+        case 2: adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_2); break;
+        case 3: adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_3); break;
+      }
+      adc.triggerConversion();
+      adsStartTime = now;
+      adsState = ADS_WAITING_FOR_CONVERSION;
+      break;
+
+    case ADS_WAITING_FOR_CONVERSION:
+      if (now - adsStartTime >= ADSConversionDelay) {
+        Raw = adc.getConversion();
+
+        switch (adsCurrentChannel) {
+          case 0:
+            Channel0V = Raw / 32768.0 * 6.144 * 20.24291;
+            BatteryV = Channel0V;
+            if (BatteryV > 14.5) {
+              ChargingVoltageTarget = TargetFloatVoltage;
+            }
+            break;
+          case 1:
+            Channel1V = Raw / 32768.0 * 6.144 * 2;
+            MeasuredAmps = (2.5 - Channel1V) * 80;
+            break;
+          case 2:
+            Channel2V = Raw / 32768.0 * 6.144 * 2133.2 * 2;
+            RPM = Channel2V;
+            break;
+          case 3:
+            Channel3V = Raw / 32768.0 * 6.144 * 833;
+            break;
+        }
+
+        adsCurrentChannel = (adsCurrentChannel + 1) % 4;
+        adsState = ADS_IDLE;
+
+        if (adsCurrentChannel == 0) {
+          prev_millis3 = now;  // finished full cycle
+        }
+      }
+      break;
   }
 }
+
+
+
+
+
+
+
+// void ReadAnalogInputs() {
+//   if (millis() - prev_millis3 > 1000) {  // every 1 seconds read ads1115 and INA228
+//     if (ADS1115Disconnected == 0) {
+//       //The mux setting must be set every time each channel is read, there is NOT a separate function call for each possible mux combination.
+//       adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_0);  //Set single ended mode between AIN0 and GND
+//       //manually trigger the conversion
+//       adc.triggerConversion();    //Start a conversion.  This immediatly returns
+//       Raw = adc.getConversion();  //This polls the ADS1115 and wait for conversion to finish, THEN returns the value
+//       endtime = micros();
+//       //Channel0V = Raw / 32768 * 6.144 * 20.242914979757085;
+//       //Serial.print(Channel0V);
+//       Channel0V = Raw / 32768 * 6.144 * 20.24291;
+//       BatteryV = Channel0V;
+//       if (BatteryV > 14.5) {
+//         ChargingVoltageTarget = TargetFloatVoltage;
+//       }
+
+//       adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_1);
+//       adc.triggerConversion();
+//       Raw = adc.getConversion();
+//       Channel1V = Raw / 32768 * 6.144 * 2;
+//       MeasuredAmps = (2.5 - Channel1V) * 80;
+//       //Serial.print("      Measured Amps: ");
+//       //Serial.print(MeasuredAmps);
+
+//       adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_2);
+//       adc.triggerConversion();
+//       Raw = adc.getConversion();
+//       Channel2V = Raw / 32768 * 6.144 * 2133.2 * 2;
+//       RPM = Channel2V;
+//       // Serial.print("       Ch 2 Volts: ");
+//       // Serial.print(Channel2V);
+
+//       adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_3);
+//       adc.triggerConversion();
+//       Raw = adc.getConversion();
+//       Channel3V = Raw / 32768 * 6.144 * 833;
+//       //Serial.print("       Ch 3 HZ: ");
+//       //Serial.println(Channel3V);
+//       prev_millis3 = millis();
+//     }
+//     // vvout = (sic45x.getReadVout());
+//     // iiout = (sic45x.getReadIout());
+//     // DutyCycle = (sic45x.getReadDutyCycle());
+
+//     if (INADisconnected == 0) {
+//       //Serial.println();
+//       //Serial.print("INA228 Battery Voltage: ");
+//       IBV = INA.getBusVoltage();
+//       // Serial.println(IBV);
+//       // Serial.print("INA228 Battery Bcur (Amps): ");
+//       ShuntVoltage_mV = INA.getShuntVoltage_mV();
+//       Bcur = ShuntVoltage_mV * 10;
+//       //Serial.print(Bcur);
+//       //Serial.println();
+//     }
+//   }
+// }
+
+void TempTask(void *parameter) {
+  for (;;) {
+    // Step 1: Trigger a conversion
+    sensors.requestTemperaturesByAddress(tempDeviceAddress);
+
+    // Step 2: Wait for conversion to complete while other things run
+    vTaskDelay(pdMS_TO_TICKS(9000));  // This is the spacing between reads
+
+    // Step 3: Read the completed result
+    uint8_t scratchPad[9];
+    if (sensors.readScratchPad(tempDeviceAddress, scratchPad)) {
+      int16_t raw = (scratchPad[1] << 8) | scratchPad[0];
+      float tempC = raw / 16.0;
+      AlternatorTemperatureF = tempC * 1.8 + 32.0;
+    } else {
+      AlternatorTemperatureF = NAN;
+      Serial.println("Temp read failed");
+    }
+    Serial.printf("Temp: %.2f °F at %lu ms\n", AlternatorTemperatureF, millis());
+
+
+    // Immediately loop again — next conversion starts right now
+  }
+}
+
+
+
 void UpdateDisplay() {
   if (millis() - prev_millis66 > 3000) {  // update display every 3 seconds
     //  PrintData(); // this function prints everything available to serial monitor
@@ -814,6 +970,7 @@ void UpdateDisplay() {
 void ReadVEData() {
   if (millis() - prev_millis33 > 1000) {  // read VE data every 1 second
     if (VeDataOn == 1) {
+      int start1 = micros();  // Start timing VeData
       while (Serial2.available()) {
         myve.rxData(Serial2.read());
         for (int i = 0; i < myve.veEnd; i++) {
@@ -827,6 +984,8 @@ void ReadVEData() {
         yield();
       }
       //PrintData(); //This prints all victron data received to the serial monitor, put this in "Loop" for debugging if needed
+      int end1 = micros();     // End timing
+      VeTime = end1 - start1;  // Store elapsed time
     }
     prev_millis33 = millis();
   }
@@ -905,7 +1064,7 @@ void Heading(const tN2kMsg &N2kMsg) {
     PrintLabelValWithConversionCheckUnDef("  Deviation (deg): ", Deviation, &RadToDeg, true);
     PrintLabelValWithConversionCheckUnDef("  Variation (deg): ", Variation, &RadToDeg, true);
 
-    HeadingNMEA = Heading;
+    HeadingNMEA = Heading;  //Turn this back on!!
   } else {
     OutputStream->print("Failed to parse PGN: ");
     OutputStream->println(N2kMsg.PGN);
@@ -1166,7 +1325,7 @@ void writeFile(fs::FS &fs, const char *path, const char *message) {
   // Serial.printf("Writing file: %s\r\n", path);
   File file = fs.open(path, "w");
   if (!file) {
-    Serial.println("- failed to open file for writing");
+    Serial.println("- failed to open file for writing and triggered a return");
     return;
   }
   if (file.print(message)) {
@@ -1182,7 +1341,7 @@ void writeFile2(const char *path, const char *message) {
 
   File file = LittleFS.open(path, "w");
   if (!file) {
-    Serial.println("Failed to open file for writing");
+    Serial.println("Failed to open file for writing and triggered a return");
     return;
   }
   if (file.print(message)) {
@@ -1257,8 +1416,17 @@ String processor(const String &var) {
     return String(MaximumLoopTime);
   } else if (var == "FIELDAMPS") {
     return String(iiout);
+  } else if (var == "WIFISTRENGTH") {
+    return String(WifiStrength);
+  } else if (var == "WIFIHEARTBEAT") {
+    return String(WifiHeartBeat);
+  } else if (var == "SENDWIFITIME") {
+    return String(SendWifiTime);
+  } else if (var == "ANALOGREADTIME") {
+    return String(AnalogReadTime);
+  } else if (var == "VETIME") {
+    return String(VeTime);
   }
-
   return String();
 }
 
@@ -1273,7 +1441,7 @@ void initWiFi() {
     delay(500);
   }
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.println("WiFi Failed and I returned!");
+    Serial.println("WiFi Failed and triggered a return!");
     return;
   }
   Serial.println(WiFi.localIP());
@@ -1287,23 +1455,38 @@ void initWiFi() {
 void SendWifiData() {
   if (millis() - prev_millis5 > webgaugesinterval) {
 
-    // Send Events to the Web Client with the Sensor Readings
-    events.send("ping", NULL, millis());
-    events.send(String(AlternatorTemperatureF).c_str(), "AlternatorTemperatureF", millis());
-    events.send(String(DutyCycle).c_str(), "DutyCycle", millis());
-    events.send(String(BatteryV).c_str(), "BatteryV", millis());
-    events.send(String(MeasuredAmps).c_str(), "MeasuredAmps", millis());
-    events.send(String(RPM).c_str(), "RPM", millis());
-    events.send(String(Channel3V).c_str(), "Channel3V", millis());
-    events.send(String(IBV).c_str(), "IBV", millis());
-    events.send(String(Bcur).c_str(), "Bcur", millis());
-    events.send(String(VictronVoltage).c_str(), "VictronVoltage", millis());
-    events.send(String(LoopTime).c_str(), "LoopTime", millis());
-    events.send(String(MaximumLoopTime).c_str(), "MaximumLoopTime", millis());
-    events.send(String(HeadingNMEA).c_str(), "HeadingNMEA", millis());
-    events.send(String(vvout).c_str(), "vvout", millis());
-    events.send(String(iiout).c_str(), "iiout", millis());
+    int start66 = micros();  // Start timing the wifi section
+    WifiStrength = WiFi.RSSI();
+    WifiHeartBeat = WifiHeartBeat + 1;
+    if (WifiStrength >= -70) {
+      // Send Events to the Web Client with the Sensor Readings
+      //Serial.printf("DEBUG: AnalogReadTime=%d, VeTime=%d, SendWifiTime=%d\n", AnalogReadTime, VeTime, SendWifiTime);
 
+      events.send("ping", NULL, millis());
+      events.send(String(AlternatorTemperatureF).c_str(), "AlternatorTemperatureF", millis());
+      events.send(String(DutyCycle).c_str(), "DutyCycle", millis());
+      events.send(String(BatteryV).c_str(), "BatteryV", millis());
+      events.send(String(MeasuredAmps).c_str(), "MeasuredAmps", millis());
+      events.send(String(RPM).c_str(), "RPM", millis());
+      events.send(String(Channel3V).c_str(), "Channel3V", millis());
+      events.send(String(IBV).c_str(), "IBV", millis());
+      events.send(String(Bcur).c_str(), "Bcur", millis());
+      events.send(String(VictronVoltage).c_str(), "VictronVoltage", millis());
+      events.send(String(LoopTime).c_str(), "LoopTime", millis());
+      events.send(String(WifiStrength).c_str(), "WifiStrength", millis());
+      events.send(String(WifiHeartBeat).c_str(), "WifiHeartBeat", millis());
+      events.send(String(SendWifiTime).c_str(), "SendWifiTime", millis());
+      events.send(String(AnalogReadTime).c_str(), "AnalogReadTime", millis());
+      events.send(String(VeTime).c_str(), "VeTime", millis());
+      events.send(String(MaximumLoopTime).c_str(), "MaximumLoopTime", millis());
+      events.send(String(HeadingNMEA).c_str(), "HeadingNMEA", millis());
+      events.send(String(vvout).c_str(), "vvout", millis());
+      events.send(String(iiout).c_str(), "iiout", millis());
+    } else {
+      Serial.printf("Skipping all SSE updates due to weak Wi-Fi (%d dBm)\n", WiFi.RSSI());
+    }
+    int end66 = micros();                // End timing wifi stuff
+    SendWifiTime = end66 - start66;  // Store the elapsed time
     prev_millis5 = millis();
     //Serial.println("event sent");
   }
