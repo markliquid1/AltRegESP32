@@ -1,252 +1,361 @@
-
-<!DOCTYPE HTML> 
-         <html>
-            <head>
-               <title>Alternator Controller Interface</title>
-               <meta name="viewport" content="width=device-width, initial-scale=1">
-               <script>
-                  function submitMessage() {
-                    setTimeout(function(){ document.location.reload(false); }, 500);   
-                  }
-               
+<!DOCTYPE HTML>
+<html>
+   <head>
+      <title>Alternator Controller Interface</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <script>
+         if (!!window.EventSource) {
+           var source = new EventSource('/events');
+               console.log("⏳ Connecting to EventSource...");
+         
+         source.addEventListener('open', function(e) {
+         console.log(" EventSource connected");
+         }, false);
+         
+         source.addEventListener('error', function(e) {
+         console.log(" EventSource error", e);
+         }, false);
+         
+           source.addEventListener('BulkData', function(e) {
+             const data = JSON.parse(e.data);
+             if (data.AlternatorTemperatureF !== undefined) document.getElementById("AltTempID").innerHTML = data.AlternatorTemperatureF;
+             if (data.DutyCycle !== undefined) document.getElementById("DutyCycleID").innerHTML = data.DutyCycle;
+             if (data.BatteryV !== undefined) document.getElementById("BatteryVID").innerHTML = data.BatteryV;
+             if (data.MeasuredAmps !== undefined) document.getElementById("MeasAmpsID").innerHTML = data.MeasuredAmps;
+             if (data.RPM !== undefined) document.getElementById("RPMID").innerHTML = data.RPM;
+             if (data.Channel3V !== undefined) document.getElementById("ADS3ID").innerHTML = data.Channel3V;
+             if (data.IBV !== undefined) document.getElementById("IBVID").innerHTML = data.IBV;
+             if (data.Bcur !== undefined) document.getElementById("BCurrID").innerHTML = data.Bcur;
+             if (data.VictronVoltage !== undefined) document.getElementById("VictronVoltageID").innerHTML = data.VictronVoltage;
+             if (data.LoopTime !== undefined) document.getElementById("LoopTimeID").innerHTML = data.LoopTime;
+             if (data.WifiStrength !== undefined) document.getElementById("WifiStrengthID").innerHTML = data.WifiStrength;
+             if (data.WifiHeartBeat !== undefined) document.getElementById("WifiHeartBeatID").innerHTML = data.WifiHeartBeat;
+             if (data.SendWifiTime !== undefined) document.getElementById("SendWifiTimeID").innerHTML = data.SendWifiTime;
+             if (data.AnalogReadTime !== undefined) document.getElementById("AnalogReadTimeID").innerHTML = data.AnalogReadTime;
+             if (data.VeTime !== undefined) document.getElementById("VeTimeID").innerHTML = data.VeTime;
+             if (data.MaximumLoopTime !== undefined) document.getElementById("MaximumLoopTimeID").innerHTML = data.MaximumLoopTime;
+             if (data.HeadingNMEA !== undefined) document.getElementById("GPSHID").innerHTML = data.HeadingNMEA;
+             if (data.vvout !== undefined) document.getElementById("FieldVoltsID").innerHTML = data.vvout;
+             if (data.iiout !== undefined) document.getElementById("FieldAmpsID").innerHTML = data.iiout;
+           }, false);
+         }
       </script>
-      </head>
-      <body>
-         <h2>Settings</h2>
-         <style>
-            table, th, td {
-            border: 1px solid black;
-            border-radius: 10px;
-            }
-         </style>
-         <table>
-            <tr>
-               <td>
-                  <form action="/get" target="hidden-form">
-                     Alternator Temperature Limit (F) (%TemperatureLimitF%): <input type="text" name="TemperatureLimitF">
-                     <input type="submit" value="Submit" onclick="submitMessage()">
-                  </form>
-                  <hr>
-                  <form action="/get" target="hidden-form">
-                     Bulk Voltage Target (%FullChargeVoltage%): <input type="number " name="FullChargeVoltage">
-                     <input type="submit" value="Submit" onclick="submitMessage()">
-                  </form>
-                  <hr>
-                  <form action="/get" target="hidden-form">
-                     Target Amps (A) (%TargetAmpz%): <input type="number " name="TargetAmpz">
-                     <input type="submit" value="Submit" onclick="submitMessage()">
-                  </form>
-                  <hr>
-                  <form action="/get" target="hidden-form">
-                     Controller Field Switching Frequency (hz) (%SwitchingFrequency%): <input type="number " name="SwitchingFrequency">
-                     <input type="submit" value="Submit" onclick="submitMessage()">
-                  </form>
-                  <hr>
-                  <form action="/get" target="hidden-form">
-                     Float Voltage Target (V) (%TargetFloatVoltage1%): <input type="number " name="TargetFloatVoltage1">
-                     <input type="submit" value="Submit" onclick="submitMessage()">
-                  </form>
-                  <hr>
-                  <form action="/get" target="hidden-form">
-                     Field Adjustment Step Size (V) (%interval1%): <input type="number " name="interval1">
-                     <input type="submit" value="Submit" onclick="submitMessage()">
-                  </form>
-                  <hr>
-                  <form action="/get" target="hidden-form">
-                     Field Adjustment Interval (ms)) (%FieldAdjustmentInterval1%): <input type="number " name="FieldAdjustmentInterval1">
-                     <input type="submit" value="Submit" onclick="submitMessage()">
-                  </form>
-               </td>
-               <td>
-                  <form action="/get" target="hidden-form">
-                     Manual Field Control Toggle (%ManualFieldToggle1%): <input type="number " name="ManualFieldToggle1">
-                     <input type="submit" value="Submit" onclick="submitMessage()">
-                  </form>
-                  <hr>
-                  <form action="/get" target="hidden-form">
-                     Manual Voltage Setpoint (V) (%ManualVoltage%): <input type="number " name="ManualVoltage">
-                     <input type="submit" value="Submit" onclick="submitMessage()">
-                  </form>
-                  <hr>
-                  <form action="/get" target="hidden-form">
-                     Physical Switch Panel Override (%SwitchControlOverride1%): <input type="number " name="SwitchControlOverride1">
-                     <input type="submit" value="Submit" onclick="submitMessage()">
-                  </form>
-                  <hr>
-                  <form action="/get" target="hidden-form">
-                     On/Off (%OnOff1%): <input type="number " name="OnOff1">
-                     <input type="submit" value="Submit" onclick="submitMessage()">
-                  </form>
-                  <hr>
-                  <form action="/get" target="hidden-form">
-                     Low(0)/High(1) Mode (%HiLow1%): <input type="number " name="HiLow1">
-                     <input type="submit" value="Submit" onclick="submitMessage()">
-                  </form>
-                  <hr>
-                  <form action="/get" target="hidden-form">
-                     Limp Home Mode (%LimpHome1%): <input type="number " name="LimpHome1">
-                     <input type="submit" value="Submit" onclick="submitMessage()">
-                  </form>
-               </td>
-            </tr>
-         </table>
-         <iframe style="display:none" name="hidden-form"></iframe>
-         <hr/>
-         <h2>Sensor and Output Data </h2>
-         <style>
-            table, th, td {
-            border: 1px solid black;
-            border-radius: 10px;
-            }
-         </style>
-         <table>
-            <tr>
-               <td>
-                  <div class="content">
-                     <div class="card">
-                        <p> ADS Battery Voltage</p>
-                        <p><span class="reading"><span id="BatteryVID">%BATTERYV%</span> V</span></p>
-                     </div>
-                     <hr/>
-                     <div class="card">
-                        <p> Victron Battery Voltage</p>
-                        <p><span class="reading"><span id="VictronVoltageID">%VVOLT%</span> V</span></p>
-                     </div>
-                     <hr/>
-                     <div class="card">
-                        <p> INA Battery Voltage</p>
-                        <p><span class="reading"><span id="IBVID">%IBVV%</span> V</span></p>
-                     </div>
-                     <hr/>
-                     <div class="card">
-                        <p> ADS Ch3 Voltage</p>
-                        <p><span class="reading"><span id="ADS3ID">%ADSCH3VLTS%</span> V</span></p>
-                     </div>
-               </td>
-               <td>
-               <div class="card">
-               <p> ADS Alternator Current</p><p><span class="reading"><span id="MeasAmpsID">%MEASA%</span> A</span></p>
-               </div>
-               <hr/>
-               <div class="cards">
-               <div class="card">
-               <p> Alternator Temperature</p><p><span class="reading"><span id="AltTempID">%ALTERNATORTEMPERATUREF%</span> &deg;F</span></p>
-               </div>
-               <hr/>
-               <div class="card">
-               <p> INA Battery Current</p><p><span class="reading"><span id="BCurrID">%BCURR%</span> A</span></p>
-               </div>
-               <hr/>
-               <div class="card">
-               <p> Engine Speed</p><p><span class="reading"><span id="RPMID">%RPMM%</span> rev/min</span></p>
-               </div>
-               <hr/>
-               <div class="card">
-               <p> GPS Heading</p><p><span class="reading"><span id="GPSHID">%GPSH%</span> &deg</span></p>
-               </div>
-               </div>
-               </div>
-               </td>
-               <td>
+   </head>
+   <body>
+      <!-- Your original HTML layout remains untouched for all visible fields -->
+      <h2>Settings</h2>
+      <style>
+         table, th, td {
+         border: 1px solid black;
+         border-radius: 10px;
+         }
+      </style>
+      <table>
+         <tr>
+            <td>
+               <form action="/get" target="hidden-form">
+                  Alternator Temperature Limit (F) (%TemperatureLimitF%): <input type="text" name="TemperatureLimitF">
+                  <input type="submit" value="Submit" onclick="submitMessage()">
+               </form>
+               <hr>
+               <form action="/get" target="hidden-form">
+                  Bulk Voltage Target (%FullChargeVoltage%): <input type="number " name="FullChargeVoltage">
+                  <input type="submit" value="Submit" onclick="submitMessage()">
+               </form>
+               <hr>
+               <form action="/get" target="hidden-form">
+                  Target Amps (A) (%TargetAmpz%): <input type="number " name="TargetAmpz">
+                  <input type="submit" value="Submit" onclick="submitMessage()">
+               </form>
+               <hr>
+               <form action="/get" target="hidden-form">
+                  Controller Field Switching Frequency (hz) (%SwitchingFrequency%): <input type="number " name="SwitchingFrequency">
+                  <input type="submit" value="Submit" onclick="submitMessage()">
+               </form>
+               <hr>
+               <form action="/get" target="hidden-form">
+                  Float Voltage Target (V) (%TargetFloatVoltage1%): <input type="number " name="TargetFloatVoltage1">
+                  <input type="submit" value="Submit" onclick="submitMessage()">
+               </form>
+               <hr>
+               <form action="/get" target="hidden-form">
+                  Field Adjustment Step Size (V) (%interval1%): <input type="number " name="interval1">
+                  <input type="submit" value="Submit" onclick="submitMessage()">
+               </form>
+               <hr>
+               <form action="/get" target="hidden-form">
+                  Field Adjustment Interval (ms)) (%FieldAdjustmentInterval1%): <input type="number " name="FieldAdjustmentInterval1">
+                  <input type="submit" value="Submit" onclick="submitMessage()">
+               </form>
+            </td>
+            <td>
+               <form action="/get" target="hidden-form">
+                  Manual Field Control Toggle (%ManualFieldToggle1%): <input type="number " name="ManualFieldToggle1">
+                  <input type="submit" value="Submit" onclick="submitMessage()">
+               </form>
+               <hr>
+               <form action="/get" target="hidden-form">
+                  Manual Voltage Setpoint (V) (%ManualVoltage%): <input type="number " name="ManualVoltage">
+                  <input type="submit" value="Submit" onclick="submitMessage()">
+               </form>
+               <hr>
+               <form action="/get" target="hidden-form">
+                  Physical Switch Panel Override (%SwitchControlOverride1%): <input type="number " name="SwitchControlOverride1">
+                  <input type="submit" value="Submit" onclick="submitMessage()">
+               </form>
+               <hr>
+               <form action="/get" target="hidden-form">
+                  On/Off (%OnOff1%): <input type="number " name="OnOff1">
+                  <input type="submit" value="Submit" onclick="submitMessage()">
+               </form>
+               <hr>
+               <form action="/get" target="hidden-form">
+                  Low(0)/High(1) Mode (%HiLow1%): <input type="number " name="HiLow1">
+                  <input type="submit" value="Submit" onclick="submitMessage()">
+               </form>
+               <hr>
+               <form action="/get" target="hidden-form">
+                  Limp Home Mode (%LimpHome1%): <input type="number " name="LimpHome1">
+                  <input type="submit" value="Submit" onclick="submitMessage()">
+               </form>
+            </td>
+         </tr>
+      </table>
+      <iframe style="display:none" name="hidden-form"></iframe>
+      <hr/>
+      <h2>Sensor and Output Data </h2>
+      <style>
+         table, th, td {
+         border: 1px solid black;
+         border-radius: 10px;
+         }
+      </style>
+      <table>
+         <tr>
+            <td>
+               <div class="content">
                   <div class="card">
-                     <p> Loop Time</p>
-                     <p><span class="reading"><span id="LoopTimeID">%LOOPTIME%</span> uS;</span></p>
+                     <p> ADS Battery Voltage</p>
+                     <p><span class="reading"><span id="BatteryVID">%BATTERYV%</span> V</span></p>
                   </div>
                   <hr/>
                   <div class="card">
-                     <p> Maximum Loop Time</p>
-                     <p><span class="reading"><span id="MaximumLoopTimeID">%MAXIMUMLOOPTIME%</span> uS;</span></p>
+                     <p> Victron Battery Voltage</p>
+                     <p><span class="reading"><span id="VictronVoltageID">%VVOLT%</span> V</span></p>
                   </div>
                   <hr/>
                   <div class="card">
-                     <p> Controller Field Duty Cycle</p>
-                     <p><span class="reading"><span id="DutyCycleID">%DUTYCYCLE%</span> &percnt;</span></p>
+                     <p> INA Battery Voltage</p>
+                     <p><span class="reading"><span id="IBVID">%IBVV%</span> V</span></p>
                   </div>
                   <hr/>
                   <div class="card">
-                     <p> Controller Field Voltage</p>
-                     <p><span class="reading"><span id="FieldVoltsID">%FIELDVOLTS%</span> V</span></p>
+                     <p> ADS Ch3 Voltage</p>
+                     <p><span class="reading"><span id="ADS3ID">%ADSCH3VLTS%</span> V</span></p>
                   </div>
-                  <hr/>
-                  <div class="card">
-                     <p> Controller Field Current</p>
-                     <p><span class="reading"><span id="FieldAmpsID">%FIELDAMPS%</span> A</span></p>
-                  </div>
-               </td>
-            </tr>
-         </table>
-         <script>
-            if (!!window.EventSource) {
-             var source = new EventSource('/events');
-            
-             source.addEventListener('open', function(e) {
-              console.log("Events Connected");
-             }, false);
-             source.addEventListener('error', function(e) {
-              if (e.target.readyState != EventSource.OPEN) {
-                console.log("Events Disconnected");
-              }
-             }, false);
-             source.addEventListener('message', function(e) {
-              console.log("message", e.data);
-             }, false);
-             source.addEventListener('AlternatorTemperatureF', function(e) {
-              console.log("AlternatorTemperatureF", e.data);
-              document.getElementById("AltTempID").innerHTML = e.data;
-             }, false);
-             source.addEventListener('DutyCycle', function(e) {
-              console.log("DutyCycle", e.data);
-              document.getElementById("DutyCycleID").innerHTML = e.data;
-             }, false);
-             source.addEventListener('BatteryV', function(e) {
-              console.log("BatteryV", e.data);
-              document.getElementById("BatteryVID").innerHTML = e.data;
-             }, false);
-             source.addEventListener('MeasuredAmps', function(e) {
-              console.log("MeasuredAmps", e.data);
-              document.getElementById("MeasAmpsID").innerHTML = e.data;
-             }, false);
-             source.addEventListener('LoopTime', function(e) {
-              console.log("LoopTime", e.data);
-              document.getElementById("LoopTimeID").innerHTML = e.data;
-             }, false);   
-             source.addEventListener('MaximumLoopTime', function(e) {
-              console.log("MaximumLoopTime", e.data);
-              document.getElementById("MaximumLoopTimeID").innerHTML = e.data;
-             }, false); 
-              source.addEventListener('RPM', function(e) {
-              console.log("RPM", e.data);
-              document.getElementById("RPMID").innerHTML = e.data;
-             }, false);
-              source.addEventListener('Channel3V', function(e) {
-              console.log("Channel3V", e.data);
-              document.getElementById("ADS3ID").innerHTML = e.data;
-             }, false);
-               source.addEventListener('IBV', function(e) {
-              console.log("IBV", e.data);
-              document.getElementById("IBVID").innerHTML = e.data;
-             }, false);
-                source.addEventListener('BCURR', function(e) {
-              console.log("Bcur", e.data);
-              document.getElementById("BCurrID").innerHTML = e.data;
-             }, false);
-                 source.addEventListener('GPSH', function(e) {
-              console.log("HeadingNMEA", e.data);
-              document.getElementById("GPSHID").innerHTML = e.data;
-             }, false);
-                source.addEventListener('VVOLT', function(e) {
-              console.log("VictronVoltage", e.data);
-              document.getElementById("VictronVoltageID").innerHTML = e.data;
-             }, false);
-                source.addEventListener('FIELDVOLTS', function(e) {
-              console.log("vvout", e.data);
-              document.getElementById("FieldVoltsID").innerHTML = e.data;
-             }, false);
-                 source.addEventListener('FIELDAMPS', function(e) {
-              console.log("iiout", e.data);
-              document.getElementById("FieldAmpsID").innerHTML = e.data;
-             }, false);
-            }
-         </script>
+            </td>
+            <td>
+            <div class="card">
+            <p> ADS Alternator Current</p><p><span class="reading"><span id="MeasAmpsID">%MEASA%</span> A</span></p>
+            </div>
+            <hr/>
+            <div class="cards">
+            <div class="card">
+            <p> Alternator Temperature</p><p><span class="reading"><span id="AltTempID">%ALTERNATORTEMPERATUREF%</span> &deg;F</span></p>
+            </div>
+            <hr/>
+            <div class="card">
+            <p> INA Battery Current</p><p><span class="reading"><span id="BCurrID">%BCURR%</span> A</span></p>
+            </div>
+            <hr/>
+            <div class="card">
+            <p> Engine Speed</p><p><span class="reading"><span id="RPMID">%RPMM%</span> rev/min</span></p>
+            </div>
+            <hr/>
+            <div class="card">
+            <p> GPS Heading</p><p><span class="reading"><span id="GPSHID">%GPSH%</span> &deg</span></p>
+            </div>
+            </div>
+            </div>
+            </td>
+            <td>
+               <div class="card">
+                  <p> Loop Time</p>
+                  <p><span class="reading"><span id="LoopTimeID">%LOOPTIME%</span> uS;</span></p>
+               </div>
+               <hr/>
+               <div class="card">
+                  <p> Maximum Loop Time</p>
+                  <p><span class="reading"><span id="MaximumLoopTimeID">%MAXIMUMLOOPTIME%</span> uS;</span></p>
+               </div>
+               <hr/>
+               <div class="card">
+                  <p> Controller Field Duty Cycle</p>
+                  <p><span class="reading"><span id="DutyCycleID">%DUTYCYCLE%</span> &percnt;</span></p>
+               </div>
+               <hr/>
+               <div class="card">
+                  <p> Controller Field Voltage</p>
+                  <p><span class="reading"><span id="FieldVoltsID">%FIELDVOLTS%</span> V</span></p>
+               </div>
+               <hr/>
+               <div class="card">
+                  <p> Controller Field Current</p>
+                  <p><span class="reading"><span id="FieldAmpsID">%FIELDAMPS%</span> A</span></p>
+               </div>
+            </td>
+            <td>
+               <div class="card">
+                  <p> Wifi Strength</p>
+                  <p><span class="reading"><span id="WifiStrengthID">%WIFISTRENGTH%</span> dB;</span></p>
+               </div>
+               <hr/>
+               <div class="card">
+                  <p> Wifi Heartbeat</p>
+                  <p><span class="reading"><span id="WifiHeartBeatID">%WIFIHEARTBEAT%</span> #;</span></p>
+               </div>
+               <hr/>
+               <div class="card">
+                  <p> Wifi Transmit Time</p>
+                  <p><span class="reading"><span id="SendWifiTimeID">%SENDWIFITIME%</span> uS;</span></p>
+               </div>
+               <hr/>
+               <div class="card">
+                  <p> Analog Input Read Time</p>
+                  <p><span class="reading"><span id="AnalogReadTimeID">%ANALOGREADTIME%</span> uS;</span></p>
+               </div>
+               <hr/>
+               <div class="card">
+                  <p> Victron VeDir. Read Time</p>
+                  <p><span class="reading"><span id="VeTimeID">%VETIME%</span> uS;</span></p>
+               </div>
+               <hr/>
+            </td>
+         </tr>
+      </table>
+      <script>
+         if (!!window.EventSource) {
+          var source = new EventSource('/events');
+         
+          source.addEventListener('open', function(e) {
+           console.log("Events Connected");
+          }, false);
+          source.addEventListener('error', function(e) {
+           if (e.target.readyState != EventSource.OPEN) {
+             console.log("Events Disconnected");
+           }
+          }, false);
+          source.addEventListener('message', function(e) {
+           console.log("message", e.data);
+          }, false);
+          source.addEventListener('AlternatorTemperatureF', function(e) {
+           console.log("AlternatorTemperatureF", e.data);
+           document.getElementById("AltTempID").innerHTML = e.data;
+          }, false);
+          source.addEventListener('DutyCycle', function(e) {
+           console.log("DutyCycle", e.data);
+           document.getElementById("DutyCycleID").innerHTML = e.data;
+          }, false);
+          source.addEventListener('BatteryV', function(e) {
+           console.log("BatteryV", e.data);
+           document.getElementById("BatteryVID").innerHTML = e.data;
+          }, false);
+          source.addEventListener('MeasuredAmps', function(e) {
+           console.log("MeasuredAmps", e.data);
+           document.getElementById("MeasAmpsID").innerHTML = e.data;
+          }, false);
+          source.addEventListener('LoopTime', function(e) {
+           console.log("LoopTime", e.data);
+           document.getElementById("LoopTimeID").innerHTML = e.data;
+          }, false);   
+          source.addEventListener('MaximumLoopTime', function(e) {
+           console.log("MaximumLoopTime", e.data);
+           document.getElementById("MaximumLoopTimeID").innerHTML = e.data;
+          }, false); 
+           source.addEventListener('RPM', function(e) {
+           console.log("RPM", e.data);
+           document.getElementById("RPMID").innerHTML = e.data;
+          }, false);
+           source.addEventListener('Channel3V', function(e) {
+           console.log("Channel3V", e.data);
+           document.getElementById("ADS3ID").innerHTML = e.data;
+          }, false);
+            source.addEventListener('IBV', function(e) {
+           console.log("IBV", e.data);
+           document.getElementById("IBVID").innerHTML = e.data;
+          }, false);
+             source.addEventListener('BCURR', function(e) {
+           console.log("Bcur", e.data);
+           document.getElementById("BCurrID").innerHTML = e.data;
+          }, false);
+              source.addEventListener('GPSH', function(e) {
+           console.log("HeadingNMEA", e.data);
+           document.getElementById("GPSHID").innerHTML = e.data;
+          }, false);
+             source.addEventListener('VVOLT', function(e) {
+           console.log("VictronVoltage", e.data);
+           document.getElementById("VictronVoltageID").innerHTML = e.data;
+          }, false);
+             source.addEventListener('FIELDVOLTS', function(e) {
+           console.log("vvout", e.data);
+           document.getElementById("FieldVoltsID").innerHTML = e.data;
+          }, false);
+              source.addEventListener('FIELDAMPS', function(e) {
+           console.log("iiout", e.data);
+           document.getElementById("FieldAmpsID").innerHTML = e.data;
+          }, false);
+         
+               source.addEventListener('WifiStrength', function(e) {
+           console.log("WifiStrength", e.data);
+           document.getElementById("WifiStrengthID").innerHTML = e.data;
+          }, false);
+               source.addEventListener('WifiHeartBeat', function(e) {
+           console.log("WifiHeartBeat", e.data);
+           document.getElementById("WifiHeartBeatID").innerHTML = e.data;
+          }, false);
+         
+         
+         
+         
+              source.addEventListener('VeTime', function(e) {
+           console.log("VeTime", e.data);
+           document.getElementById("VeTimeID").innerHTML = e.data;
+          }, false);
+         
+               source.addEventListener('SendWifiTime', function(e) {
+           console.log("SendWifiTime", e.data);
+           document.getElementById("SendWifiTimeID").innerHTML = e.data;
+          }, false);
+               source.addEventListener('AnalogReadTime', function(e) {
+           console.log("AnalogReadTime", e.data);
+           document.getElementById("AnalogReadTimeID").innerHTML = e.data;
+          }, false);
+         
+         source.addEventListener('BulkData', function(e) {
+         const data = JSON.parse(e.data);
+         if (data.AlternatorTemperatureF !== undefined) document.getElementById("AltTempID").innerHTML = data.AlternatorTemperatureF;
+         if (data.DutyCycle !== undefined) document.getElementById("DutyCycleID").innerHTML = data.DutyCycle;
+         if (data.BatteryV !== undefined) document.getElementById("BatteryVID").innerHTML = data.BatteryV;
+         if (data.MeasuredAmps !== undefined) document.getElementById("MeasAmpsID").innerHTML = data.MeasuredAmps;
+         if (data.RPM !== undefined) document.getElementById("RPMID").innerHTML = data.RPM;
+         if (data.Channel3V !== undefined) document.getElementById("ADS3ID").innerHTML = data.Channel3V;
+         if (data.IBV !== undefined) document.getElementById("IBVID").innerHTML = data.IBV;
+         if (data.Bcur !== undefined) document.getElementById("BCurrID").innerHTML = data.Bcur;
+         if (data.VictronVoltage !== undefined) document.getElementById("VictronVoltageID").innerHTML = data.VictronVoltage;
+         if (data.LoopTime !== undefined) document.getElementById("LoopTimeID").innerHTML = data.LoopTime;
+         if (data.WifiStrength !== undefined) document.getElementById("WifiStrengthID").innerHTML = data.WifiStrength;
+         if (data.WifiHeartBeat !== undefined) document.getElementById("WifiHeartBeatID").innerHTML = data.WifiHeartBeat;
+         if (data.SendWifiTime !== undefined) document.getElementById("SendWifiTimeID").innerHTML = data.SendWifiTime;
+         if (data.AnalogReadTime !== undefined) document.getElementById("AnalogReadTimeID").innerHTML = data.AnalogReadTime;
+         if (data.VeTime !== undefined) document.getElementById("VeTimeID").innerHTML = data.VeTime;
+         if (data.MaximumLoopTime !== undefined) document.getElementById("MaximumLoopTimeID").innerHTML = data.MaximumLoopTime;
+         if (data.HeadingNMEA !== undefined) document.getElementById("GPSHID").innerHTML = data.HeadingNMEA;
+         if (data.vvout !== undefined) document.getElementById("FieldVoltsID").innerHTML = data.vvout;
+         if (data.iiout !== undefined) document.getElementById("FieldAmpsID").innerHTML = data.iiout;
+         }, false);                  
+         
+         
+         }
+      </script>
    </body>
 </html>
