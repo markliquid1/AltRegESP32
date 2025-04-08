@@ -1,0 +1,222 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <title>Alternator Controller Interface</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      :root {
+        --bg-light: #ffffff;
+        --bg-dark: #111111;
+        --text-light: #111111;
+        --text-dark: #eeeeee;
+        --card-light: #f8f8f8;
+        --card-dark: #1e1e1e;
+        --accent: #ff6600;
+        --radius: 12px;
+      }
+
+      body {
+        margin: 0;
+        font-family: sans-serif;
+        padding: 0.75rem;
+        background-color: var(--bg-dark);
+        color: var(--text-dark);
+      }
+
+      h2 {
+        color: var(--accent);
+        border-bottom: 2px solid var(--accent);
+        padding-bottom: 0.25rem;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+      }
+
+      table, th, td {
+        border: 1px solid #444;
+        border-radius: var(--radius);
+        padding: 0.5rem;
+      }
+
+      input[type="submit"] {
+        background-color: var(--accent);
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        cursor: pointer;
+        border-radius: var(--radius);
+      }
+
+      input[type="submit"]:hover {
+        background-color: #333;
+      }
+
+      input[type="text"], input[type="number"] {
+        background: #222;
+        color: #fff;
+        border: 1px solid var(--accent);
+        border-radius: var(--radius);
+        padding: 4px;
+        width: 80px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+      }
+
+      .card {
+        background: var(--card-dark);
+        padding: 12px;
+        border: 1px solid var(--accent);
+        border-radius: var(--radius);
+        margin-bottom: 10px;
+      }
+
+      .reading span {
+        color: #0f0;
+      }
+    </style>
+    <script>
+      function submitMessage() {
+        setTimeout(function(){ document.location.reload(false); }, 500);
+      }
+    </script>
+  </head>
+  <body>
+    <h2>Settings</h2>
+    <iframe style="display:none" name="hidden-form"></iframe>
+    <table>
+      <tr>
+        <td>
+          <form action="/get" target="hidden-form">
+            Alternator Temperature Limit (F) (%TemperatureLimitF%): <input type="text" name="TemperatureLimitF">
+            <input type="submit" value="Submit" onclick="submitMessage()">
+          </form>
+          <hr>
+          <form action="/get" target="hidden-form">
+            Bulk Voltage Target (%FullChargeVoltage%): <input type="number" name="FullChargeVoltage">
+            <input type="submit" value="Submit" onclick="submitMessage()">
+          </form>
+          <hr>
+          <form action="/get" target="hidden-form">
+            Target Amps (A) (%TargetAmpz%): <input type="number" name="TargetAmpz">
+            <input type="submit" value="Submit" onclick="submitMessage()">
+          </form>
+          <hr>
+          <form action="/get" target="hidden-form">
+            Controller Field Switching Frequency (hz) (%SwitchingFrequency%): <input type="number" name="SwitchingFrequency">
+            <input type="submit" value="Submit" onclick="submitMessage()">
+          </form>
+          <hr>
+          <form action="/get" target="hidden-form">
+            Float Voltage Target (V) (%TargetFloatVoltage1%): <input type="number" name="TargetFloatVoltage1">
+            <input type="submit" value="Submit" onclick="submitMessage()">
+          </form>
+          <hr>
+          <form action="/get" target="hidden-form">
+            Field Adjustment Step Size (V) (%interval1%): <input type="number" name="interval1">
+            <input type="submit" value="Submit" onclick="submitMessage()">
+          </form>
+          <hr>
+          <form action="/get" target="hidden-form">
+            Field Adjustment Interval (ms)) (%FieldAdjustmentInterval1%): <input type="number" name="FieldAdjustmentInterval1">
+            <input type="submit" value="Submit" onclick="submitMessage()">
+          </form>
+        </td>
+        <td>
+          <form action="/get" target="hidden-form">
+            Manual Field Control Toggle (%ManualFieldToggle1%): <input type="number" name="ManualFieldToggle1">
+            <input type="submit" value="Submit" onclick="submitMessage()">
+          </form>
+          <hr>
+          <form action="/get" target="hidden-form">
+            Manual Voltage Setpoint (V) (%ManualVoltage%): <input type="number" name="ManualVoltage">
+            <input type="submit" value="Submit" onclick="submitMessage()">
+          </form>
+          <hr>
+          <form action="/get" target="hidden-form">
+            Physical Switch Panel Override (%SwitchControlOverride1%): <input type="number" name="SwitchControlOverride1">
+            <input type="submit" value="Submit" onclick="submitMessage()">
+          </form>
+          <hr>
+          <form action="/get" target="hidden-form">
+            On/Off (%OnOff1%): <input type="number" name="OnOff1">
+            <input type="submit" value="Submit" onclick="submitMessage()">
+          </form>
+          <hr>
+          <form action="/get" target="hidden-form">
+            Low(0)/High(1) Mode (%HiLow1%): <input type="number" name="HiLow1">
+            <input type="submit" value="Submit" onclick="submitMessage()">
+          </form>
+          <hr>
+          <form action="/get" target="hidden-form">
+            Limp Home Mode (%LimpHome1%): <input type="number" name="LimpHome1">
+            <input type="submit" value="Submit" onclick="submitMessage()">
+          </form>
+        </td>
+      </tr>
+    </table>
+
+    <h2>Sensor and Output Data</h2>
+    <div class="grid">
+  <div class="card"><p>ADS Battery Voltage</p><p class="reading"><span id="BatteryVID">0</span> V</p></div>
+  <div class="card"><p>Victron Battery Voltage</p><p class="reading"><span id="VictronVoltageID">0</span> V</p></div>
+  <div class="card"><p>INA Battery Voltage</p><p class="reading"><span id="IBVID">0</span> V</p></div>
+  <div class="card"><p>ADS Ch3 Voltage</p><p class="reading"><span id="ADS3ID">0</span> V</p></div>
+  <div class="card"><p>ADS Alternator Current</p><p class="reading"><span id="MeasAmpsID">0</span> A</p></div>
+  <div class="card"><p>Alternator Temperature</p><p class="reading"><span id="AltTempID">0</span> &deg;F</p></div>
+  <div class="card"><p>INA Battery Current</p><p class="reading"><span id="BCurrID">0</span> A</p></div>
+  <div class="card"><p>Engine Speed</p><p class="reading"><span id="RPMID">0</span> rev/min</p></div>
+  <div class="card"><p>GPS Heading</p><p class="reading"><span id="GPSHID">0</span> &deg;</p></div>
+  <div class="card"><p>Loop Time</p><p class="reading"><span id="LoopTimeID">0</span> &mu;s</p></div>
+  <div class="card"><p>Maximum Loop Time</p><p class="reading"><span id="MaximumLoopTimeID">0</span> &mu;s</p></div>
+  <div class="card"><p>Field Duty Cycle</p><p class="reading"><span id="DutyCycleID">0</span> %</p></div>
+  <div class="card"><p>Field Voltage</p><p class="reading"><span id="FieldVoltsID">0</span> V</p></div>
+  <div class="card"><p>Field Current</p><p class="reading"><span id="FieldAmpsID">0</span> A</p></div>
+  <div class="card"><p>Wifi Strength</p><p class="reading"><span id="WifiStrengthID">0</span> dB</p></div>
+  <div class="card"><p>Wifi Heartbeat</p><p class="reading"><span id="WifiHeartBeatID">0</span> #</p></div>
+  <div class="card"><p>Analog Read Time (Max)</p><p class="reading"><span id="AnalogReadTimeID">0</span> #</p></div>
+  <div class="card"><p>Wifi Send Time</p><p class="reading"><span id="SendWifiTimeID">0</span> #</p></div>
+  <div class="card"><p>VE Dir. Read Time</p><p class="reading"><span id="VeTimeID">0</span> #</p></div>
+
+</div>
+
+<script>
+  if (!!window.EventSource) {
+    const fields = {
+      AltTempID: "AlternatorTemperatureF",
+      LoopTimeID: "LoopTime",
+      MaximumLoopTimeID: "MaximumLoopTime",
+      DutyCycleID: "DutyCycle",
+      BatteryVID: "BatteryV",
+      MeasAmpsID: "MeasuredAmps",
+      RPMID: "RPM",
+      ADS3ID: "Channel3V",
+      IBVID: "IBV",
+      BCurrID: "Bcur",
+      VictronVoltageID: "VictronVoltage",
+      FieldVoltsID: "vvout",
+      FieldAmpsID: "iiout",
+      GPSHID: "HeadingNMEA",
+      WifiStrengthID: "WifiStrength",
+      WifiHeartBeatID: "WifiHeartBeat",
+      AnalogReadTimeID: "AnalogReadTime",
+      SendWifiTimeID: "SendWifiTime",
+      VeTimeID: "VeTime"
+    };
+
+    const source = new EventSource('/events');
+    source.addEventListener('BulkData', function(e) {
+      const data = JSON.parse(e.data);
+      for (const [elementId, key] of Object.entries(fields)) {
+        const el = document.getElementById(elementId);
+        if (el && key in data) {
+          el.innerHTML = data[key];
+        }
+      }
+    }, false);
+  }
+</script>
+  </body>
+</html>
