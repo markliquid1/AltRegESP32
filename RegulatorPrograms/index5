@@ -1,0 +1,519 @@
+
+<!DOCTYPE HTML>
+
+<html>
+<head>
+<meta charset="UTF-8">
+<title>X Engineering Alternator Regulator</title>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<link href="/uPlot.min.css" rel="stylesheet"/>
+<script src="/uPlot.iife.min.js"></script>
+<style>
+      :root {
+        --primary: #333333;         /* Dark gray primary */
+        --accent: #ff6600;          /* Orange accent */
+        --bg-light: #f5f5f5;        /* Very light gray background */
+        --text-dark: #333333;       /* Dark text */
+        --text-light: #ffffff;      /* Light text */
+        --card-light: #ffffff;      /* White card background */
+        --border: #dddddd;          /* Light border */
+        --reading: #333333;         /* Reading text color (changed from green) */
+        --radius: 4px;              /* Border radius */
+      }
+
+      body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        padding: 0.5rem;
+        background-color: var(--bg-light);
+        color: var(--text-dark);
+        line-height: 1.4;
+        font-size: 14px;
+      }
+
+      h2 {
+        color: var(--text-dark);
+        border-bottom: 2px solid var(--accent);
+        padding-bottom: 0.25rem;
+        margin-top: 1rem;
+        margin-bottom: 0.75rem;
+        font-size: 18px;
+      }
+
+      input[type="submit"] {
+        background-color: #555555;
+        color: white;
+        border: none;
+        padding: 4px 10px;
+        cursor: pointer;
+        border-radius: var(--radius);
+        font-weight: bold;
+        width: 60px;
+      }
+
+      input[type="submit"]:hover {
+        background-color: var(--accent);
+      }
+
+      input[type="text"], input[type="number"] {
+        background: #ffffff;
+        color: var(--text-dark);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 4px;
+        width: 80px;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 10px;
+      }
+
+      .card {
+        background: var(--card-light);
+        padding: 10px;
+        border-left: 2px solid var(--accent);
+        border-radius: var(--radius);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        margin-bottom: 4px;
+      }
+
+      .card p {
+        margin: 0.25rem 0;
+      }
+
+      .card p:first-child {
+        font-weight: bold;
+        color: var(--text-dark);
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0.25rem;
+        margin-bottom: 0.25rem;
+        font-size: 13px;
+      }
+
+      .reading {
+        font-size: 1.1rem;
+        font-weight: bold;
+      }
+
+      .reading span {
+        color: var(--reading);
+      }
+
+      .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+
+      .settings-card {
+        background: var(--card-light);
+        border-radius: var(--radius);
+        padding: 10px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      }
+
+      .section-title {
+        background-color: #f0f0f0;
+        color: var(--text-dark);
+        padding: 6px 10px;
+        margin: 0 0 10px 0;
+        border-radius: var(--radius);
+        font-weight: bold;
+        border-left: 2px solid var(--accent);
+        font-size: 14px;
+      }
+
+      hr {
+        border: none;
+        border-top: 1px solid var(--border);
+        margin: 8px 0;
+      }
+      
+      .form-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      
+      .form-label {
+        flex: 1;
+        text-align: left;
+        padding-right: 10px;
+      }
+      
+      .form-input {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+      }
+
+      /* Responsive adjustments */
+      @media (max-width: 992px) {
+        .settings-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      
+      @media (max-width: 768px) {
+        .settings-grid {
+          grid-template-columns: 1fr;
+        }
+        
+        body {
+          font-size: 13px;
+        }
+        
+        .grid {
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        }
+      }
+    </style>
+<script>
+      function submitMessage() {
+        setTimeout(function(){ document.location.reload(false); }, 500);
+      }
+    </script>
+</head>
+<body>
+<iframe name="hidden-form" style="display:none"></iframe>
+<h2>Settings</h2>
+<div class="settings-grid">
+<div class="settings-card">
+<div class="section-title">Charging Parameters</div>
+<div class="form-row">
+<div class="form-label">Alternator Temp Limit (F) (%TemperatureLimitF%):</div>
+<div class="form-input">
+<form action="/get" target="hidden-form">
+<input name="TemperatureLimitF" type="text"/>
+<input onclick="submitMessage()" type="submit" value="Set"/>
+</form>
+</div>
+</div>
+<hr/>
+<div class="form-row">
+<div class="form-label">Bulk Voltage Target (%FullChargeVoltage%):</div>
+<div class="form-input">
+<form action="/get" target="hidden-form">
+<input name="FullChargeVoltage" type="number"/>
+<input onclick="submitMessage()" type="submit" value="Set"/>
+</form>
+</div>
+</div>
+<hr/>
+<div class="form-row">
+<div class="form-label">Target Amps (A) (%TargetAmpz%):</div>
+<div class="form-input">
+<form action="/get" target="hidden-form">
+<input name="TargetAmpz" type="number"/>
+<input onclick="submitMessage()" type="submit" value="Set"/>
+</form>
+</div>
+</div>
+<hr/>
+<div class="form-row">
+<div class="form-label">Float Voltage Target (V) (%TargetFloatVoltage1%):</div>
+<div class="form-input">
+<form action="/get" target="hidden-form">
+<input name="TargetFloatVoltage1" type="number"/>
+<input onclick="submitMessage()" type="submit" value="Set"/>
+</form>
+</div>
+</div>
+</div>
+<div class="settings-card">
+<div class="section-title">Field Control</div>
+<div class="form-row">
+<div class="form-label">Field Switch Freq (hz) (%SwitchingFrequency%):</div>
+<div class="form-input">
+<form action="/get" target="hidden-form">
+<input name="SwitchingFrequency" type="number"/>
+<input onclick="submitMessage()" type="submit" value="Set"/>
+</form>
+</div>
+</div>
+<hr/>
+<div class="form-row">
+<div class="form-label">Field Adj Step Size (V) (%interval1%):</div>
+<div class="form-input">
+<form action="/get" target="hidden-form">
+<input name="interval1" type="number"/>
+<input onclick="submitMessage()" type="submit" value="Set"/>
+</form>
+</div>
+</div>
+<hr/>
+<div class="form-row">
+<div class="form-label">Field Adj Interval (ms) (%FieldAdjustmentInterval1%):</div>
+<div class="form-input">
+<form action="/get" target="hidden-form">
+<input name="FieldAdjustmentInterval1" type="number"/>
+<input onclick="submitMessage()" type="submit" value="Set"/>
+</form>
+</div>
+</div>
+<hr/>
+<div class="form-row">
+<div class="form-label">Manual Field Toggle (%ManualFieldToggle1%):</div>
+<div class="form-input">
+<form action="/get" target="hidden-form">
+<input name="ManualFieldToggle1" type="number"/>
+<input onclick="submitMessage()" type="submit" value="Set"/>
+</form>
+</div>
+</div>
+<hr/>
+<div class="form-row">
+<div class="form-label">Manual Voltage (V) (%ManualVoltage%):</div>
+<div class="form-input">
+<form action="/get" target="hidden-form">
+<input name="ManualVoltage" type="number"/>
+<input onclick="submitMessage()" type="submit" value="Set"/>
+</form>
+</div>
+</div>
+</div>
+<div class="settings-card">
+<div class="section-title">System Controls</div>
+<div class="form-row">
+<div class="form-label">Switch Panel Override (%SwitchControlOverride1%):</div>
+<div class="form-input">
+<form action="/get" target="hidden-form">
+<input name="SwitchControlOverride1" type="number"/>
+<input onclick="submitMessage()" type="submit" value="Set"/>
+</form>
+</div>
+</div>
+<hr/>
+<div class="form-row">
+<div class="form-label">On/Off (%OnOff1%):</div>
+<div class="form-input">
+<form action="/get" target="hidden-form">
+<input name="OnOff1" type="number"/>
+<input onclick="submitMessage()" type="submit" value="Set"/>
+</form>
+</div>
+</div>
+<hr/>
+<div class="form-row">
+<div class="form-label">Low(0)/High(1) Mode (%HiLow1%):</div>
+<div class="form-input">
+<form action="/get" target="hidden-form">
+<input name="HiLow1" type="number"/>
+<input onclick="submitMessage()" type="submit" value="Set"/>
+</form>
+</div>
+</div>
+<hr/>
+<div class="form-row">
+<div class="form-label">Limp Home Mode (%LimpHome1%):</div>
+<div class="form-input">
+<form action="/get" target="hidden-form">
+<input name="LimpHome1" type="number"/>
+<input onclick="submitMessage()" type="submit" value="Set"/>
+</form>
+</div>
+</div>
+</div>
+</div>
+<h2>Live Data</h2>
+<div class="settings-grid">
+<div class="settings-card">
+<div class="section-title">Battery Measurements</div>
+<div class="grid">
+<div class="card"><p>ADS Battery Voltage</p><p class="reading"><span id="BatteryVID">0</span> V</p></div>
+<div class="card"><p>Victron Battery Voltage</p><p class="reading"><span id="VictronVoltageID">0</span> V</p></div>
+<div class="card"><p>INA Battery Voltage</p><p class="reading"><span id="IBVID">0</span> V</p></div>
+<div class="card"><p>INA Battery Current</p><p class="reading"><span id="BCurrID">0</span> A</p></div>
+</div>
+</div>
+<div class="settings-card">
+<div class="section-title">Alternator Data</div>
+<div class="grid">
+<div class="card"><p>ADS Alternator Current</p><p class="reading"><span id="MeasAmpsID">0</span> A</p></div>
+<div class="card"><p>Alternator Temperature</p><p class="reading"><span id="AltTempID">0</span> °F</p></div>
+<div class="card"><p>Field Duty Cycle</p><p class="reading"><span id="DutyCycleID">0</span> %</p></div>
+<div class="card"><p>Field Voltage</p><p class="reading"><span id="FieldVoltsID">0</span> V</p></div>
+<div class="card"><p>Field Current</p><p class="reading"><span id="FieldAmpsID">0</span> A</p></div>
+</div>
+</div>
+<div class="settings-card">
+<div class="section-title">System Information</div>
+<div class="grid">
+<div class="card"><p>Engine Speed</p><p class="reading"><span id="RPMID">0</span> rev/min</p></div>
+<div class="card"><p>GPS Heading</p><p class="reading"><span id="GPSHID">0</span> °</p></div>
+<div class="card"><p>ADS Ch3 Voltage</p><p class="reading"><span id="ADS3ID">0</span> V</p></div>
+</div>
+</div>
+</div>
+<div class="settings-card">
+<div class="section-title">Performance Metrics</div>
+<div class="grid">
+<div class="card"><p>Loop Time</p><p class="reading"><span id="LoopTimeID">0</span> μs</p></div>
+<div class="card"><p>Maximum Loop Time</p><p class="reading"><span id="MaximumLoopTimeID">0</span> μs</p></div>
+<div class="card"><p>Analog Read Time (Max)</p><p class="reading"><span id="AnalogReadTimeID">0</span> μs</p></div>
+<div class="card"><p>Wifi Send Time</p><p class="reading"><span id="SendWifiTimeID">0</span> μs</p></div>
+<div class="card"><p>VE Dir. Read Time</p><p class="reading"><span id="VeTimeID">0</span> μs</p></div>
+<div class="card"><p>Wifi Strength</p><p class="reading"><span id="WifiStrengthID">0</span> dB</p></div>
+<div class="card"><p>Wifi Heartbeat</p><p class="reading"><span id="WifiHeartBeatID">0</span> #</p></div>
+</div>
+</div>
+
+<h2>Plots</h2>
+<div class="settings-card">
+<div class="section-title">WiFi Signal Strength History</div>
+<div class="plot-container" id="wifi-plot"></div>
+</div>
+
+
+<script>
+
+function debounce(fn, delay) {
+  let timer = null;
+  return function(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+const wifiData = [[], []];
+let uplot;
+const maxPoints = 60;
+let lastPlotUpdate = 0; // Timestamp of last time we updated the plot
+const PLOT_UPDATE_INTERVAL_MS = 2000; // Only update every 2 seconds (adjust as needed)
+
+function schedulePlotUpdate() {
+  if (!window.updateScheduled) {
+    window.updateScheduled = true;
+    requestAnimationFrame(() => {
+      uplot.setData(wifiData);
+      window.updateScheduled = false;
+    });
+  }
+}
+
+
+
+
+function initWifiPlot() {
+  const plotEl = document.getElementById('wifi-plot');
+  const opts = {
+    width: plotEl.clientWidth,
+    height: 300,
+    title: "WiFi Signal Strength",
+    series: [
+      {},
+      {
+        label: "Signal Strength (dB)",
+        stroke: "#ff6600",
+        width: 2,
+        scale: "strength"
+      }
+    ],
+    axes: [
+      {},
+      {
+        scale: "strength",
+        label: "dB",
+        grid: { show: true }
+      }
+    ],
+    scales: {
+      x: { time: true },
+      strength: {
+        auto: true,
+        range: [-90, -30]
+      }
+    },
+    plugins: [{
+      hooks: {
+        init: [
+          (u) => {
+            const resizePlot = debounce(() => {
+              const plotEl = document.getElementById("wifi-plot");
+              if (plotEl && uplot) {
+                uplot.setSize({ width: plotEl.clientWidth, height: 300 });
+              }
+            }, 1000);  // Delay resizing until 1s after changes stop
+            const ro = new ResizeObserver(resizePlot);
+            ro.observe(document.getElementById("wifi-plot"));
+          }
+        ]
+      }
+    }]
+  };
+
+  uplot = new uPlot(opts, wifiData, plotEl);
+  const startTime = Math.floor(Date.now() / 1000);
+  wifiData[0].push(startTime);
+  wifiData[1].push(-65);
+  uplot.setData(wifiData);
+}
+
+window.addEventListener("load", function () {
+  initWifiPlot();
+
+  if (!!window.EventSource) {
+    const fields = {
+      AltTempID: "AlternatorTemperatureF",
+      LoopTimeID: "LoopTime",
+      MaximumLoopTimeID: "MaximumLoopTime",
+      DutyCycleID: "DutyCycle",
+      BatteryVID: "BatteryV",
+      MeasAmpsID: "MeasuredAmps",
+      RPMID: "RPM",
+      ADS3ID: "Channel3V",
+      IBVID: "IBV",
+      BCurrID: "Bcur",
+      VictronVoltageID: "VictronVoltage",
+      FieldVoltsID: "vvout",
+      FieldAmpsID: "iiout",
+      GPSHID: "HeadingNMEA",
+      WifiStrengthID: "WifiStrength",
+      WifiHeartBeatID: "WifiHeartBeat",
+      AnalogReadTimeID: "AnalogReadTime",
+      SendWifiTimeID: "SendWifiTime",
+      VeTimeID: "VeTime"
+    };
+
+    const source = new EventSource('/events');
+    source.addEventListener('BulkData', function (e) {
+      const data = JSON.parse(e.data);
+      for (const [elementId, key] of Object.entries(fields)) {
+        const el = document.getElementById(elementId);
+        if (el && key in data) {
+          el.innerHTML = data[key];
+        }
+      }
+
+      if ('WifiStrength' in data && typeof uplot !== 'undefined') {
+  const now = Math.floor(Date.now() / 1000);
+  const strength = parseFloat(data.WifiStrength);
+  wifiData[0].push(now);
+  wifiData[1].push(strength);
+  if (wifiData[0].length > maxPoints) {
+    wifiData[0].shift();
+    wifiData[1].shift();
+  }
+
+  // Only update the plot if enough time has passed
+  const nowMs = Date.now();
+  if (nowMs - lastPlotUpdate > PLOT_UPDATE_INTERVAL_MS) {
+schedulePlotUpdate();
+    lastPlotUpdate = nowMs;
+  }
+}
+
+    }, false);
+  }
+});
+</script></body>
+</html>
