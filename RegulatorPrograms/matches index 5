@@ -73,7 +73,7 @@ int ForceFloat = 0;                       // set to 1 to force the float voltage
 int OnOff = 1;                            // 0 is charger off, 1 is charger On
 int Ignition = 1;                         // This will eventually be an over-rideable digital input
 int HiLow = 1;                            // 0 will be a low setting, 1 a high setting
-int LimpHome = 3;                         // 1 will set to limp home mode, whatever that gets set up to be
+int LimpHome = 0;                         // 1 will set to limp home mode, whatever that gets set up to be
 float vout = 0.5;                         // default field output voltage
 int FaultCheckToggle = 0;                 // Set to 1 to get a serial print out over 20 seconds of error data, delete later
 int resolution = 12;                      // for OneWire temp sensor measurement
@@ -640,6 +640,13 @@ void loop() {
   //yield();
   ReadAnalogInputs();
   // yield();
+  Serial.print("ManualFieldToggle: ");
+  Serial.println(ManualFieldToggle);
+  // Serial.print("OnOff: ");
+  // Serial.println(OnOff);
+  // Serial.print("LimpHome: ");
+  // Serial.println(LimpHome);
+
 
   //ReadVEData();  //read Data from Victron VeDirect
 
