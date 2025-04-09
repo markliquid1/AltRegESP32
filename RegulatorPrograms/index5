@@ -1,13 +1,21 @@
-
 <!DOCTYPE HTML>
 
 <html>
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8"/>
 <title>X Engineering Alternator Regulator</title>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <link href="/uPlot.min.css" rel="stylesheet"/>
-<script src="/uPlot.iife.min.js"></script>
+<script src="/uPlot.iife.min.js">
+function syncToggleToHidden(name) {
+  const checkbox = document.getElementById(name + "_checkbox");
+  const hidden = document.getElementById(name);
+  if (checkbox && hidden) {
+    hidden.value = checkbox.checked ? "1" : "0";
+    hidden.form.submit();
+  }
+}
+</script>
 <style>
       :root {
         --primary: #333333;         /* Dark gray primary */
@@ -176,7 +184,57 @@
           grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         }
       }
-    </style>
+    
+/* Toggle switch styling */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 20px;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+input:checked + .slider {
+  background-color: #2196F3;
+}
+input:checked + .slider:before {
+  transform: translateX(20px);
+}
+
+.toggle-label {
+  font-size: 0.9em;
+  margin: 0 8px;
+  vertical-align: middle;
+}
+
+.toggle-label {
+  font-size: 0.9em;
+  margin: 0 8px;
+  vertical-align: middle;
+}
+</style>
 <script>
       function submitMessage() {
         setTimeout(function(){ document.location.reload(false); }, 500);
@@ -188,7 +246,7 @@
 <h2>Settings</h2>
 <div class="settings-grid">
 <div class="settings-card">
-<div class="section-title">Charging Parameters</div>
+<div class="section-title">Charging</div>
 <div class="form-row">
 <div class="form-label">Alternator Temp Limit (F) (%TemperatureLimitF%):</div>
 <div class="form-input">
@@ -230,7 +288,7 @@
 </div>
 </div>
 <div class="settings-card">
-<div class="section-title">Field Control</div>
+<div class="section-title">Field</div>
 <div class="form-row">
 <div class="form-label">Field Switch Freq (hz) (%SwitchingFrequency%):</div>
 <div class="form-input">
@@ -265,8 +323,13 @@
 <div class="form-label">Manual Field Toggle (%ManualFieldToggle1%):</div>
 <div class="form-input">
 <form action="/get" target="hidden-form">
-<input name="ManualFieldToggle1" type="number"/>
-<input onclick="submitMessage()" type="submit" value="Set"/>
+<span class="toggle-label">Off</span>
+<label class="switch">
+<input id="ManualFieldToggle1_checkbox" type="checkbox" onchange="document.getElementById('ManualFieldToggle1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();"/>
+<span class="slider round"></span>
+</label>
+<span class="toggle-label">On</span>
+<input id="ManualFieldToggle1" name="ManualFieldToggle1" type="number" value="%ManualFieldToggle1%" style="display:none;"/>
 </form>
 </div>
 </div>
@@ -282,13 +345,18 @@
 </div>
 </div>
 <div class="settings-card">
-<div class="section-title">System Controls</div>
+<div class="section-title">System</div>
 <div class="form-row">
 <div class="form-label">Switch Panel Override (%SwitchControlOverride1%):</div>
 <div class="form-input">
 <form action="/get" target="hidden-form">
-<input name="SwitchControlOverride1" type="number"/>
-<input onclick="submitMessage()" type="submit" value="Set"/>
+<span class="toggle-label">Off</span>
+<label class="switch">
+<input id="SwitchControlOverride1_checkbox" type="checkbox" onchange="document.getElementById('SwitchControlOverride1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();"/>
+<span class="slider round"></span>
+</label>
+<span class="toggle-label">On</span>
+<input id="SwitchControlOverride1" name="SwitchControlOverride1" type="number" value="%SwitchControlOverride1%" style="display:none;"/>
 </form>
 </div>
 </div>
@@ -297,8 +365,13 @@
 <div class="form-label">On/Off (%OnOff1%):</div>
 <div class="form-input">
 <form action="/get" target="hidden-form">
-<input name="OnOff1" type="number"/>
-<input onclick="submitMessage()" type="submit" value="Set"/>
+<span class="toggle-label">Off</span>
+<label class="switch">
+<input id="OnOff1_checkbox" type="checkbox" onchange="document.getElementById('OnOff1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();"/>
+<span class="slider round"></span>
+</label>
+<span class="toggle-label">On</span>
+<input id="OnOff1" name="OnOff1" type="number" value="%OnOff1%" style="display:none;"/>
 </form>
 </div>
 </div>
@@ -317,8 +390,13 @@
 <div class="form-label">Limp Home Mode (%LimpHome1%):</div>
 <div class="form-input">
 <form action="/get" target="hidden-form">
-<input name="LimpHome1" type="number"/>
-<input onclick="submitMessage()" type="submit" value="Set"/>
+<span class="toggle-label">Off</span>
+<label class="switch">
+<input id="LimpHome1_checkbox" type="checkbox" onchange="document.getElementById('LimpHome1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();"/>
+<span class="slider round"></span>
+</label>
+<span class="toggle-label">On</span>
+<input id="LimpHome1" name="LimpHome1" type="number" value="%LimpHome1%" style="display:none;"/>
 </form>
 </div>
 </div>
@@ -327,7 +405,7 @@
 <h2>Live Data</h2>
 <div class="settings-grid">
 <div class="settings-card">
-<div class="section-title">Battery Measurements</div>
+<div class="section-title">Battery</div>
 <div class="grid">
 <div class="card"><p>ADS Battery Voltage</p><p class="reading"><span id="BatteryVID">0</span> V</p></div>
 <div class="card"><p>Victron Battery Voltage</p><p class="reading"><span id="VictronVoltageID">0</span> V</p></div>
@@ -336,7 +414,7 @@
 </div>
 </div>
 <div class="settings-card">
-<div class="section-title">Alternator Data</div>
+<div class="section-title">Alternator</div>
 <div class="grid">
 <div class="card"><p>ADS Alternator Current</p><p class="reading"><span id="MeasAmpsID">0</span> A</p></div>
 <div class="card"><p>Alternator Temperature</p><p class="reading"><span id="AltTempID">0</span> °F</p></div>
@@ -346,7 +424,7 @@
 </div>
 </div>
 <div class="settings-card">
-<div class="section-title">System Information</div>
+<div class="section-title">System</div>
 <div class="grid">
 <div class="card"><p>Engine Speed</p><p class="reading"><span id="RPMID">0</span> rev/min</p></div>
 <div class="card"><p>GPS Heading</p><p class="reading"><span id="GPSHID">0</span> °</p></div>
@@ -355,7 +433,7 @@
 </div>
 </div>
 <div class="settings-card">
-<div class="section-title">Performance Metrics</div>
+<div class="section-title">Hardware and Code</div>
 <div class="grid">
 <div class="card"><p>Loop Time</p><p class="reading"><span id="LoopTimeID">0</span> μs</p></div>
 <div class="card"><p>Maximum Loop Time</p><p class="reading"><span id="MaximumLoopTimeID">0</span> μs</p></div>
@@ -366,14 +444,11 @@
 <div class="card"><p>Wifi Heartbeat</p><p class="reading"><span id="WifiHeartBeatID">0</span> #</p></div>
 </div>
 </div>
-
 <h2>Plots</h2>
 <div class="settings-card">
 <div class="section-title">WiFi Signal Strength History</div>
 <div class="plot-container" id="wifi-plot"></div>
 </div>
-
-
 <script>
 
 function debounce(fn, delay) {
@@ -514,6 +589,12 @@ schedulePlotUpdate();
 
     }, false);
   }
+  
+  // Initialize toggle states on page load
+  document.getElementById("ManualFieldToggle1_checkbox").checked = (document.getElementById("ManualFieldToggle1").value === "1");
+  document.getElementById("SwitchControlOverride1_checkbox").checked = (document.getElementById("SwitchControlOverride1").value === "1");
+  document.getElementById("OnOff1_checkbox").checked = (document.getElementById("OnOff1").value === "1");
+  document.getElementById("LimpHome1_checkbox").checked = (document.getElementById("LimpHome1").value === "1");
 });
 </script></body>
 </html>
