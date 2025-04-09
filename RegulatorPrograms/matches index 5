@@ -1,4 +1,3 @@
-
 // Long term notes
 // at the end, go back and make the temp reading normal again, since I think the only improvement came from making the separate thread
 
@@ -677,12 +676,12 @@ void loop() {
   //yield();
   ReadAnalogInputs();
   // yield();
-  Serial.print("ManualFieldToggle: ");
-  Serial.println(ManualFieldToggle);
+ // Serial.print("ManualFieldToggle: ");
+  //Serial.println(ManualFieldToggle);
   Serial.print("HiLow: ");
   Serial.println(HiLow);
-  // Serial.print("LimpHome: ");
-  // Serial.println(LimpHome);
+  Serial.print("NMEA0183Data: ");
+  Serial.println(NMEA0183Data);
 
 
   ReadVEData();  //read Data from Victron VeDirect
