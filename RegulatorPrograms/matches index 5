@@ -1,3 +1,4 @@
+
 // Long term notes
 // at the end, go back and make the temp reading normal again, since I think the only improvement came from making the separate thread
 
@@ -48,7 +49,7 @@ SiC45x sic45x(0x1D);
 const char *ssid = "MN2G";
 const char *password = "5FENYC8PDW";
 
-//delete this later
+//delete this later ?
 int powersavemode = 0;
 int INADisconnected = 0;
 int WifiHeartBeat = 0;
@@ -64,21 +65,23 @@ float TargetBulkVoltage = 14.5;
 float ChargingVoltageTarget = 0;          // This is what the code really uses. It gets set to TargetFloatVoltage or TargetBulkVoltage later on
 float interval = 0.1;                     // voltage step to adjust field target by, each time the loop runs.  Larger numbers = faster response, less stability
 float FieldAdjustmentInterval = 500;      // The regulator field output is updated once every this many milliseconds
-float MinimumFieldVoltage = 2;            // A min value here ensures that engine speed can be measured even with no alternator output commanded.  (This is only enforced when Ignition input is high)
+float MinimumFieldVoltage = 1;            // A min value here ensures that engine speed can be measured even with no alternator output commanded.  (This is only enforced when Ignition input is high)
 float AlternatorTemperatureLimitF = 150;  // the offset appears to be +40 to +50 to get true max alternator external metal temp, depending on temp sensor installation, so 150 here will produce a metal temp ~200F
 int ManualFieldToggle = 1;                // set to 1 to enable manual control of regulator field output, helpful for debugging
-float ManualVoltageTarget = 1;            // voltage target corresponding to the toggle above
+float ManualVoltageTarget = 5;            // voltage target corresponding to the toggle above
 int SwitchControlOverride = 1;            // set to 1 for web interface switches to override physical switch panel
 int ForceFloat = 0;                       // set to 1 to force the float voltage to be the charging target
 int OnOff = 1;                            // 0 is charger off, 1 is charger On
 int Ignition = 1;                         // This will eventually be an over-rideable digital input
 int HiLow = 1;                            // 0 will be a low setting, 1 a high setting
 int LimpHome = 0;                         // 1 will set to limp home mode, whatever that gets set up to be
-float vout = 0.5;                         // default field output voltage
+float vout = 1;                           // default field output voltage
 int FaultCheckToggle = 0;                 // Set to 1 to get a serial print out over 20 seconds of error data, delete later
 int resolution = 12;                      // for OneWire temp sensor measurement
 float fffr = 1200;                        // this is the switching frequency for SIC450 in khz units
-int VeDataOn = 0;                         // Set to 1 if VE serial data exists
+int VeData = 0;                           // Set to 1 if VE serial data exists
+int NMEA0183Data = 0;                     // Set to 1 if NMEA serial data exists doesn't do anything yet
+int NMEA2KData = 0;                       // doesn't do anything yet
 
 int previousMillisZZ = 0;  // Temporary, for getting power consumption down
 int intervalZZ = 60000;    // Turn WiFi on and off every 60 seconds (until there's an Ignition signal controlling it)
@@ -144,8 +147,8 @@ Adafruit_SSD1306 display(128, 64, 23, 18, 19, -1, 5);
 VeDirectFrameHandler myve;
 
 // WIFI STUFF
-AsyncWebServer server(80);              // Create AsyncWebServer object on port 80
-AsyncEventSource events("/events");     // Create an Event Source on /events
+AsyncWebServer server(80);               // Create AsyncWebServer object on port 80
+AsyncEventSource events("/events");      // Create an Event Source on /events
 unsigned long webgaugesinterval = 2000;  // delay in ms between sensor updates on webpage
 
 const char *TLimit = "TemperatureLimitF";  //TLimit is a pointer to an immutable String "TemperatureLimitF"
@@ -162,6 +165,9 @@ const char *FF = "ForceFLoat1";
 const char *OO = "OnOff1";
 const char *HL = "HiLow1";
 const char *LH = "LimpHome1";
+const char *VD = "VeData1";
+const char *N0 = "NMEA0183Data1";
+const char *N2 = "NMEA2KData1";
 
 
 typedef struct {
@@ -473,6 +479,18 @@ void setup() {
       inputMessage = request->getParam(LH)->value();
       writeFile(LittleFS, "/LimpHome1.txt", inputMessage.c_str());
       LimpHome = inputMessage.toInt();
+    } else if (request->hasParam(VD)) {
+      inputMessage = request->getParam(VD)->value();
+      writeFile(LittleFS, "/VeData1.txt", inputMessage.c_str());
+      VeData = inputMessage.toInt();
+    } else if (request->hasParam(N0)) {
+      inputMessage = request->getParam(N0)->value();
+      writeFile(LittleFS, "/NMEA0183Data1.txt", inputMessage.c_str());
+      NMEA0183Data = inputMessage.toInt();
+    } else if (request->hasParam(N2)) {
+      inputMessage = request->getParam(N2)->value();
+      writeFile(LittleFS, "/NMEA2KData1.txt", inputMessage.c_str());
+      NMEA2KData = inputMessage.toInt();
     }
 
     else {
@@ -594,6 +612,22 @@ void setup() {
     String stringLH = String(LimpHome);
     writeFile2("/LimpHome1.txt", stringLH.c_str());
   }
+  bool VDexists = LittleFS.exists("/VeData1.txt");
+  if (!VDexists) {
+    String stringVD = String(VeData);
+    writeFile2("/VeData1.txt", stringVD.c_str());
+  }
+  bool N0exists = LittleFS.exists("/NMEA0183Data1.txt");
+  if (!N0exists) {
+    String stringN0 = String(NMEA0183Data);
+    writeFile2("/NMEA0183Data1.txt", stringN0.c_str());
+  }
+  bool N2exists = LittleFS.exists("/NMEA2KData1.txt");
+  if (!N2exists) {
+    String stringN2 = String(NMEA2KData);
+    writeFile2("/NMEA2KData1.txt", stringN2.c_str());
+  }
+
   //Update some variable swith values from ESP32 Flash memory
   AlternatorTemperatureLimitF = readFile(LittleFS, "/TemperatureLimitF.txt").toInt();
   ManualVoltageTarget = readFile(LittleFS, "/ManualVoltage.txt").toFloat();
@@ -609,6 +643,9 @@ void setup() {
   OnOff = readFile(LittleFS, "/OnOff1.txt").toInt();
   HiLow = readFile(LittleFS, "/HiLow1.txt").toInt();
   LimpHome = readFile(LittleFS, "/LimpHome1.txt").toInt();
+  VeData = readFile(LittleFS, "/VeData1.txt").toInt();
+  NMEA0183Data = readFile(LittleFS, "/NMEA0183Data1.txt").toInt();
+  NMEA2KData = readFile(LittleFS, "/NMEA2KData1.txt").toInt();
 
   // This one worked (~7ms max loop time with analog inputs off) )but I'm trying core 0 to see if it's better
   // xTaskCreatePinnedToCore(
@@ -642,13 +679,13 @@ void loop() {
   // yield();
   Serial.print("ManualFieldToggle: ");
   Serial.println(ManualFieldToggle);
-  // Serial.print("OnOff: ");
-  // Serial.println(OnOff);
+  Serial.print("HiLow: ");
+  Serial.println(HiLow);
   // Serial.print("LimpHome: ");
   // Serial.println(LimpHome);
 
 
-  //ReadVEData();  //read Data from Victron VeDirect
+  ReadVEData();  //read Data from Victron VeDirect
 
   //AdjustSic450();
   // UpdateDisplay();
@@ -1046,8 +1083,10 @@ void UpdateDisplay() {
   }
 }
 void ReadVEData() {
-  if (millis() - prev_millis33 > 1000) {  // read VE data every 1 second
-    if (VeDataOn == 1) {
+  if (VeData == 1) {
+
+    if (millis() - prev_millis33 > 1000) {  // read VE data every 1 second
+
       int start1 = micros();  // Start timing VeData
       while (Serial2.available()) {
         myve.rxData(Serial2.read());
@@ -1064,8 +1103,9 @@ void ReadVEData() {
       //PrintData(); //This prints all victron data received to the serial monitor, put this in "Loop" for debugging if needed
       int end1 = micros();     // End timing
       VeTime = end1 - start1;  // Store elapsed time
+
+      prev_millis33 = millis();
     }
-    prev_millis33 = millis();
   }
 }
 
@@ -1463,6 +1503,12 @@ String processor(const String &var) {
     return readFile(LittleFS, "/HiLow1.txt");
   } else if (var == "LimpHome1") {
     return readFile(LittleFS, "/LimpHome1.txt");
+  } else if (var == "VeData1") {
+    return readFile(LittleFS, "/VeData1.txt");
+  } else if (var == "NMEA0183Data1") {
+    return readFile(LittleFS, "/NMEA0183Data1.txt");
+  } else if (var == "NMEA2KData1") {
+    return readFile(LittleFS, "/NMEA2KData1.txt");
   }
 
   //Then, the live sensor readings
