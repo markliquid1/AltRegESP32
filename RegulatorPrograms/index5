@@ -609,6 +609,13 @@
   </div>
 
 
+  <div class="settings-card">
+    <div class="section-title">RPM History</div>
+    <div class="plot-container" id="rpm-plot"></div>
+  </div>
+
+
+
 
   <script>
     function debounce(fn, delay) {
@@ -618,25 +625,30 @@
         timer = setTimeout(() => fn.apply(this, args), delay);
       };
     }
-  
+
     // WiFi Signal Plot Data
     const wifiData = [[], []];
     let uplot;
-    
+
     // Current and Temperature Plot Data
     // [timestamps, battery current, alternator current, field current, alt temp]
     const currentTempData = [[], [], [], [], []];
     let currentTempPlot;
-    
+
     // Voltage Plot Data
     // [timestamps, ADS Battery V, Victron Battery V, INA Battery V]
     const voltageData = [[], [], [], []];
     let voltagePlot;
-    
-    const maxPoints = 60;
+
+    // RPM Plot Data
+    const rpmData = [[], []];
+    let rpmPlot;
+
+
+    const maxPoints = 20;
     let lastPlotUpdate = 0; // Timestamp of last time we updated the plot
-    const PLOT_UPDATE_INTERVAL_MS = 2000; // Only update every 2 seconds (adjust as needed)
-  
+    const PLOT_UPDATE_INTERVAL_MS = 1000; // Only update every 2 seconds (adjust as needed)
+
     function schedulePlotUpdate() {
       if (!window.updateScheduled) {
         window.updateScheduled = true;
@@ -646,7 +658,7 @@
         });
       }
     }
-    
+
     function scheduleCurrentTempPlotUpdate() {
       if (!window.currentTempUpdateScheduled && currentTempPlot) {
         window.currentTempUpdateScheduled = true;
@@ -656,7 +668,7 @@
         });
       }
     }
-    
+
     function scheduleVoltagePlotUpdate() {
       if (!window.voltageUpdateScheduled && voltagePlot) {
         window.voltageUpdateScheduled = true;
@@ -666,14 +678,25 @@
         });
       }
     }
-  
+
+    function scheduleRPMPlotUpdate() {
+      if (!window.rpmUpdateScheduled && rpmPlot) {
+        window.rpmUpdateScheduled = true;
+        requestAnimationFrame(() => {
+          rpmPlot.setData(rpmData);
+          window.rpmUpdateScheduled = false;
+        });
+      }
+    }
+
+
     function initWifiPlot() {
       const plotEl = document.getElementById('wifi-plot');
       if (!plotEl) {
         console.error("WiFi plot element not found");
         return;
       }
-      
+
       const opts = {
         width: plotEl.clientWidth,
         height: 300,
@@ -719,74 +742,72 @@
           }
         }]
       };
-  
+
       uplot = new uPlot(opts, wifiData, plotEl);
       const startTime = Math.floor(Date.now() / 1000);
       wifiData[0].push(startTime);
       wifiData[1].push(-65);
       uplot.setData(wifiData);
     }
-    
+
+
+
+
+
+
+
+
     function initCurrentTempPlot() {
       const plotEl = document.getElementById('current-temp-plot');
       if (!plotEl) {
         console.error("Current & Temperature plot element not found");
         return;
       }
-      
+
       const opts = {
         width: plotEl.clientWidth,
         height: 300,
         title: "Current & Temperature History",
         series: [
-          {},
+          {}, // timestamps
           {
             label: "Battery Current (A)",
-            stroke: "#4CAF50", // Green
+            stroke: "#4CAF50",
             width: 2,
             scale: "current"
           },
           {
             label: "Alternator Current (A)",
-            stroke: "#2196F3", // Blue
+            stroke: "#2196F3",
             width: 2,
             scale: "current"
           },
           {
             label: "Field Current (A)",
-            stroke: "#9C27B0", // Purple
+            stroke: "#9C27B0",
             width: 2,
             scale: "current"
           },
           {
             label: "Alt. Temp (°F)",
-            stroke: "#FF5722", // Deep Orange
+            stroke: "#FF5722",
             width: 2,
-            scale: "temp"
+            scale: "current"  // <-- Temperature now uses same Y-axis as current
           }
         ],
         axes: [
-          {},
+          {}, // x-axis (time)
           {
             scale: "current",
-            label: "Amperes",
+            label: "Amperes / °F",
             grid: { show: true },
-            side: 3 // 1: top, 2: right, 3: bottom, 4: left
-          },
-          {
-            scale: "temp",
-            label: "°F",
-            grid: { show: false },
-            side: 2 // right side
+            side: 3
           }
         ],
         scales: {
           x: { time: true },
           current: {
-            auto: true,
-          },
-          temp: {
-            auto: true,
+            auto: true
           }
         },
         plugins: [{
@@ -806,24 +827,33 @@
           }
         }]
       };
-  
+
       currentTempPlot = new uPlot(opts, currentTempData, plotEl);
       const startTime = Math.floor(Date.now() / 1000);
       currentTempData[0].push(startTime);
       currentTempData[1].push(0);
       currentTempData[2].push(0);
       currentTempData[3].push(0);
-      currentTempData[4].push(0);
+      currentTempData[4].push(100); // Initial temperature value
       currentTempPlot.setData(currentTempData);
     }
-    
+
+
+
+
+
+
+
+
+
+
     function initVoltagePlot() {
       const plotEl = document.getElementById('voltage-plot');
       if (!plotEl) {
         console.error("Voltage plot element not found");
         return;
       }
-      
+
       const opts = {
         width: plotEl.clientWidth,
         height: 300,
@@ -842,6 +872,9 @@
             width: 2,
             scale: "voltage"
           },
+
+
+
           {
             label: "INA Battery (V)",
             stroke: "#607D8B", // Blue Grey
@@ -880,7 +913,7 @@
           }
         }]
       };
-  
+
       voltagePlot = new uPlot(opts, voltageData, plotEl);
       const startTime = Math.floor(Date.now() / 1000);
       voltageData[0].push(startTime);
@@ -889,12 +922,74 @@
       voltageData[3].push(0);
       voltagePlot.setData(voltageData);
     }
-  
+
+    function initRPMPlot() {
+      const plotEl = document.getElementById('rpm-plot');
+      if (!plotEl) {
+        console.error("RPM plot element not found");
+        return;
+      }
+
+      const opts = {
+        width: plotEl.clientWidth,
+        height: 300,
+        title: "RPM History",
+        series: [
+          {}, // timestamps
+          {
+            label: "RPM",
+            stroke: "#E91E63",
+            width: 2,
+            scale: "rpm"
+          }
+        ],
+        axes: [
+          {},
+          {
+            scale: "rpm",
+            label: "rev/min",
+            grid: { show: true }
+          }
+        ],
+        scales: {
+          x: { time: true },
+          rpm: { auto: true }
+        },
+        plugins: [{
+          hooks: {
+            init: [
+              (u) => {
+                const resizePlot = debounce(() => {
+                  const plotEl = document.getElementById("rpm-plot");
+                  if (plotEl && rpmPlot) {
+                    rpmPlot.setSize({ width: plotEl.clientWidth, height: 300 });
+                  }
+                }, 1000);
+                const ro = new ResizeObserver(resizePlot);
+                ro.observe(plotEl);
+              }
+            ]
+          }
+        }]
+      };
+
+      rpmPlot = new uPlot(opts, rpmData, plotEl);
+      const startTime = Math.floor(Date.now() / 1000);
+      rpmData[0].push(startTime);
+      rpmData[1].push(0);
+      rpmPlot.setData(rpmData);
+    }
+
+
+
+
     window.addEventListener("load", function () {
       initWifiPlot();
       initCurrentTempPlot();
       initVoltagePlot();
-  
+      initRPMPlot();
+
+
       if (!!window.EventSource) {
         const fields = {
           AltTempID: "AlternatorTemperatureF",
@@ -917,7 +1012,7 @@
           SendWifiTimeID: "SendWifiTime",
           VeTimeID: "VeTime"
         };
-  
+
         const source = new EventSource('/events');
         source.addEventListener('BulkData', function (e) {
           const data = JSON.parse(e.data);
@@ -927,10 +1022,10 @@
               el.innerHTML = data[key];
             }
           }
-  
+
           const now = Math.floor(Date.now() / 1000);
-          
-          // Update WiFi Signal plot
+
+          // Update WiFi Signal plot data
           if ('WifiStrength' in data && typeof uplot !== 'undefined') {
             const strength = parseFloat(data.WifiStrength);
             wifiData[0].push(now);
@@ -939,28 +1034,21 @@
               wifiData[0].shift();
               wifiData[1].shift();
             }
-            
-            // Only update the plot if enough time has passed
-            const nowMs = Date.now();
-            if (nowMs - lastPlotUpdate > PLOT_UPDATE_INTERVAL_MS) {
-              schedulePlotUpdate();
-              lastPlotUpdate = nowMs;
-            }
           }
-          
-          // Update Current & Temperature plot
+
+          // Update Current & Temperature plot data arrays
           if (typeof currentTempPlot !== 'undefined') {
             const battCurrent = 'Bcur' in data ? parseFloat(data.Bcur) : null;
             const altCurrent = 'MeasuredAmps' in data ? parseFloat(data.MeasuredAmps) : null;
             const fieldCurrent = 'iiout' in data ? parseFloat(data.iiout) : null;
             const altTemp = 'AlternatorTemperatureF' in data ? parseFloat(data.AlternatorTemperatureF) : null;
-            
+
             currentTempData[0].push(now);
             currentTempData[1].push(battCurrent);
             currentTempData[2].push(altCurrent);
             currentTempData[3].push(fieldCurrent);
             currentTempData[4].push(altTemp);
-            
+
             if (currentTempData[0].length > maxPoints) {
               currentTempData[0].shift();
               currentTempData[1].shift();
@@ -968,41 +1056,55 @@
               currentTempData[3].shift();
               currentTempData[4].shift();
             }
-            
-            // Update using the same interval as wifi plot
-            const nowMs = Date.now();
-            if (nowMs - lastPlotUpdate > PLOT_UPDATE_INTERVAL_MS) {
-              scheduleCurrentTempPlotUpdate();
-            }
           }
-          
-          // Update Voltage plot
+
+          // Update Voltage plot data arrays
           if (typeof voltagePlot !== 'undefined') {
             const adsBattV = 'BatteryV' in data ? parseFloat(data.BatteryV) : null;
             const victronBattV = 'VictronVoltage' in data ? parseFloat(data.VictronVoltage) : null;
             const inaBattV = 'IBV' in data ? parseFloat(data.IBV) : null;
-            
+
             voltageData[0].push(now);
             voltageData[1].push(adsBattV);
             voltageData[2].push(victronBattV);
             voltageData[3].push(inaBattV);
-            
+
             if (voltageData[0].length > maxPoints) {
               voltageData[0].shift();
               voltageData[1].shift();
               voltageData[2].shift();
               voltageData[3].shift();
             }
-            
-            // Update using the same interval as wifi plot
-            const nowMs = Date.now();
-            if (nowMs - lastPlotUpdate > PLOT_UPDATE_INTERVAL_MS) {
-              scheduleVoltagePlotUpdate();
+          }
+
+          // Update RPM plot data arrays
+          if (typeof rpmPlot !== 'undefined') {
+            const rpmValue = 'RPM' in data ? parseFloat(data.RPM) : null;
+
+            rpmData[0].push(now);
+            rpmData[1].push(rpmValue);
+
+            if (rpmData[0].length > maxPoints) {
+              rpmData[0].shift();
+              rpmData[1].shift();
             }
+          }
+
+
+
+
+          // Only update the plots if enough time has passed - now update all three plots
+          const nowMs = Date.now();
+          if (nowMs - lastPlotUpdate > PLOT_UPDATE_INTERVAL_MS) {
+            schedulePlotUpdate();
+            scheduleCurrentTempPlotUpdate();
+            scheduleVoltagePlotUpdate();
+            scheduleRPMPlotUpdate();
+            lastPlotUpdate = nowMs;
           }
         }, false);
       }
-  
+
       // Initialize toggle states on page load
       document.getElementById("ManualFieldToggle1_checkbox").checked = (document.getElementById("ManualFieldToggle1").value === "1");
       document.getElementById("SwitchControlOverride1_checkbox").checked = (document.getElementById("SwitchControlOverride1").value === "1");
