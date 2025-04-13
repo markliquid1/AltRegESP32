@@ -1,213 +1,1219 @@
-<!DOCTYPE HTML> 
+<!DOCTYPE HTML>
+
 <html>
-  <head>
-    <title>Alternator Controller Interface</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script>
-      function submitMessage() {
-        setTimeout(function(){ document.location.reload(false); }, 500);   
+
+<head>
+  <meta charset="utf-8" />
+  <title>X Engineering Alternator Regulator</title>
+  <meta content="width=device-width, initial-scale=1" name="viewport" />
+  <link href="/uPlot.min.css" rel="stylesheet" />
+  <script src="/uPlot.iife.min.js">
+    function syncToggleToHidden(name) {
+      const checkbox = document.getElementById(name + "_checkbox");
+      const hidden = document.getElementById(name);
+      if (checkbox && hidden) {
+        hidden.value = checkbox.checked ? "1" : "0";
+        hidden.form.submit();
       }
-    </script>
-  </head>
-  <body>
-    <h2>Settings</h2>
-    <style>
-      table, th, td {
-        border: 1px solid black;
-        border-radius: 10px;
+    }
+  </script>
+  <style>
+    :root {
+      --primary: #333333;
+      /* Dark gray primary */
+      --accent: #ff6600;
+      /* Orange accent */
+      --bg-light: #f5f5f5;
+      /* Very light gray background */
+      --text-dark: #333333;
+      /* Dark text */
+      --text-light: #ffffff;
+      /* Light text */
+      --card-light: #ffffff;
+      /* White card background */
+      --border: #dddddd;
+      /* Light border */
+      --reading: #333333;
+      /* Reading text color (changed from green) */
+      --radius: 4px;
+      /* Border radius */
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      padding: 0.5rem;
+      background-color: var(--bg-light);
+      color: var(--text-dark);
+      line-height: 1.4;
+      font-size: 14px;
+    }
+
+    h2 {
+      color: var(--text-dark);
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 0.25rem;
+      margin-top: 1rem;
+      margin-bottom: 0.75rem;
+      font-size: 18px;
+    }
+
+    input[type="submit"] {
+      background-color: #555555;
+      color: white;
+      border: none;
+      padding: 4px 10px;
+      cursor: pointer;
+      border-radius: var(--radius);
+      font-weight: bold;
+      width: 60px;
+    }
+
+    input[type="submit"]:hover {
+      background-color: var(--accent);
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      background: #ffffff;
+      color: var(--text-dark);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 4px;
+      width: 80px;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+
+    .card {
+      background: var(--card-light);
+      padding: 10px;
+      border-left: 2px solid var(--accent);
+      border-radius: var(--radius);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      margin-bottom: 4px;
+    }
+
+    .card p {
+      margin: 0.25rem 0;
+    }
+
+    .card p:first-child {
+      font-weight: bold;
+      color: var(--text-dark);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.25rem;
+      margin-bottom: 0.25rem;
+      font-size: 13px;
+    }
+
+    .reading {
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+
+    .reading span {
+      color: var(--reading);
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .settings-card {
+      background: var(--card-light);
+      border-radius: var(--radius);
+      padding: 10px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    .section-title {
+      background-color: #f0f0f0;
+      color: var(--text-dark);
+      padding: 6px 10px;
+      margin: 0 0 10px 0;
+      border-radius: var(--radius);
+      font-weight: bold;
+      border-left: 2px solid var(--accent);
+      font-size: 14px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 8px 0;
+    }
+
+    .form-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .form-label {
+      flex: 1;
+      text-align: left;
+      padding-right: 10px;
+    }
+
+    .form-input {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 992px) {
+      .settings-grid {
+        grid-template-columns: repeat(2, 1fr);
       }
-    </style>
-    <table>
-      <tr>
-        <td>
+    }
+
+    @media (max-width: 768px) {
+      .settings-grid {
+        grid-template-columns: 1fr;
+      }
+
+      body {
+        font-size: 13px;
+      }
+
+      .grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      }
+    }
+
+    /* Toggle switch styling */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 20px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 20px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked+.slider {
+      background-color: #2196F3;
+    }
+
+    input:checked+.slider:before {
+      transform: translateX(20px);
+    }
+
+    .toggle-label {
+      font-size: 0.9em;
+      margin: 0 8px;
+      vertical-align: middle;
+    }
+
+    .toggle-label {
+      font-size: 0.9em;
+      margin: 0 8px;
+      vertical-align: middle;
+    }
+  </style>
+  <script>
+    function submitMessage() {
+      console.log("Form submitted - values will update shortly");
+      // setTimeout(function () { document.location.reload(false); }, 500); // not needed anymore because
+    }
+  </script>
+</head>
+
+<body>
+  <iframe name="hidden-form" style="display:none"></iframe>
+  <h2>Settings</h2>
+  <div class="settings-grid">
+    <div class="settings-card">
+      <div class="section-title">Charging</div>
+      <div class="form-row">
+        <div class="form-label">Alternator Temp Limit (F) (<span
+            id="TemperatureLimitF_echo">%TemperatureLimitF%</span>):</div>
+        <div class="form-input">
           <form action="/get" target="hidden-form">
-            Alternator Temperature Limit (F) (%TemperatureLimitF%): <input type="text" name="TemperatureLimitF">
-            <input type="submit" value="Submit" onclick="submitMessage()">
+            <input name="TemperatureLimitF" type="text" />
+            <input onclick="submitMessage()" type="submit" value="Set" />
           </form>
-          <hr>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Bulk Target (<span id="FullChargeVoltage_echo">%FullChargeVoltage%</span>):</div>
+        <div class="form-input">
           <form action="/get" target="hidden-form">
-            Bulk Voltage Target (%FullChargeVoltage%): <input type="number " name="FullChargeVoltage">
-            <input type="submit" value="Submit" onclick="submitMessage()">
+            <input name="FullChargeVoltage" type="number" />
+            <input onclick="submitMessage()" type="submit" value="Set" />
           </form>
-          <hr>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+
+        <div class="form-label">Rate Target (A) (<span id="TargetAmpz_echo">%TargetAmpz%</span>):</div>
+        <div class="form-input">
           <form action="/get" target="hidden-form">
-            Target Amps (A) (%TargetAmpz%): <input type="number " name="TargetAmpz">
-            <input type="submit" value="Submit" onclick="submitMessage()">
+            <input name="TargetAmpz" type="number" />
+            <input onclick="submitMessage()" type="submit" value="Set" />
           </form>
-          <hr>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Float Target (V) (<span id="TargetFloatVoltage1_echo">%TargetFloatVoltage1%</span>):
+        </div>
+        <div class="form-input">
           <form action="/get" target="hidden-form">
-            Controller Field Switching Frequency (hz) (%SwitchingFrequency%): <input type="number " name="SwitchingFrequency">
-            <input type="submit" value="Submit" onclick="submitMessage()">
+            <input name="TargetFloatVoltage1" type="number" />
+            <input onclick="submitMessage()" type="submit" value="Set" />
           </form>
-          <hr>
+        </div>
+      </div>
+    </div>
+    <div class="settings-card">
+      <div class="section-title">Field</div>
+      <div class="form-row">
+        <div class="form-label">Field Switch Freq (hz) (<span id="SwitchingFrequency_echo">%SwitchingFrequency%</span>):
+        </div>
+        <div class="form-input">
           <form action="/get" target="hidden-form">
-            Float Voltage Target (V) (%TargetFloatVoltage1%): <input type="number " name="TargetFloatVoltage1">
-            <input type="submit" value="Submit" onclick="submitMessage()">
+            <input name="SwitchingFrequency" type="number" />
+            <input onclick="submitMessage()" type="submit" value="Set" />
           </form>
-          <hr>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Field Adj Step (V) (<span id="interval1_echo">%interval1%</span>):</div>
+        <div class="form-input">
           <form action="/get" target="hidden-form">
-            Field Adjustment Step Size (V) (%interval1%): <input type="number " name="interval1">
-            <input type="submit" value="Submit" onclick="submitMessage()">
+            <input name="interval1" type="number" />
+            <input onclick="submitMessage()" type="submit" value="Set" />
           </form>
-          <hr>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Field Adj. Time Interval (ms) (<span
+            id="FieldAdjustmentInterval1_echo">%FieldAdjustmentInterval1%</span>):</div>
+        <div class="form-input">
           <form action="/get" target="hidden-form">
-            Field Adjustment Interval (ms)) (%FieldAdjustmentInterval1%): <input type="number " name="FieldAdjustmentInterval1">
-            <input type="submit" value="Submit" onclick="submitMessage()">
+            <input name="FieldAdjustmentInterval1" type="number" />
+            <input onclick="submitMessage()" type="submit" value="Set" />
           </form>
-        </td>
-        <td>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Manual Field Setpoint (V) (<span id="ManualVoltage_echo">%ManualVoltage%</span>):</div>
+        <div class="form-input">
           <form action="/get" target="hidden-form">
-            Manual Field Control Toggle (%ManualFieldToggle1%): <input type="number " name="ManualFieldToggle1">
-            <input type="submit" value="Submit" onclick="submitMessage()">
+            <input name="ManualVoltage" type="number" />
+            <input onclick="submitMessage()" type="submit" value="Set" />
           </form>
-          <hr>
+        </div>
+      </div>
+    </div>
+    <div class="settings-card">
+      <div class="section-title">System</div>
+      <div class="form-row">
+        <div class="form-label">Switch Panel Override (<span
+            id="SwitchControlOverride1_echo">%SwitchControlOverride1%</span>):</div>
+        <div class="form-input">
           <form action="/get" target="hidden-form">
-            Manual Voltage Setpoint (V) (%ManualVoltage%): <input type="number " name="ManualVoltage">
-            <input type="submit" value="Submit" onclick="submitMessage()">
+            <span class="toggle-label">Off</span>
+            <label class="switch">
+              <input id="SwitchControlOverride1_checkbox" type="checkbox"
+                onchange="document.getElementById('SwitchControlOverride1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">On</span>
+            <input id="SwitchControlOverride1" name="SwitchControlOverride1" type="number"
+              value="%SwitchControlOverride1%" style="display:none;" />
           </form>
-          <hr>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Regulator Output (<span id="OnOff1_echo">%OnOff1%</span>):</div>
+        <div class="form-input">
           <form action="/get" target="hidden-form">
-            Physical Switch Panel Override (%SwitchControlOverride1%): <input type="number " name="SwitchControlOverride1">
-            <input type="submit" value="Submit" onclick="submitMessage()">
+            <span class="toggle-label">Off</span>
+            <label class="switch">
+              <input id="OnOff1_checkbox" type="checkbox"
+                onchange="document.getElementById('OnOff1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">On</span>
+            <input id="OnOff1" name="OnOff1" type="number" value="%OnOff1%" style="display:none;" />
           </form>
-          <hr>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Manual Field Control (<span id="ManualFieldToggle1_echo">%ManualFieldToggle1%</span>):
+        </div>
+        <div class="form-input">
           <form action="/get" target="hidden-form">
-            On/Off (%OnOff1%): <input type="number " name="OnOff1">
-            <input type="submit" value="Submit" onclick="submitMessage()">
+            <span class="toggle-label">Off</span>
+            <label class="switch">
+              <input id="ManualFieldToggle1_checkbox" type="checkbox"
+                onchange="document.getElementById('ManualFieldToggle1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">On</span>
+            <input id="ManualFieldToggle1" name="ManualFieldToggle1" type="number" value="%ManualFieldToggle1%"
+              style="display:none;" />
           </form>
-          <hr>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Charge Rate (<span id="HiLow1_echo">%HiLow1%</span>):</div>
+        <div class="form-input">
           <form action="/get" target="hidden-form">
-            Low(0)/High(1) Mode (%HiLow1%): <input type="number " name="HiLow1">
-            <input type="submit" value="Submit" onclick="submitMessage()">
+            <span class="toggle-label">Low</span>
+            <label class="switch">
+              <input id="HiLow1_checkbox" type="checkbox"
+                onchange="document.getElementById('HiLow1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">High</span>
+            <input id="HiLow1" name="HiLow1" type="number" value="%HiLow1%" style="display:none;" />
           </form>
-          <hr>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Limp Home Mode (<span id="LimpHome1_echo">%LimpHome1%</span>):</div>
+        <div class="form-input">
           <form action="/get" target="hidden-form">
-            Limp Home Mode (%LimpHome1%): <input type="number " name="LimpHome1">
-            <input type="submit" value="Submit" onclick="submitMessage()">
+            <span class="toggle-label">Off</span>
+            <label class="switch">
+              <input id="LimpHome1_checkbox" type="checkbox"
+                onchange="document.getElementById('LimpHome1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">On</span>
+            <input id="LimpHome1" name="LimpHome1" type="number" value="%LimpHome1%" style="display:none;" />
           </form>
-        </td>
-      </tr>
-    </table>
-    <iframe style="display:none" name="hidden-form"></iframe>
-    <hr/>
-    <h2>Sensor and Output Data </h2>
-    <table>
-      <tr>
-        <td>
-          <div class="card">
-            <p> ADS Battery Voltage</p>
-            <p><span class="reading"><span id="BatteryVID">%BATTERYV%</span> V</span></p>
-          </div>
-          <hr/>
-          <div class="card">
-            <p> Victron Battery Voltage</p>
-            <p><span class="reading"><span id="VictronVoltageID">%VVOLT%</span> V</span></p>
-          </div>
-          <hr/>
-          <div class="card">
-            <p> INA Battery Voltage</p>
-            <p><span class="reading"><span id="IBVID">%IBVV%</span> V</span></p>
-          </div>
-          <hr/>
-          <div class="card">
-            <p> ADS Ch3 Voltage</p>
-            <p><span class="reading"><span id="ADS3ID">%ADSCH3VLTS%</span> V</span></p>
-          </div>
-        </td>
-        <td>
-          <div class="card">
-            <p> ADS Alternator Current</p><p><span class="reading"><span id="MeasAmpsID">%MEASA%</span> A</span></p>
-          </div>
-          <hr/>
-          <div class="card">
-            <p> Alternator Temperature</p><p><span class="reading"><span id="AltTempID">%ALTERNATORTEMPERATUREF%</span> &deg;F</span></p>
-          </div>
-          <hr/>
-          <div class="card">
-            <p> INA Battery Current</p><p><span class="reading"><span id="BCurrID">%BCURR%</span> A</span></p>
-          </div>
-          <hr/>
-          <div class="card">
-            <p> Engine Speed</p><p><span class="reading"><span id="RPMID">%RPMM%</span> rev/min</span></p>
-          </div>
-          <hr/>
-          <div class="card">
-            <p> GPS Heading</p><p><span class="reading"><span id="GPSHID">%GPSH%</span> &deg</span></p>
-          </div>
-        </td>
-        <td>
-          <div class="card">
-            <p> Loop Time</p>
-            <p><span class="reading"><span id="LoopTimeID">%LOOPTIME%</span> uS;</span></p>
-          </div>
-          <hr/>
-          <div class="card">
-            <p> Maximum Loop Time</p>
-            <p><span class="reading"><span id="MaximumLoopTimeID">%MAXIMUMLOOPTIME%</span> uS;</span></p>
-          </div>
-          <hr/>
-          <div class="card">
-            <p> Controller Field Duty Cycle</p>
-            <p><span class="reading"><span id="DutyCycleID">%DUTYCYCLE%</span> &percnt;</span></p>
-          </div>
-          <hr/>
-          <div class="card">
-            <p> Controller Field Voltage</p>
-            <p><span class="reading"><span id="FieldVoltsID">%FIELDVOLTS%</span> V</span></p>
-          </div>
-          <hr/>
-          <div class="card">
-            <p> Controller Field Current</p>
-            <p><span class="reading"><span id="FieldAmpsID">%FIELDAMPS%</span> A</span></p>
-          </div>
-        </td>
-        <td>
-          <div class="card">
-            <p> Wifi Strength</p>
-            <p><span class="reading"><span id="WifiStrengthID">%WIFISTRENGTH%</span> dB;</span></p>
-          </div>
-          <hr/>
-          <div class="card">
-            <p> Wifi Heartbeat</p>
-            <p><span class="reading"><span id="WifiHeartBeatID">%WIFIHEARTBEAT%</span> #;</span></p>
-          </div>
-        </td>
-      </tr>
-    </table>
-    <script>
+        </div>
+      </div>
+
+      <hr />
+      <div class="form-row">
+        <div class="form-label">VE.Direct Data (<span id="VeData1_echo">%VeData1%</span>):</div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <span class="toggle-label">Off</span>
+            <label class="switch">
+              <input id="VeData1_checkbox" type="checkbox"
+                onchange="document.getElementById('VeData1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">On</span>
+            <input id="VeData1" name="VeData1" type="number" value="%VeData1%" style="display:none;" />
+          </form>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+
+        <div class="form-label">NMEA 0183 Data (<span id="NMEA0183Data1_echo">%NMEA0183Data1%</span>):</div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <span class="toggle-label">Off</span>
+            <label class="switch">
+              <input id="NMEA0183Data1_checkbox" type="checkbox"
+                onchange="document.getElementById('NMEA0183Data1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">On</span>
+            <input id="NMEA0183Data1" name="NMEA0183Data1" type="number" value="%NMEA0183Data1%"
+              style="display:none;" />
+          </form>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">NMEA 2000 Data (<span id="NMEA2KData1_echo">%NMEA2KData1%</span>):</div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <span class="toggle-label">Off</span>
+            <label class="switch">
+              <input id="NMEA2KData1_checkbox" type="checkbox"
+                onchange="document.getElementById('NMEA2KData1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">On</span>
+            <input id="NMEA2KData1" name="NMEA2KData1" type="number" value="%NMEA2KData1%" style="display:none;" />
+          </form>
+        </div>
+      </div>
+
+    </div>
+
+
+
+
+
+  </div>
+  <h2>Live Data</h2>
+  <div class="settings-grid">
+    <div class="settings-card">
+      <div class="section-title">Battery</div>
+      <div class="grid">
+        <div class="card">
+          <p>ADS Battery Voltage</p>
+          <p class="reading"><span id="BatteryVID">0</span> V</p>
+        </div>
+        <div class="card">
+          <p>Victron Battery Voltage</p>
+          <p class="reading"><span id="VictronVoltageID">0</span> V</p>
+        </div>
+        <div class="card">
+          <p>INA Battery Voltage</p>
+          <p class="reading"><span id="IBVID">0</span> V</p>
+        </div>
+        <div class="card">
+          <p>INA Battery Current</p>
+          <p class="reading"><span id="BCurrID">0</span> A</p>
+        </div>
+      </div>
+    </div>
+    <div class="settings-card">
+      <div class="section-title">Alternator</div>
+      <div class="grid">
+        <div class="card">
+          <p>ADS Alternator Current</p>
+          <p class="reading"><span id="MeasAmpsID">0</span> A</p>
+        </div>
+        <div class="card">
+          <p>Alternator Temperature</p>
+          <p class="reading"><span id="AltTempID">0</span> °F</p>
+        </div>
+        <div class="card">
+          <p>Field Duty Cycle</p>
+          <p class="reading"><span id="DutyCycleID">0</span> %</p>
+        </div>
+        <div class="card">
+          <p>Field Voltage</p>
+          <p class="reading"><span id="FieldVoltsID">0</span> V</p>
+        </div>
+        <div class="card">
+          <p>Field Current</p>
+          <p class="reading"><span id="FieldAmpsID">0</span> A</p>
+        </div>
+      </div>
+    </div>
+    <div class="settings-card">
+      <div class="section-title">System</div>
+      <div class="grid">
+        <div class="card">
+          <p>Engine Speed</p>
+          <p class="reading"><span id="RPMID">0</span> rev/min</p>
+        </div>
+        <div class="card">
+          <p>GPS Heading</p>
+          <p class="reading"><span id="GPSHID">0</span> °</p>
+        </div>
+        <div class="card">
+          <p>ADS Ch3 Voltage</p>
+          <p class="reading"><span id="ADS3ID">0</span> V</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="settings-card">
+    <div class="section-title">Hardware and Code</div>
+    <div class="grid">
+      <div class="card">
+        <p>Loop Time</p>
+        <p class="reading"><span id="LoopTimeID">0</span> μs</p>
+      </div>
+      <div class="card">
+        <p>Maximum Loop Time</p>
+        <p class="reading"><span id="MaximumLoopTimeID">0</span> μs</p>
+      </div>
+      <div class="card">
+        <p>Analog Read Time (Max)</p>
+        <p class="reading"><span id="AnalogReadTimeID">0</span> μs</p>
+      </div>
+      <div class="card">
+        <p>Wifi Send Time</p>
+        <p class="reading"><span id="SendWifiTimeID">0</span> μs</p>
+      </div>
+      <div class="card">
+        <p>VE Dir. Read Time</p>
+        <p class="reading"><span id="VeTimeID">0</span> μs</p>
+      </div>
+      <div class="card">
+        <p>Wifi Strength</p>
+        <p class="reading"><span id="WifiStrengthID">0</span> dB</p>
+      </div>
+      <div class="card">
+        <p>Wifi Heartbeat</p>
+        <p class="reading"><span id="WifiHeartBeatID">0</span> #</p>
+      </div>
+    </div>
+  </div>
+  <h2>Plots</h2>
+
+
+
+  <div class="settings-card">
+    <div class="section-title">WiFi Signal Strength History</div>
+    <div class="plot-container" id="wifi-plot"></div>
+  </div>
+
+
+  <div class="settings-card">
+    <div class="section-title">Current and Temperature History</div>
+    <div class="plot-container" id="current-temp-plot"></div>
+  </div>
+  <div class="settings-card">
+    <div class="section-title">Battery Voltage History</div>
+    <div class="plot-container" id="voltage-plot"></div>
+  </div>
+
+
+  <div class="settings-card">
+    <div class="section-title">RPM History</div>
+    <div class="plot-container" id="rpm-plot"></div>
+  </div>
+
+
+
+
+  <script>
+    function debounce(fn, delay) {
+      let timer = null;
+      return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+      };
+    }
+
+    // WiFi Signal Plot Data
+    const wifiData = [[], []];
+    let uplot;
+
+    // Current and Temperature Plot Data
+    // [timestamps, battery current, alternator current, field current, alt temp]
+    const currentTempData = [[], [], [], [], []];
+    let currentTempPlot;
+
+    // Voltage Plot Data
+    // [timestamps, ADS Battery V, Victron Battery V, INA Battery V]
+    const voltageData = [[], [], [], []];
+    let voltagePlot;
+
+    // RPM Plot Data
+    const rpmData = [[], []];
+    let rpmPlot;
+
+
+    const maxPoints = 20;
+    let lastPlotUpdate = 0; // Timestamp of last time we updated the plot
+    const PLOT_UPDATE_INTERVAL_MS = 1000; // Only update every 2 seconds (adjust as needed)
+
+    function schedulePlotUpdate() {
+      if (!window.updateScheduled) {
+        window.updateScheduled = true;
+        requestAnimationFrame(() => {
+          uplot.setData(wifiData);
+          window.updateScheduled = false;
+        });
+      }
+    }
+
+    function scheduleCurrentTempPlotUpdate() {
+      if (!window.currentTempUpdateScheduled && currentTempPlot) {
+        window.currentTempUpdateScheduled = true;
+        requestAnimationFrame(() => {
+          currentTempPlot.setData(currentTempData);
+          window.currentTempUpdateScheduled = false;
+        });
+      }
+    }
+
+    function scheduleVoltagePlotUpdate() {
+      if (!window.voltageUpdateScheduled && voltagePlot) {
+        window.voltageUpdateScheduled = true;
+        requestAnimationFrame(() => {
+          voltagePlot.setData(voltageData);
+          window.voltageUpdateScheduled = false;
+        });
+      }
+    }
+
+    function scheduleRPMPlotUpdate() {
+      if (!window.rpmUpdateScheduled && rpmPlot) {
+        window.rpmUpdateScheduled = true;
+        requestAnimationFrame(() => {
+          rpmPlot.setData(rpmData);
+          window.rpmUpdateScheduled = false;
+        });
+      }
+    }
+
+
+    function initWifiPlot() {
+      const plotEl = document.getElementById('wifi-plot');
+      if (!plotEl) {
+        console.error("WiFi plot element not found");
+        return;
+      }
+
+      const opts = {
+        width: plotEl.clientWidth,
+        height: 300,
+        title: "WiFi Signal Strength",
+        series: [
+          {},
+          {
+            label: "Signal Strength (dB)",
+            stroke: "#ff6600",
+            width: 2,
+            scale: "strength"
+          }
+        ],
+        axes: [
+          {},
+          {
+            scale: "strength",
+            label: "dB",
+            grid: { show: true }
+          }
+        ],
+        scales: {
+          x: { time: true },
+          strength: {
+            auto: true,
+            range: [-90, -30]
+          }
+        },
+        plugins: [{
+          hooks: {
+            init: [
+              (u) => {
+                const resizePlot = debounce(() => {
+                  const plotEl = document.getElementById("wifi-plot");
+                  if (plotEl && uplot) {
+                    uplot.setSize({ width: plotEl.clientWidth, height: 300 });
+                  }
+                }, 1000);  // Delay resizing until 1s after changes stop
+                const ro = new ResizeObserver(resizePlot);
+                ro.observe(plotEl);
+              }
+            ]
+          }
+        }]
+      };
+
+      uplot = new uPlot(opts, wifiData, plotEl);
+      const startTime = Math.floor(Date.now() / 1000);
+      wifiData[0].push(startTime);
+      wifiData[1].push(-65);
+      uplot.setData(wifiData);
+    }
+
+
+
+
+
+
+
+
+    function initCurrentTempPlot() {
+      const plotEl = document.getElementById('current-temp-plot');
+      if (!plotEl) {
+        console.error("Current & Temperature plot element not found");
+        return;
+      }
+
+      const opts = {
+        width: plotEl.clientWidth,
+        height: 300,
+        title: "Current & Temperature History",
+        series: [
+          {}, // timestamps
+          {
+            label: "Battery Current (A)",
+            stroke: "#4CAF50",
+            width: 2,
+            scale: "current"
+          },
+          {
+            label: "Alternator Current (A)",
+            stroke: "#2196F3",
+            width: 2,
+            scale: "current"
+          },
+          {
+            label: "Field Current (A)",
+            stroke: "#9C27B0",
+            width: 2,
+            scale: "current"
+          },
+          {
+            label: "Alt. Temp (°F)",
+            stroke: "#FF5722",
+            width: 2,
+            scale: "current"  // <-- Temperature now uses same Y-axis as current
+          }
+        ],
+        axes: [
+          {}, // x-axis (time)
+          {
+            scale: "current",
+            label: "Amperes / °F",
+            grid: { show: true },
+            side: 3
+          }
+        ],
+        scales: {
+          x: { time: true },
+          current: {
+            auto: true
+          }
+        },
+        plugins: [{
+          hooks: {
+            init: [
+              (u) => {
+                const resizePlot = debounce(() => {
+                  const plotEl = document.getElementById("current-temp-plot");
+                  if (plotEl && currentTempPlot) {
+                    currentTempPlot.setSize({ width: plotEl.clientWidth, height: 300 });
+                  }
+                }, 1000);
+                const ro = new ResizeObserver(resizePlot);
+                ro.observe(plotEl);
+              }
+            ]
+          }
+        }]
+      };
+
+      currentTempPlot = new uPlot(opts, currentTempData, plotEl);
+      const startTime = Math.floor(Date.now() / 1000);
+      currentTempData[0].push(startTime);
+      currentTempData[1].push(0);
+      currentTempData[2].push(0);
+      currentTempData[3].push(0);
+      currentTempData[4].push(100); // Initial temperature value
+      currentTempPlot.setData(currentTempData);
+    }
+
+
+
+
+
+
+
+
+
+
+    function initVoltagePlot() {
+      const plotEl = document.getElementById('voltage-plot');
+      if (!plotEl) {
+        console.error("Voltage plot element not found");
+        return;
+      }
+
+      const opts = {
+        width: plotEl.clientWidth,
+        height: 300,
+        title: "Battery Voltage History",
+        series: [
+          {},
+          {
+            label: "ADS Battery (V)",
+            stroke: "#FF9800", // Orange
+            width: 2,
+            scale: "voltage"
+          },
+          {
+            label: "Victron Battery (V)",
+            stroke: "#3F51B5", // Indigo
+            width: 2,
+            scale: "voltage"
+          },
+
+
+
+          {
+            label: "INA Battery (V)",
+            stroke: "#607D8B", // Blue Grey
+            width: 2,
+            scale: "voltage"
+          }
+        ],
+        axes: [
+          {},
+          {
+            scale: "voltage",
+            label: "Volts",
+            grid: { show: true }
+          }
+        ],
+        scales: {
+          x: { time: true },
+          voltage: {
+            auto: true,
+          }
+        },
+        plugins: [{
+          hooks: {
+            init: [
+              (u) => {
+                const resizePlot = debounce(() => {
+                  const plotEl = document.getElementById("voltage-plot");
+                  if (plotEl && voltagePlot) {
+                    voltagePlot.setSize({ width: plotEl.clientWidth, height: 300 });
+                  }
+                }, 1000);
+                const ro = new ResizeObserver(resizePlot);
+                ro.observe(plotEl);
+              }
+            ]
+          }
+        }]
+      };
+
+      voltagePlot = new uPlot(opts, voltageData, plotEl);
+      const startTime = Math.floor(Date.now() / 1000);
+      voltageData[0].push(startTime);
+      voltageData[1].push(0);
+      voltageData[2].push(0);
+      voltageData[3].push(0);
+      voltagePlot.setData(voltageData);
+    }
+
+    function initRPMPlot() {
+      const plotEl = document.getElementById('rpm-plot');
+      if (!plotEl) {
+        console.error("RPM plot element not found");
+        return;
+      }
+
+      const opts = {
+        width: plotEl.clientWidth,
+        height: 300,
+        title: "RPM History",
+        series: [
+          {}, // timestamps
+          {
+            label: "RPM",
+            stroke: "#E91E63",
+            width: 2,
+            scale: "rpm"
+          }
+        ],
+        axes: [
+          {},
+          {
+            scale: "rpm",
+            label: "rev/min",
+            grid: { show: true }
+          }
+        ],
+        scales: {
+          x: { time: true },
+          rpm: { auto: true }
+        },
+        plugins: [{
+          hooks: {
+            init: [
+              (u) => {
+                const resizePlot = debounce(() => {
+                  const plotEl = document.getElementById("rpm-plot");
+                  if (plotEl && rpmPlot) {
+                    rpmPlot.setSize({ width: plotEl.clientWidth, height: 300 });
+                  }
+                }, 1000);
+                const ro = new ResizeObserver(resizePlot);
+                ro.observe(plotEl);
+              }
+            ]
+          }
+        }]
+      };
+
+      rpmPlot = new uPlot(opts, rpmData, plotEl);
+      const startTime = Math.floor(Date.now() / 1000);
+      rpmData[0].push(startTime);
+      rpmData[1].push(0);
+      rpmPlot.setData(rpmData);
+    }
+
+
+
+
+    window.addEventListener("load", function () {
+      initWifiPlot();
+      initCurrentTempPlot();
+      initVoltagePlot();
+      initRPMPlot();
+
+
+
       if (!!window.EventSource) {
-        var source = new EventSource('/events');
-        source.addEventListener('BulkData', function(e) {
+        const fields = {
+          AltTempID: "AlternatorTemperatureF",
+          LoopTimeID: "LoopTime",
+          MaximumLoopTimeID: "MaximumLoopTime",
+          DutyCycleID: "DutyCycle",
+          BatteryVID: "BatteryV",
+          MeasAmpsID: "MeasuredAmps",
+          RPMID: "RPM",
+          ADS3ID: "Channel3V",
+          IBVID: "IBV",
+          BCurrID: "Bcur",
+          VictronVoltageID: "VictronVoltage",
+          FieldVoltsID: "vvout",
+          FieldAmpsID: "iiout",
+          GPSHID: "HeadingNMEA",
+          WifiStrengthID: "WifiStrength",
+          WifiHeartBeatID: "WifiHeartBeat",
+          AnalogReadTimeID: "AnalogReadTime",
+          SendWifiTimeID: "SendWifiTime",
+          VeTimeID: "VeTime",
+          TemperatureLimitF_echo: "TemperatureLimitF",
+          FullChargeVoltage_echo: "FullChargeVoltage",
+          TargetAmpz_echo: "TargetAmpz",
+          TargetFloatVoltage1_echo: "TargetFloatVoltage1",
+          SwitchingFrequency_echo: "SwitchingFrequency",
+          interval1_echo: "interval1",
+          FieldAdjustmentInterval1_echo: "FieldAdjustmentInterval1",
+          ManualVoltage_echo: "ManualVoltage",
+          SwitchControlOverride1_echo: "SwitchControlOverride1",
+          OnOff1_echo: "OnOff1",
+          ManualFieldToggle1_echo: "ManualFieldToggle1",
+          HiLow1_echo: "HiLow1",
+          LimpHome1_echo: "LimpHome1",
+          VeData1_echo: "VeData1",
+          NMEA0183Data1_echo: "NMEA0183Data1",
+          NMEA2KData1_echo: "NMEA2KData1"
+        };
+
+        // this is the numerical displays, with scaling done locally
+        const source = new EventSource('/events');
+        source.addEventListener('BulkData', function (e) {
           const data = JSON.parse(e.data);
-          const fields = {
-            AltTempID: "AlternatorTemperatureF",
-            LoopTimeID: "LoopTime",
-            MaximumLoopTimeID: "MaximumLoopTime",
-            DutyCycleID: "DutyCycle",
-            BatteryVID: "BatteryV",
-            MeasAmpsID: "MeasuredAmps",
-            RPMID: "RPM",
-            ADS3ID: "Channel3V",
-            IBVID: "IBV",
-            BCurrID: "Bcur",
-            VictronVoltageID: "VictronVoltage",
-            FieldVoltsID: "vvout",
-            FieldAmpsID: "iiout",
-            GPSHID: "HeadingNMEA",
-            WifiStrengthID: "WifiStrength",
-            WifiHeartBeatID: "WifiHeartBeat",
-            AnalogReadTimeID: "AnalogReadTime",
-            SendWifiTimeID: "SendWifiTime",
-            VeTimeID: "VeTime"
-          };
+
+          // PART 1: Update display elements (your existing code)
           for (const [elementId, key] of Object.entries(fields)) {
             const el = document.getElementById(elementId);
             if (el && key in data) {
-              el.innerHTML = data[key];
+              if (key === "BatteryV" || key === "Channel3V" || key === "IBV" || key === "VictronVoltage" || key === "vvout") {
+                el.innerHTML = (data[key] / 100).toFixed(2);
+              }
+              else if (key === "MeasuredAmps" || key === "Bcur" || key === "iiout") {
+                el.innerHTML = (data[key] / 10).toFixed(2);
+              }
+              else {
+                el.innerHTML = data[key];
+              }
             }
+          }
+
+       
+
+
+          // PART 3: Update echo elements
+
+          // console.log("Received data for echo updates:", data);
+
+
+          if ('TemperatureLimitF' in data) {
+            document.getElementById('TemperatureLimitF_echo').textContent = data.TemperatureLimitF;
+          }
+          if ('FullChargeVoltage' in data) {
+            document.getElementById('FullChargeVoltage_echo').textContent = (data.FullChargeVoltage / 100).toFixed(2);
+          }
+          if ('TargetAmpz' in data) {
+            document.getElementById('TargetAmpz_echo').textContent = data.TargetAmpz;
+          }
+          if ('TargetFloatVoltage1' in data) {
+            document.getElementById('TargetFloatVoltage1_echo').textContent = (data.TargetFloatVoltage1 / 100).toFixed(2);
+          }
+          if ('SwitchingFrequency' in data) {
+            document.getElementById('SwitchingFrequency_echo').textContent = data.SwitchingFrequency;
+          }
+          if ('interval1' in data) {
+            document.getElementById('interval1_echo').textContent = (data.interval1 / 100).toFixed(2);
+          }
+          if ('FieldAdjustmentInterval1' in data) {
+            document.getElementById('FieldAdjustmentInterval1_echo').textContent = (data.FieldAdjustmentInterval1 / 100).toFixed(2);
+          }
+          if ('ManualVoltage' in data) {
+            document.getElementById('ManualVoltage_echo').textContent = (data.ManualVoltage / 100).toFixed(2);
+          }
+          if ('SwitchControlOverride1' in data) {
+            document.getElementById('SwitchControlOverride1_echo').textContent = data.SwitchControlOverride1;
+          }
+          if ('OnOff1' in data) {
+            document.getElementById('OnOff1_echo').textContent = data.OnOff1;
+          }
+          if ('ManualFieldToggle1' in data) {
+            document.getElementById('ManualFieldToggle1_echo').textContent = data.ManualFieldToggle1;
+          }
+          if ('HiLow1' in data) {
+            document.getElementById('HiLow1_echo').textContent = data.HiLow1;
+          }
+          if ('LimpHome1' in data) {
+            document.getElementById('LimpHome1_echo').textContent = data.LimpHome1;
+          }
+          if ('VeData1' in data) {
+            document.getElementById('VeData1_echo').textContent = data.VeData1;
+          }
+          if ('NMEA0183Data1' in data) {
+            document.getElementById('NMEA0183Data1_echo').textContent = data.NMEA0183Data1;
+          }
+          if ('NMEA2KData1' in data) {
+            document.getElementById('NMEA2KData1_echo').textContent = data.NMEA2KData1;
+          }
+
+          const now = Math.floor(Date.now() / 1000);
+
+
+
+          // Update WiFi Signal plot data
+          if ('WifiStrength' in data && typeof uplot !== 'undefined') {
+            const strength = parseFloat(data.WifiStrength);
+            wifiData[0].push(now);
+            wifiData[1].push(strength);
+            if (wifiData[0].length > maxPoints) {
+              wifiData[0].shift();
+              wifiData[1].shift();
+            }
+          }
+
+          // Update Current & Temperature plot data arrays
+          // Note that scaling is done locally here, too, sorry
+
+          if (typeof currentTempPlot !== 'undefined') {
+            const battCurrent = 'Bcur' in data ? parseFloat(data.Bcur) / 10 : null;
+            const altCurrent = 'MeasuredAmps' in data ? parseFloat(data.MeasuredAmps) / 10 : null;
+            const fieldCurrent = 'iiout' in data ? parseFloat(data.iiout) / 10 : null;
+            const altTemp = 'AlternatorTemperatureF' in data ? parseFloat(data.AlternatorTemperatureF) : null;
+
+            currentTempData[0].push(now);
+            currentTempData[1].push(battCurrent);
+            currentTempData[2].push(altCurrent);
+            currentTempData[3].push(fieldCurrent);
+            currentTempData[4].push(altTemp);
+
+            if (currentTempData[0].length > maxPoints) {
+              currentTempData[0].shift();
+              currentTempData[1].shift();
+              currentTempData[2].shift();
+              currentTempData[3].shift();
+              currentTempData[4].shift();
+            }
+          }
+
+          // Update Voltage plot data arrays
+          if (typeof voltagePlot !== 'undefined') {
+            const adsBattV = 'BatteryV' in data ? parseFloat(data.BatteryV) / 100 : null;
+            const victronBattV = 'VictronVoltage' in data ? parseFloat(data.VictronVoltage) / 100 : null;
+            const inaBattV = 'IBV' in data ? parseFloat(data.IBV) / 100 : null;
+
+            voltageData[0].push(now);
+            voltageData[1].push(adsBattV);
+            voltageData[2].push(victronBattV);
+            voltageData[3].push(inaBattV);
+
+            if (voltageData[0].length > maxPoints) {
+              voltageData[0].shift();
+              voltageData[1].shift();
+              voltageData[2].shift();
+              voltageData[3].shift();
+            }
+          }
+
+          // Update RPM plot data arrays
+          if (typeof rpmPlot !== 'undefined') {
+            const rpmValue = 'RPM' in data ? parseFloat(data.RPM) : null;
+
+            rpmData[0].push(now);
+            rpmData[1].push(rpmValue);
+
+            if (rpmData[0].length > maxPoints) {
+              rpmData[0].shift();
+              rpmData[1].shift();
+            }
+          }
+
+
+
+
+          // Only update the plots if enough time has passed - now update all three plots
+          const nowMs = Date.now();
+          if (nowMs - lastPlotUpdate > PLOT_UPDATE_INTERVAL_MS) {
+            schedulePlotUpdate();
+            scheduleCurrentTempPlotUpdate();
+            scheduleVoltagePlotUpdate();
+            scheduleRPMPlotUpdate();
+            lastPlotUpdate = nowMs;
           }
         }, false);
       }
-    </script>
-  </body>
+
+      // Initialize toggle states on page load
+      document.getElementById("ManualFieldToggle1_checkbox").checked = (document.getElementById("ManualFieldToggle1").value === "1");
+      document.getElementById("SwitchControlOverride1_checkbox").checked = (document.getElementById("SwitchControlOverride1").value === "1");
+      document.getElementById("OnOff1_checkbox").checked = (document.getElementById("OnOff1").value === "1");
+      document.getElementById("LimpHome1_checkbox").checked = (document.getElementById("LimpHome1").value === "1");
+      document.getElementById("HiLow1_checkbox").checked = (document.getElementById("HiLow1").value === "1");
+      document.getElementById("VeData1_checkbox").checked = (document.getElementById("VeData1").value === "1");
+      document.getElementById("NMEA0183Data1_checkbox").checked = (document.getElementById("NMEA0183Data1").value === "1");
+      document.getElementById("NMEA2KData1_checkbox").checked = (document.getElementById("NMEA2KData1").value === "1");
+    });
+  </script>
+</body>
+
 </html>
