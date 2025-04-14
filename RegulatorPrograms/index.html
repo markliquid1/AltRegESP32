@@ -253,8 +253,36 @@
       margin: 0 8px;
       vertical-align: middle;
     }
+
+    .inline-status {
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      color: white;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    .inline-status-connected {
+      background-color: #4CAF50;
+    }
+
+    .inline-status-disconnected {
+      background-color: #F44336;
+    }
   </style>
+
+
   <script>
+    // Connection monitoring variables
+    let lastEventTime = Date.now();
+    const connectionCheckInterval = 10000; // Check every 10 seconds
+
+
     function submitMessage() {
       console.log("Form submitted - values will update shortly");
       // setTimeout(function () { document.location.reload(false); }, 500); // not needed anymore because
@@ -264,7 +292,7 @@
 
 <body>
   <iframe name="hidden-form" style="display:none"></iframe>
-  <h2>Settings</h2>
+  <h2>Settings <span id="inline-status" class="inline-status inline-status-connected">CONNECTED</span></h2>
   <div class="settings-grid">
     <div class="settings-card">
       <div class="section-title">Charging</div>
@@ -602,10 +630,6 @@
 
 
 
-  <div class="settings-card">
-    <div class="section-title">WiFi Signal Strength History</div>
-    <div class="plot-container" id="wifi-plot"></div>
-  </div>
 
 
   <div class="settings-card">
@@ -624,6 +648,10 @@
   </div>
 
 
+  <div class="settings-card">
+    <div class="section-title">WiFi Signal Strength History</div>
+    <div class="plot-container" id="wifi-plot"></div>
+  </div>
 
 
   <script>
@@ -633,6 +661,19 @@
         clearTimeout(timer);
         timer = setTimeout(() => fn.apply(this, args), delay);
       };
+    }
+
+    function updateInlineStatus(isConnected) {
+      const inlineStatus = document.getElementById('inline-status');
+      if (inlineStatus) {
+        if (isConnected) {
+          inlineStatus.className = 'inline-status inline-status-connected';
+          inlineStatus.textContent = 'CONNECTED';
+        } else {
+          inlineStatus.className = 'inline-status inline-status-disconnected';
+          inlineStatus.textContent = 'DISCONNECTED';
+        }
+      }
     }
 
     // WiFi Signal Plot Data
@@ -1041,7 +1082,40 @@
 
         // this is the numerical displays, with scaling done locally
         const source = new EventSource('/events');
+
+        source.addEventListener('open', function () {
+          updateInlineStatus(true);
+        }, false);
+
+        source.addEventListener('error', function () {
+          updateInlineStatus(false);
+          // Attempt to reconnect after error
+          setTimeout(function () {
+            if (source.readyState === EventSource.CLOSED) {
+              // You might want to reinitialize the source here if needed
+            }
+          }, 5000); // Try to reconnect after 5 seconds
+        }, false);
+
+        // Initial status - set to connected if we made it this far
+        updateInlineStatus(true);
+
+        // ADD THE CODE RIGHT HERE - after the event listeners but before the BulkData listener
+        setInterval(function () {
+          const timeSinceLastEvent = Date.now() - lastEventTime;
+          if (timeSinceLastEvent > 3000) { // 3 seconds without data = disconnected
+            updateInlineStatus(false);
+          }
+        }, 2000); // Check every 2 seconds
+
         source.addEventListener('BulkData', function (e) {
+
+          // Update timestamp when data is received
+          lastEventTime = Date.now();
+
+          // Immediately mark as connected when data arrives
+          updateInlineStatus(true);
+
           const data = JSON.parse(e.data);
 
           // PART 1: Update display elements (your existing code)
@@ -1060,7 +1134,7 @@
             }
           }
 
-       
+
 
 
           // PART 3: Update echo elements
@@ -1198,6 +1272,18 @@
             scheduleCurrentTempPlotUpdate();
             scheduleVoltagePlotUpdate();
             scheduleRPMPlotUpdate();
+
+            // Add connection status check here - it will run once per second with your other updates
+            const timeSinceLastEvent = nowMs - lastEventTime;
+            if (timeSinceLastEvent > 5000) { // 5 seconds without new data = disconnected
+              updateInlineStatus(false);
+            } else {
+              updateInlineStatus(true);
+            }
+
+
+
+
             lastPlotUpdate = nowMs;
           }
         }, false);
