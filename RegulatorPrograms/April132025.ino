@@ -39,7 +39,7 @@ int SendWifiTime = 0;
 int AnalogReadTime = 0;   // this is the present
 int AnalogReadTime2 = 0;  // this is the maximum ever
 
-
+//Input Settings
 int TargetAmps = 55;  //Normal alternator output, for best performance, set ot something that just barely won't overheat
 float TargetFloatVoltage = 13.9;
 float TargetBulkVoltage = 14.5;
@@ -75,10 +75,12 @@ bool ledState;             // used for heartbeat blinking LED test can delete la
 float ShuntVoltage_mV;  // Battery shunt voltage from INA228
 float Bcur;             // battery shunt current from INA228
 float IBV;              // Ina 228 battery voltage
+float IBVMax = NAN;     // used to track maximum battery voltage
 float DutyCycle;        // SIC outout %
 float vvout;            // SIC output volts
 float iiout;            // SIC output current
-float AlternatorTemperatureF = NAN;
+float AlternatorTemperatureF = NAN;    // alternator temperature 
+float AlternatorTemperatureFMax = NAN; // used to track maximum alternator temperature
 TaskHandle_t tempTaskHandle = NULL;  // make a separate cpu task for temp reading because it's so slow
 float VictronVoltage = 0;            // battery reading from VeDirect
 float HeadingNMEA = 0;               // Just here to test NMEA functionality
@@ -87,7 +89,30 @@ float HeadingNMEA = 0;               // Just here to test NMEA functionality
 int16_t Raw = 0;
 float Channel0V, Channel1V, Channel2V, Channel3V;
 float BatteryV, MeasuredAmps, RPM;
+float MeasuredAmpsMax;  // used to track maximum alternator output
+float RPMMax; // used to track maximum RPM
 int ADS1115Disconnected = 0;
+
+//Engine Run Time Related Tracking
+int EngineRunTime = 0;  // time engine has been spinning
+int EngineCycles = 0;   // average RPM * Minutes of run time
+int AlternatorOnTime = 0; // might be useful for belt replacement or other maintenance
+
+//Battery Monitor style variables
+int SOC;              // Battery State of charge
+int ChargedEnergy;    // Total Charged Energy from Battery
+int DischargedEnergy; // Total Discharged Energy from Battery
+int AlternatorChargedEnergy; // Total Energy from Alternator
+int AlternatorFuelUsed; // Estimate of fuel used by Alternator
+int SolarFuelSaved; //Charged Energy - AlternatorChargedEnergy * constant
+
+//Controls For LittleFS
+int ResetTemp;  // reset the maximum alternator temperature tracker
+int ResetVotage; // reset the maximum battery voltage measured
+int ResetCurrent; // reset the maximmum alternator output current 
+int ResetEngineRunTime; // reset engine run time tracker
+int ResetAlternatorOnTime; //reset AlternatorOnTime
+int ResetEnergy; // reset Alternator/other Charged energy, and Discharged Energy, and Fuel used
 
 // variables used to show how long each loop takes
 uint64_t starttime;
@@ -210,46 +235,7 @@ void setup() {
 
   initWiFi();  // just leave it here
 
-  // A debug LittleFS contents
-  // Initialize LittleFS
-  if (!LittleFS.begin()) {
-    Serial.println("LittleFS Mount Failed. Files won't be accessible.");
-    return;
-  }
-  // List all files
-  File root = LittleFS.open("/");
-  File file = root.openNextFile();
-  if (!file) {
-    Serial.println("No files found in LittleFS!");
-  } else {
-    Serial.println("Files found in LittleFS:");
-    while (file) {
-      String fileName = file.name();
-      size_t fileSize = file.size();
-      Serial.print("  ");
-      Serial.print(fileName);
-      Serial.print(" (");
-      Serial.print(fileSize);
-      Serial.println(" bytes)");
-      file = root.openNextFile();
-    }
-  }
-  // Try to open specific files we need
-  if (LittleFS.exists("/index.html")) {
-    Serial.println("index.html exists!");
-  } else {
-    Serial.println("index.html NOT found!");
-  }
-  if (LittleFS.exists("/uPlot.min.css")) {
-    Serial.println("uPlot.min.css exists!");
-  } else {
-    Serial.println("uPlot.min.css NOT found!");
-  }
-  if (LittleFS.exists("/uPlot.iife.min.js")) {
-    Serial.println("uPlot.iife.min.js exists!");
-  } else {
-    Serial.println("uPlot.iife.min.js NOT found!");
-  }
+
 
 
   //NMEA2K
@@ -1590,40 +1576,6 @@ void SendWifiData() {
 }
 
 
-
-
-
-// void debounce() {
-//   int reading = digitalRead(buttonPin);
-
-//   // If the switch changed, due to noise or pressing:
-//   if (reading != lastButtonState) {
-//     // reset the debouncing timer
-//     lastDebounceTime = millis();
-//   }
-
-//   if ((millis() - lastDebounceTime) > debounceDelay) {
-//     // whatever the reading is at, it's been there for longer than the debounce
-//     // delay, so take it as the actual current state:
-
-//     // if the button state has changed:
-//     if (reading != buttonState) {
-//       buttonState = reading;
-
-//       // only toggle the LED if the new button state is HIGH
-//       if (buttonState == HIGH) {
-//         ledState = !ledState;
-//       }
-//     }
-//   }
-
-//   // set the LED:
-//   digitalWrite(ledPin, ledState);
-
-//   // save the reading. Next time through the loop, it'll be the lastButtonState:
-//   lastButtonState = reading;
-
-// }
 
 // This is needed becasuse JavaScript allows NaN, but JSON does not—it only allows null, numbers, booleans, strings, arrays, and objects
 //So when  ESP32 sends a payload with NaN, the browser can’t parse it, and the whole stream fails
