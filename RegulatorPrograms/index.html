@@ -288,7 +288,7 @@
 
 
     function submitMessage() {
-     // console.log("Form submitted - values will update shortly");    // shut this off because it's "Console log spam" that might cause delay?
+      // console.log("Form submitted - values will update shortly");    // shut this off because it's "Console log spam" that might cause delay?
       // setTimeout(function () { document.location.reload(false); }, 500); // not needed anymore because
     }
   </script>
@@ -350,6 +350,27 @@
           </form>
         </div>
       </div>
+
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Switch Panel Override (<span
+            id="SwitchControlOverride1_echo">%SwitchControlOverride1%</span>):</div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <span class="toggle-label">Off</span>
+            <label class="switch">
+              <input id="SwitchControlOverride1_checkbox" type="checkbox"
+                onchange="document.getElementById('SwitchControlOverride1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">On</span>
+            <input id="SwitchControlOverride1" name="SwitchControlOverride1" type="number"
+              value="%SwitchControlOverride1%" style="display:none;" />
+          </form>
+        </div>
+      </div>
+
+
 
       <hr />
       <div class="form-row">
@@ -459,23 +480,7 @@
     </div>
     <div class="settings-card">
       <div class="section-title">System</div>
-      <div class="form-row">
-        <div class="form-label">Switch Panel Override (<span
-            id="SwitchControlOverride1_echo">%SwitchControlOverride1%</span>):</div>
-        <div class="form-input">
-          <form action="/get" target="hidden-form">
-            <span class="toggle-label">Off</span>
-            <label class="switch">
-              <input id="SwitchControlOverride1_checkbox" type="checkbox"
-                onchange="document.getElementById('SwitchControlOverride1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-              <span class="slider round"></span>
-            </label>
-            <span class="toggle-label">On</span>
-            <input id="SwitchControlOverride1" name="SwitchControlOverride1" type="number"
-              value="%SwitchControlOverride1%" style="display:none;" />
-          </form>
-        </div>
-      </div>
+
 
 
 
@@ -676,6 +681,46 @@
         timer = setTimeout(() => fn.apply(this, args), delay);
       };
     }
+
+    const fieldIndexes = {
+      AlternatorTemperatureF: 0,
+      DutyCycle: 1,
+      BatteryV: 2,
+      MeasuredAmps: 3,
+      RPM: 4,
+      Channel3V: 5,
+      IBV: 6,
+      Bcur: 7,
+      VictronVoltage: 8,
+      LoopTime: 9,
+      WifiStrength: 10,
+      WifiHeartBeat: 11,
+      SendWifiTime: 12,
+      AnalogReadTime: 13,
+      VeTime: 14,
+      MaximumLoopTime: 15,
+      HeadingNMEA: 16,
+      vvout: 17,
+      iiout: 18,
+      FreeHeap: 19,
+      TemperatureLimitF: 20,
+      FullChargeVoltage: 21,
+      TargetAmpz: 22,
+      TargetFloatVoltage1: 23,
+      SwitchingFrequency: 24,
+      interval1: 25,
+      FieldAdjustmentInterval1: 26,
+      ManualVoltage: 27,
+      SwitchControlOverride1: 28,
+      OnOff1: 29,
+      ManualFieldToggle1: 30,
+      HiLow1: 31,
+      LimpHome1: 32,
+      VeData1: 33,
+      NMEA0183Data1: 34,
+      NMEA2KData1: 35
+    };
+
 
     function updateInlineStatus(isConnected) {
       const cornerStatus = document.getElementById('corner-status');
@@ -1200,47 +1245,51 @@
           // Parse CSV data into an array
           const values = e.data.split(',').map(Number);
 
-          // Create a data object with the same keys as before but populated from CSV array
-          const data = {
-            // Readings (indices 0-18)
-            AlternatorTemperatureF: values[0],
-            DutyCycle: values[1],
-            BatteryV: values[2],           // 2 decimal places (multiplied by 100)
-            MeasuredAmps: values[3],       // 1 decimal place (multiplied by 10)
-            RPM: values[4],
-            Channel3V: values[5],          // 2 decimal places (multiplied by 100)
-            IBV: values[6],                // 2 decimal places (multiplied by 100)
-            Bcur: values[7],               // 1 decimal place (multiplied by 10)
-            VictronVoltage: values[8],     // 2 decimal places (multiplied by 100)
-            LoopTime: values[9],
-            WifiStrength: values[10],
-            WifiHeartBeat: values[11],
-            SendWifiTime: values[12],
-            AnalogReadTime: values[13],
-            VeTime: values[14],
-            MaximumLoopTime: values[15],
-            HeadingNMEA: values[16],
-            vvout: values[17],             // 2 decimal places (multiplied by 100)
-            iiout: values[18],            // 1 decimal place
-            FreeHeap: values[19],         // Free heap memory
-            TemperatureLimitF: values[20],
-            FullChargeVoltage: values[21],
-            TargetAmpz: values[22],
-            TargetFloatVoltage1: values[23],
-            SwitchingFrequency: values[24],
-            interval1: values[25],
-            FieldAdjustmentInterval1: values[26],
-            ManualVoltage: values[27],
-            SwitchControlOverride1: values[28],
-            OnOff1: values[29],
-            ManualFieldToggle1: values[30],
-            HiLow1: values[31],
-            LimpHome1: values[32],
-            VeData1: values[33],
-            NMEA0183Data1: values[34],
-            NMEA2KData1: values[35]
+          if (values.length !== Object.keys(fieldIndexes).length) {
+            console.warn("CSV mismatch: ESP32/HTML field count diverged");
+            return;
+          }
 
+
+          const data = {
+            AlternatorTemperatureF: values[fieldIndexes.AlternatorTemperatureF],
+            DutyCycle: values[fieldIndexes.DutyCycle],
+            BatteryV: values[fieldIndexes.BatteryV],
+            MeasuredAmps: values[fieldIndexes.MeasuredAmps],
+            RPM: values[fieldIndexes.RPM],
+            Channel3V: values[fieldIndexes.Channel3V],
+            IBV: values[fieldIndexes.IBV],
+            Bcur: values[fieldIndexes.Bcur],
+            VictronVoltage: values[fieldIndexes.VictronVoltage],
+            LoopTime: values[fieldIndexes.LoopTime],
+            WifiStrength: values[fieldIndexes.WifiStrength],
+            WifiHeartBeat: values[fieldIndexes.WifiHeartBeat],
+            SendWifiTime: values[fieldIndexes.SendWifiTime],
+            AnalogReadTime: values[fieldIndexes.AnalogReadTime],
+            VeTime: values[fieldIndexes.VeTime],
+            MaximumLoopTime: values[fieldIndexes.MaximumLoopTime],
+            HeadingNMEA: values[fieldIndexes.HeadingNMEA],
+            vvout: values[fieldIndexes.vvout],
+            iiout: values[fieldIndexes.iiout],
+            FreeHeap: values[fieldIndexes.FreeHeap],
+            TemperatureLimitF: values[fieldIndexes.TemperatureLimitF],
+            FullChargeVoltage: values[fieldIndexes.FullChargeVoltage],
+            TargetAmpz: values[fieldIndexes.TargetAmpz],
+            TargetFloatVoltage1: values[fieldIndexes.TargetFloatVoltage1],
+            SwitchingFrequency: values[fieldIndexes.SwitchingFrequency],
+            interval1: values[fieldIndexes.interval1],
+            FieldAdjustmentInterval1: values[fieldIndexes.FieldAdjustmentInterval1],
+            ManualVoltage: values[fieldIndexes.ManualVoltage],
+            SwitchControlOverride1: values[fieldIndexes.SwitchControlOverride1],
+            OnOff1: values[fieldIndexes.OnOff1],
+            ManualFieldToggle1: values[fieldIndexes.ManualFieldToggle1],
+            HiLow1: values[fieldIndexes.HiLow1],
+            LimpHome1: values[fieldIndexes.LimpHome1],
+            VeData1: values[fieldIndexes.VeData1],
+            NMEA0183Data1: values[fieldIndexes.NMEA0183Data1],
+            NMEA2KData1: values[fieldIndexes.NMEA2KData1]
           };
+
 
           // The rest of the function remains the same - update display elements
           for (const [elementId, key] of Object.entries(fields)) {
