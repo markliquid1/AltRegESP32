@@ -628,6 +628,10 @@
         <p>Wifi Heartbeat</p>
         <p class="reading"><span id="WifiHeartBeatID">0</span> #</p>
       </div>
+      <div class="card">
+        <p>Free Heap Memory</p>
+        <p class="reading"><span id="FreeHeapID">0</span> kb</p>
+      </div>
     </div>
   </div>
   <h2>Plots</h2>
@@ -807,11 +811,6 @@
 
 
 
-
-
-
-
-
     function initCurrentTempPlot() {
       const plotEl = document.getElementById('current-temp-plot');
       if (!plotEl) {
@@ -892,13 +891,6 @@
       currentTempData[4].push(100); // Initial temperature value
       currentTempPlot.setData(currentTempData);
     }
-
-
-
-
-
-
-
 
 
 
@@ -1082,7 +1074,8 @@
           LimpHome1_echo: "LimpHome1",
           VeData1_echo: "VeData1",
           NMEA0183Data1_echo: "NMEA0183Data1",
-          NMEA2KData1_echo: "NMEA2KData1"
+          NMEA2KData1_echo: "NMEA2KData1",
+          FreeHeapID: "FreeHeap" // Add this line for free heap memory
         };
 
         // this is the numerical displays, with scaling done locally
@@ -1113,17 +1106,59 @@
           }
         }, 2000); // Check every 2 seconds
 
-        source.addEventListener('BulkData', function (e) {
-
+        source.addEventListener('CSVData', function (e) {
           // Update timestamp when data is received
           lastEventTime = Date.now();
 
           // Immediately mark as connected when data arrives
           updateInlineStatus(true);
 
-          const data = JSON.parse(e.data);
+          // Parse CSV data into an array
+          const values = e.data.split(',').map(Number);
 
-          // PART 1: Update display elements (your existing code)
+          // Create a data object with the same keys as before but populated from CSV array
+          const data = {
+            // Readings (indices 0-18)
+            AlternatorTemperatureF: values[0],
+            DutyCycle: values[1],
+            BatteryV: values[2],           // 2 decimal places (multiplied by 100)
+            MeasuredAmps: values[3],       // 1 decimal place (multiplied by 10)
+            RPM: values[4],
+            Channel3V: values[5],          // 2 decimal places (multiplied by 100)
+            IBV: values[6],                // 2 decimal places (multiplied by 100)
+            Bcur: values[7],               // 1 decimal place (multiplied by 10)
+            VictronVoltage: values[8],     // 2 decimal places (multiplied by 100)
+            LoopTime: values[9],
+            WifiStrength: values[10],
+            WifiHeartBeat: values[11],
+            SendWifiTime: values[12],
+            AnalogReadTime: values[13],
+            VeTime: values[14],
+            MaximumLoopTime: values[15],
+            HeadingNMEA: values[16],
+            vvout: values[17],             // 2 decimal places (multiplied by 100)
+            iiout: values[18],            // 1 decimal place
+            FreeHeap: values[19],         // Free heap memory
+            TemperatureLimitF: values[20],
+            FullChargeVoltage: values[21],
+            TargetAmpz: values[22],
+            TargetFloatVoltage1: values[23],
+            SwitchingFrequency: values[24],
+            interval1: values[25],
+            FieldAdjustmentInterval1: values[26],
+            ManualVoltage: values[27],
+            SwitchControlOverride1: values[28],
+            OnOff1: values[29],
+            ManualFieldToggle1: values[30],
+            HiLow1: values[31],
+            LimpHome1: values[32],
+            VeData1: values[33],
+            NMEA0183Data1: values[34],
+            NMEA2KData1: values[35]
+
+          };
+
+          // The rest of the function remains the same - update display elements
           for (const [elementId, key] of Object.entries(fields)) {
             const el = document.getElementById(elementId);
             if (el && key in data) {
@@ -1139,14 +1174,7 @@
             }
           }
 
-
-
-
-          // PART 3: Update echo elements
-
-          // console.log("Received data for echo updates:", data);
-
-
+          // Update echo elements
           if ('TemperatureLimitF' in data) {
             document.getElementById('TemperatureLimitF_echo').textContent = data.TemperatureLimitF;
           }
@@ -1198,8 +1226,7 @@
 
           const now = Math.floor(Date.now() / 1000);
 
-
-
+          // Update plot data - this section remains the same
           // Update WiFi Signal plot data
           if ('WifiStrength' in data && typeof uplot !== 'undefined') {
             const strength = parseFloat(data.WifiStrength);
@@ -1212,8 +1239,6 @@
           }
 
           // Update Current & Temperature plot data arrays
-          // Note that scaling is done locally here, too, sorry
-
           if (typeof currentTempPlot !== 'undefined') {
             const battCurrent = 'Bcur' in data ? parseFloat(data.Bcur) / 10 : null;
             const altCurrent = 'MeasuredAmps' in data ? parseFloat(data.MeasuredAmps) / 10 : null;
@@ -1267,9 +1292,6 @@
             }
           }
 
-
-
-
           // Only update the plots if enough time has passed - now update all three plots
           const nowMs = Date.now();
           if (nowMs - lastPlotUpdate > PLOT_UPDATE_INTERVAL_MS) {
@@ -1285,9 +1307,6 @@
             } else {
               updateInlineStatus(true);
             }
-
-
-
 
             lastPlotUpdate = nowMs;
           }
