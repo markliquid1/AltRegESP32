@@ -45,7 +45,7 @@ float TargetFloatVoltage = 13.9;
 float TargetBulkVoltage = 14.5;
 float ChargingVoltageTarget = 0;          // This is what the code really uses. It gets set to TargetFloatVoltage or TargetBulkVoltage later on
 float interval = 0.1;                     // voltage step to adjust field target by, each time the loop runs.  Larger numbers = faster response, less stability
-int FieldAdjustmentInterval = 500;      // The regulator field output is updated once every this many milliseconds
+float FieldAdjustmentInterval = 500;      // The regulator field output is updated once every this many milliseconds
 float MinimumFieldVoltage = 1;            // A min value here ensures that engine speed can be measured even with no alternator output commanded.  (This is only enforced when Ignition input is high)
 float AlternatorTemperatureLimitF = 150;  // the offset appears to be +40 to +50 to get true max alternator external metal temp, depending on temp sensor installation, so 150 here will produce a metal temp ~200F
 int ManualFieldToggle = 1;                // set to 1 to enable manual control of regulator field output, helpful for debugging
@@ -425,7 +425,7 @@ void setup() {
     } else if (request->hasParam(FAI)) {
       inputMessage = request->getParam(FAI)->value();
       writeFile(LittleFS, "/FieldAdjustmentInterval1.txt", inputMessage.c_str());
-      FieldAdjustmentInterval = inputMessage.toInt();
+      FieldAdjustmentInterval = inputMessage.toFloat();
     } else if (request->hasParam(MFT)) {
       inputMessage = request->getParam(MFT)->value();
       writeFile(LittleFS, "/ManualFieldToggle1.txt", inputMessage.c_str());
@@ -516,87 +516,87 @@ void setup() {
     //String stringOne = String(13);                        // Convert an Integer to a String
     //String stringOne = String(5.69, 2);                      // Convert a float to a string with 2 decimal places
     String stringAlternatorTemperatureLimitF = String(AlternatorTemperatureLimitF);
-    writeFile2("/TemperatureLimitF.txt", stringAlternatorTemperatureLimitF.c_str());
+    writeFile(LittleFS, "/TemperatureLimitF.txt", stringAlternatorTemperatureLimitF.c_str());
   }
   bool ManualVfileexists = LittleFS.exists("/ManualVoltage.txt");
   if (!ManualVfileexists) {
     String stringManualVV = String(ManualVoltageTarget, 2);
-    writeFile2("/ManualVoltage.txt", stringManualVV.c_str());
+    writeFile(LittleFS, "/ManualVoltage.txt", stringManualVV.c_str());
   }
   bool FCVfileexists = LittleFS.exists("/FullChargeVoltage.txt");
   if (!FCVfileexists) {
     String stringFCV = String(ChargingVoltageTarget, 2);
-    writeFile2("/FullChargeVoltage.txt", stringFCV.c_str());
+    writeFile(LittleFS, "/FullChargeVoltage.txt", stringFCV.c_str());
   }
   bool TAfileexists = LittleFS.exists("/TargetAmpz.txt");
   if (!TAfileexists) {
     String stringTA = String(TargetAmps);
-    writeFile2("/TargetAmpz.txt", stringTA.c_str());
+    writeFile(LittleFS, "/TargetAmpz.txt", stringTA.c_str());
   }
   bool Freqfileexists = LittleFS.exists("/SwitchingFrequency.txt");
   if (!Freqfileexists) {
     String stringFreq = String(fffr);
-    writeFile2("/SwitchingFrequency.txt", stringFreq.c_str());
+    writeFile(LittleFS, "/SwitchingFrequency.txt", stringFreq.c_str());
   }
   bool TFVfileexists = LittleFS.exists("/TargetFloatVoltage1.txt");
   if (!TFVfileexists) {
     String stringTFV = String(TargetFloatVoltage);
-    writeFile2("/TargetFloatVoltage1.txt", stringTFV.c_str());
+    writeFile(LittleFS, "/TargetFloatVoltage1.txt", stringTFV.c_str());
   }
   bool intervalfileexists = LittleFS.exists("/interval1.txt");
   if (!intervalfileexists) {
     String stringInterval = String(interval);
-    writeFile2("/interval1.txt", stringInterval.c_str());
+    writeFile(LittleFS, "/interval1.txt", stringInterval.c_str());
   }
   bool Fintervalfileexists = LittleFS.exists("/FieldAdjustmentInterval1.txt");
   if (!Fintervalfileexists) {
     String stringFAI = String(FieldAdjustmentInterval);
-    writeFile2("/FieldAdjustmentInterval1.txt", stringFAI.c_str());
+    writeFile(LittleFS, "/FieldAdjustmentInterval1.txt", stringFAI.c_str());
   }
   bool MFTexists = LittleFS.exists("/ManualFieldToggle1.txt");
   if (!MFTexists) {
     String stringMFT = String(ManualFieldToggle);
-    writeFile2("/ManualFieldToggle1.txt", stringMFT.c_str());
+    writeFile(LittleFS, "/ManualFieldToggle1.txt", stringMFT.c_str());
   }
   bool SCOexists = LittleFS.exists("/SwitchControlOverride1.txt");
   if (!SCOexists) {
     String stringSCO = String(SwitchControlOverride);
-    writeFile2("/SwitchControlOverride1.txt", stringSCO.c_str());
+    writeFile(LittleFS, "/SwitchControlOverride1.txt", stringSCO.c_str());
   }
   bool FFexists = LittleFS.exists("/ForceFloat1.txt");
   if (!FFexists) {
     String stringFF = String(ForceFloat);
-    writeFile2("/ForceFloat1.txt", stringFF.c_str());
+    writeFile(LittleFS, "/ForceFloat1.txt", stringFF.c_str());
   }
   bool OOexists = LittleFS.exists("/OnOff1.txt");
   if (!OOexists) {
     String stringOO = String(OnOff);
-    writeFile2("/OnOff1.txt", stringOO.c_str());
+    writeFile(LittleFS, "/OnOff1.txt", stringOO.c_str());
   }
   bool HLexists = LittleFS.exists("/HiLow1.txt");
   if (!HLexists) {
     String stringHL = String(HiLow);
-    writeFile2("/HiLow1.txt", stringHL.c_str());
+    writeFile(LittleFS, "/HiLow1.txt", stringHL.c_str());
   }
   bool LHexists = LittleFS.exists("/LimpHome1.txt");
   if (!LHexists) {
     String stringLH = String(LimpHome);
-    writeFile2("/LimpHome1.txt", stringLH.c_str());
+    writeFile(LittleFS, "/LimpHome1.txt", stringLH.c_str());
   }
   bool VDexists = LittleFS.exists("/VeData1.txt");
   if (!VDexists) {
     String stringVD = String(VeData);
-    writeFile2("/VeData1.txt", stringVD.c_str());
+    writeFile(LittleFS, "/VeData1.txt", stringVD.c_str());
   }
   bool N0exists = LittleFS.exists("/NMEA0183Data1.txt");
   if (!N0exists) {
     String stringN0 = String(NMEA0183Data);
-    writeFile2("/NMEA0183Data1.txt", stringN0.c_str());
+    writeFile(LittleFS, "/NMEA0183Data1.txt", stringN0.c_str());
   }
   bool N2exists = LittleFS.exists("/NMEA2KData1.txt");
   if (!N2exists) {
     String stringN2 = String(NMEA2KData);
-    writeFile2("/NMEA2KData1.txt", stringN2.c_str());
+    writeFile(LittleFS, "/NMEA2KData1.txt", stringN2.c_str());
   }
 
   //Update some variables with values from ESP32 Flash memory
@@ -607,7 +607,7 @@ void setup() {
   fffr = readFile(LittleFS, "/SwitchingFrequency.txt").toInt();
   TargetFloatVoltage = readFile(LittleFS, "/TargetFloatVoltage1.txt").toFloat();
   interval = readFile(LittleFS, "/interval1.txt").toFloat();
-  FieldAdjustmentInterval = readFile(LittleFS, "/FieldAdjustmentInterval1.txt").toInt();
+  FieldAdjustmentInterval = readFile(LittleFS, "/FieldAdjustmentInterval1.txt").toFloat();
   ManualFieldToggle = readFile(LittleFS, "/ManualFieldToggle1.txt").toInt();
   SwitchControlOverride = readFile(LittleFS, "/SwitchControlOverride1.txt").toInt();
   ForceFloat = readFile(LittleFS, "/ForceFloat1.txt").toInt();
@@ -928,13 +928,6 @@ void TempTask(void *parameter) {
 
     // Immediately loop again — next conversion starts right now
   }
-}
-
-
-// where this is matters!! 
-//Put utility functions like SafeInt() above setup() and loop() , according to ChatGPT.  And I proved it matters.
-int SafeInt(float f, int scale = 1) {
-  return isnan(f) || isinf(f) ? -1 : (int)(f * scale);
 }
 
 
@@ -1369,22 +1362,7 @@ void writeFile(fs::FS &fs, const char *path, const char *message) {
   delay(2);  // Make sure the CREATE and LASTWRITE times are different Delte later?
   file.close();
 }
-void writeFile2(const char *path, const char *message) {
-  //  Serial.printf("Writing file: %s\n", path);
 
-  File file = LittleFS.open(path, "w");
-  if (!file) {
-    Serial.println("Failed to open file for writing and triggered a return");
-    return;
-  }
-  if (file.print(message)) {
-    //   Serial.println("File written");
-  } else {
-    Serial.println("Write failed");
-  }
-  delay(2);  // Make sure the CREATE and LASTWRITE times are different Delte later?
-  file.close();
-}
 
 //The processor() is responsible for searching for placeholders in the HTML text and replacing them with actual values saved on LittleFS.
 String processor(const String &var) {
@@ -1495,55 +1473,57 @@ void SendWifiData() {
   if (millis() - prev_millis5 > webgaugesinterval) {
     WifiStrength = WiFi.RSSI();
     WifiHeartBeat++;
+
     if (WifiStrength >= -70) {
-      int start66 = micros();               // Start timing the wifi section
-      FreeHeap = ESP.getFreeHeap() / 1024;  // making it smaller to transmit in kb
+      int start66 = micros();  // Start timing the wifi section
+                               // Get free heap only when sending data (minimizes overhead)
+      FreeHeap = ESP.getFreeHeap();
       // Build CSV string with all data as integers
       // Format: multiply floats by 10, 100 or 1000 to preserve decimal precision as needed
       char payload[512];  // Smaller buffer size since CSV is more compact
+
       snprintf(payload, sizeof(payload),
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                // Readings
-               SafeInt(AlternatorTemperatureF),
-               SafeInt(DutyCycle),
-               SafeInt(BatteryV, 100),
-               SafeInt(MeasuredAmps, 10),
-               SafeInt(RPM),
-               SafeInt(Channel3V, 100),
-               SafeInt(IBV, 100),
-               SafeInt(Bcur, 10),
-               SafeInt(VictronVoltage, 100),
-               SafeInt(LoopTime),
-               SafeInt(WifiStrength),
-               SafeInt(WifiHeartBeat),
-               SafeInt(SendWifiTime),
-               SafeInt(AnalogReadTime),
-               SafeInt(VeTime),
-               SafeInt(MaximumLoopTime),
-               SafeInt(HeadingNMEA),
-               SafeInt(vvout, 100),
-               SafeInt(iiout, 10),
-               SafeInt(FreeHeap),
+               (int)AlternatorTemperatureF,
+               (int)DutyCycle,
+               (int)(BatteryV * 100),     // 2 decimal places
+               (int)(MeasuredAmps * 10),  // 1 decimal place
+               (int)RPM,
+               (int)(Channel3V * 100),       // 2 decimal places
+               (int)(IBV * 100),             // 2 decimal places
+               (int)(Bcur * 10),             // 1 decimal place
+               (int)(VictronVoltage * 100),  // 2 decimal places
+               (int)LoopTime,
+               (int)WifiStrength,
+               (int)WifiHeartBeat,
+               (int)SendWifiTime,
+               (int)AnalogReadTime,
+               (int)VeTime,
+               (int)MaximumLoopTime,
+               (int)HeadingNMEA,
+               (int)(vvout * 100),  // 2 decimal places
+               (int)(iiout * 10),   // 1 decimal place
+               FreeHeap,            // Free heap as a reading
+
 
                // Settings
-               SafeInt(AlternatorTemperatureLimitF),
-               SafeInt(ChargingVoltageTarget, 100),
-               SafeInt(TargetAmps),
-               SafeInt(TargetFloatVoltage, 100),
-               SafeInt(fffr),
-               SafeInt(interval, 100),
-               SafeInt(FieldAdjustmentInterval),
-               SafeInt(ManualVoltageTarget, 100),
-               SafeInt(SwitchControlOverride),
-               SafeInt(OnOff),
-               SafeInt(ManualFieldToggle),
-               SafeInt(HiLow),
-               SafeInt(LimpHome),
-               SafeInt(VeData),
-               SafeInt(NMEA0183Data),
-               SafeInt(NMEA2KData));
-
-
+               (int)AlternatorTemperatureLimitF,
+               (int)(ChargingVoltageTarget * 100),  // 2 decimal places
+               (int)TargetAmps,
+               (int)(TargetFloatVoltage * 100),  // 2 decimal places
+               (int)fffr,
+               (int)(interval * 100),  // 2 decimal places
+               (int)(FieldAdjustmentInterval),
+               (int)(ManualVoltageTarget * 100),  // 2 decimal places
+               (int)SwitchControlOverride,
+               (int)OnOff,
+               (int)ManualFieldToggle,
+               (int)HiLow,
+               (int)LimpHome,
+               (int)VeData,
+               (int)NMEA0183Data,
+               (int)NMEA2KData);
 
       events.send(payload, "CSVData");    // Changed event name to reflect new format
       SendWifiTime = micros() - start66;  // Calculate WiFi Send Time
@@ -1552,11 +1532,6 @@ void SendWifiData() {
     prev_millis5 = millis();
   }
 }
-
-
-
-
-
 
 //Restart the ESP32 every hour just for maintenance because we can
 //eventaually want to use littleFS to store Battery Monitor Stuff first
