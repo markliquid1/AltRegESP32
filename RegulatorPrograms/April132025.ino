@@ -45,7 +45,7 @@ float TargetFloatVoltage = 13.9;
 float TargetBulkVoltage = 14.5;
 float ChargingVoltageTarget = 0;          // This is what the code really uses. It gets set to TargetFloatVoltage or TargetBulkVoltage later on
 float interval = 0.1;                     // voltage step to adjust field target by, each time the loop runs.  Larger numbers = faster response, less stability
-float FieldAdjustmentInterval = 500;      // The regulator field output is updated once every this many milliseconds
+int FieldAdjustmentInterval = 500;      // The regulator field output is updated once every this many milliseconds
 float MinimumFieldVoltage = 1;            // A min value here ensures that engine speed can be measured even with no alternator output commanded.  (This is only enforced when Ignition input is high)
 float AlternatorTemperatureLimitF = 150;  // the offset appears to be +40 to +50 to get true max alternator external metal temp, depending on temp sensor installation, so 150 here will produce a metal temp ~200F
 int ManualFieldToggle = 1;                // set to 1 to enable manual control of regulator field output, helpful for debugging
@@ -72,47 +72,47 @@ int intervalBLINK = 1000;  // used for heartbeat blinking LED test can delete la
 bool ledState;             // used for heartbeat blinking LED test can delete later
 
 //Variables to store measurements
-float ShuntVoltage_mV;  // Battery shunt voltage from INA228
-float Bcur;             // battery shunt current from INA228
-float IBV;              // Ina 228 battery voltage
-float IBVMax = NAN;     // used to track maximum battery voltage
-float DutyCycle;        // SIC outout %
-float vvout;            // SIC output volts
-float iiout;            // SIC output current
-float AlternatorTemperatureF = NAN;    // alternator temperature 
-float AlternatorTemperatureFMax = NAN; // used to track maximum alternator temperature
-TaskHandle_t tempTaskHandle = NULL;  // make a separate cpu task for temp reading because it's so slow
-float VictronVoltage = 0;            // battery reading from VeDirect
-float HeadingNMEA = 0;               // Just here to test NMEA functionality
+float ShuntVoltage_mV;                  // Battery shunt voltage from INA228
+float Bcur;                             // battery shunt current from INA228
+float IBV;                              // Ina 228 battery voltage
+float IBVMax = NAN;                     // used to track maximum battery voltage
+float DutyCycle;                        // SIC outout %
+float vvout;                            // SIC output volts
+float iiout;                            // SIC output current
+float AlternatorTemperatureF = NAN;     // alternator temperature
+float AlternatorTemperatureFMax = NAN;  // used to track maximum alternator temperature
+TaskHandle_t tempTaskHandle = NULL;     // make a separate cpu task for temp reading because it's so slow
+float VictronVoltage = 0;               // battery reading from VeDirect
+float HeadingNMEA = 0;                  // Just here to test NMEA functionality
 
 // ADS1115
 int16_t Raw = 0;
 float Channel0V, Channel1V, Channel2V, Channel3V;
 float BatteryV, MeasuredAmps, RPM;
 float MeasuredAmpsMax;  // used to track maximum alternator output
-float RPMMax; // used to track maximum RPM
+float RPMMax;           // used to track maximum RPM
 int ADS1115Disconnected = 0;
 
 //Engine Run Time Related Tracking
-int EngineRunTime = 0;  // time engine has been spinning
-int EngineCycles = 0;   // average RPM * Minutes of run time
-int AlternatorOnTime = 0; // might be useful for belt replacement or other maintenance
+int EngineRunTime = 0;     // time engine has been spinning
+int EngineCycles = 0;      // average RPM * Minutes of run time
+int AlternatorOnTime = 0;  // might be useful for belt replacement or other maintenance
 
 //Battery Monitor style variables
-int SOC;              // Battery State of charge
-int ChargedEnergy;    // Total Charged Energy from Battery
-int DischargedEnergy; // Total Discharged Energy from Battery
-int AlternatorChargedEnergy; // Total Energy from Alternator
-int AlternatorFuelUsed; // Estimate of fuel used by Alternator
-int SolarFuelSaved; //Charged Energy - AlternatorChargedEnergy * constant
+int SOC;                      // Battery State of charge
+int ChargedEnergy;            // Total Charged Energy from Battery
+int DischargedEnergy;         // Total Discharged Energy from Battery
+int AlternatorChargedEnergy;  // Total Energy from Alternator
+int AlternatorFuelUsed;       // Estimate of fuel used by Alternator
+int SolarFuelSaved;           //Charged Energy - AlternatorChargedEnergy * constant
 
 //Controls For LittleFS
-int ResetTemp;  // reset the maximum alternator temperature tracker
-int ResetVotage; // reset the maximum battery voltage measured
-int ResetCurrent; // reset the maximmum alternator output current 
-int ResetEngineRunTime; // reset engine run time tracker
-int ResetAlternatorOnTime; //reset AlternatorOnTime
-int ResetEnergy; // reset Alternator/other Charged energy, and Discharged Energy, and Fuel used
+int ResetTemp;              // reset the maximum alternator temperature tracker
+int ResetVotage;            // reset the maximum battery voltage measured
+int ResetCurrent;           // reset the maximmum alternator output current
+int ResetEngineRunTime;     // reset engine run time tracker
+int ResetAlternatorOnTime;  //reset AlternatorOnTime
+int ResetEnergy;            // reset Alternator/other Charged energy, and Discharged Energy, and Fuel used
 
 // variables used to show how long each loop takes
 uint64_t starttime;
@@ -121,6 +121,7 @@ int LoopTime;             // must not use unsigned long becasue cant run String(
 int WifiStrength;         // must not use unsigned long becasue cant run String() on an unsigned long and that's done by the wifi code
 int MaximumLoopTime;      // must not use unsigned long becasue cant run String() on an unsigned long and that's done by the wifi code
 int prev_millis7888 = 0;  // used to reset the meximum loop time
+int FreeHeap;             // as it says, free memory tracker
 
 //"Blink without delay" style timer variables used to control how often differnet parts of code execute
 static unsigned long prev_millis4;   // used to delay checking of faults in the SiC450
@@ -132,6 +133,9 @@ static unsigned long prev_millis33;    // used to delay sampling of Serial Data 
 static unsigned long prev_millis743;   // used to read NMEA2K Network Every X seconds
 static unsigned long prev_millis5;     // used to initiate wifi data exchange
 static unsigned long lastINARead = 0;  // don't read the INA228 needlessly often
+// Global variable to track ESP32 restart time
+unsigned long lastRestartTime = 0;
+const unsigned long RESTART_INTERVAL = 3600000;  // 1 hour in milliseconds
 
 // pre-setup stuff
 // onewire    Data wire is connetec to the Arduino digital pin 13
@@ -421,7 +425,7 @@ void setup() {
     } else if (request->hasParam(FAI)) {
       inputMessage = request->getParam(FAI)->value();
       writeFile(LittleFS, "/FieldAdjustmentInterval1.txt", inputMessage.c_str());
-      FieldAdjustmentInterval = inputMessage.toFloat();
+      FieldAdjustmentInterval = inputMessage.toInt();
     } else if (request->hasParam(MFT)) {
       inputMessage = request->getParam(MFT)->value();
       writeFile(LittleFS, "/ManualFieldToggle1.txt", inputMessage.c_str());
@@ -603,7 +607,7 @@ void setup() {
   fffr = readFile(LittleFS, "/SwitchingFrequency.txt").toInt();
   TargetFloatVoltage = readFile(LittleFS, "/TargetFloatVoltage1.txt").toFloat();
   interval = readFile(LittleFS, "/interval1.txt").toFloat();
-  FieldAdjustmentInterval = readFile(LittleFS, "/FieldAdjustmentInterval1.txt").toFloat();
+  FieldAdjustmentInterval = readFile(LittleFS, "/FieldAdjustmentInterval1.txt").toInt();
   ManualFieldToggle = readFile(LittleFS, "/ManualFieldToggle1.txt").toInt();
   SwitchControlOverride = readFile(LittleFS, "/SwitchControlOverride1.txt").toInt();
   ForceFloat = readFile(LittleFS, "/ForceFloat1.txt").toInt();
@@ -649,12 +653,12 @@ void loop() {
   //Serial.print("HiLow: ");
   //Serial.println(HiLow);
   //Serial.print("NMEA0183Data: ");
- // Serial.println(NMEA0183Data);
+  // Serial.println(NMEA0183Data);
 
-//Serial.print("AlternatorTemperatureLimitF: ");
- // Serial.println(AlternatorTemperatureLimitF);
+  //Serial.print("AlternatorTemperatureLimitF: ");
+  // Serial.println(AlternatorTemperatureLimitF);
 
- // ReadVEData();  //read Data from Victron VeDirect
+  // ReadVEData();  //read Data from Victron VeDirect
 
   //AdjustSic450();
   // UpdateDisplay();
@@ -924,6 +928,13 @@ void TempTask(void *parameter) {
 
     // Immediately loop again — next conversion starts right now
   }
+}
+
+
+// where this is matters!! 
+//Put utility functions like SafeInt() above setup() and loop() , according to ChatGPT.  And I proved it matters.
+int SafeInt(float f, int scale = 1) {
+  return isnan(f) || isinf(f) ? -1 : (int)(f * scale);
 }
 
 
@@ -1480,94 +1491,61 @@ void initWiFi() {
   Serial.println(WiFi.RSSI());
 }
 
-
-
-// April 2025, this code was updated to avoid the creation of Strings for sending over wifi
 void SendWifiData() {
   if (millis() - prev_millis5 > webgaugesinterval) {
     WifiStrength = WiFi.RSSI();
     WifiHeartBeat++;
-
     if (WifiStrength >= -70) {
-      int start66 = micros();  // Start timing the wifi section
-      char payload[1024];      // safe size for current and future variables, supposedly.  >1460 bytes exceeds single packet size, avoid in realtime app's
-
+      int start66 = micros();               // Start timing the wifi section
+      FreeHeap = ESP.getFreeHeap() / 1024;  // making it smaller to transmit in kb
+      // Build CSV string with all data as integers
+      // Format: multiply floats by 10, 100 or 1000 to preserve decimal precision as needed
+      char payload[512];  // Smaller buffer size since CSV is more compact
       snprintf(payload, sizeof(payload),
-               "{"
-               "\"AlternatorTemperatureF\":%d,"
-               "\"DutyCycle\":%d,"
-               "\"BatteryV\":%d,"
-               "\"MeasuredAmps\":%d,"
-               "\"RPM\":%d,"
-               "\"Channel3V\":%d,"
-               "\"IBV\":%d,"
-               "\"Bcur\":%d,"
-               "\"VictronVoltage\":%d,"
-               "\"LoopTime\":%d,"
-               "\"WifiStrength\":%d,"
-               "\"WifiHeartBeat\":%d,"
-               "\"SendWifiTime\":%d,"
-               "\"AnalogReadTime\":%d,"
-               "\"VeTime\":%d,"
-               "\"MaximumLoopTime\":%d,"
-               "\"HeadingNMEA\":%d,"
-               "\"vvout\":%d,"
-               "\"iiout\":%d,"
-               "\"TemperatureLimitF\":%d,"
-               "\"FullChargeVoltage\":%d,"
-               "\"TargetAmpz\":%d,"
-               "\"TargetFloatVoltage1\":%d,"
-               "\"SwitchingFrequency\":%d,"
-               "\"interval1\":%d,"
-               "\"FieldAdjustmentInterval1\":%d,"
-               "\"ManualVoltage\":%d,"
-               "\"SwitchControlOverride1\":%d,"
-               "\"OnOff1\":%d,"
-               "\"ManualFieldToggle1\":%d,"
-               "\"HiLow1\":%d,"
-               "\"LimpHome1\":%d,"
-               "\"VeData1\":%d,"
-               "\"NMEA0183Data1\":%d,"
-               "\"NMEA2KData1\":%d"
-               "}",
-               (int)AlternatorTemperatureF,
-               (int)DutyCycle,
-               (int)(BatteryV * 100),
-               (int)(MeasuredAmps * 10),
-               (int)RPM,
-               (int)(Channel3V * 100),
-               (int)(IBV * 100),
-               (int)(Bcur * 10),
-               (int)(VictronVoltage * 100),
-               (int)LoopTime,
-               (int)WifiStrength,
-               (int)WifiHeartBeat,
-               (int)SendWifiTime,
-               (int)AnalogReadTime,
-               (int)VeTime,
-               (int)MaximumLoopTime,
-               (int)HeadingNMEA,
-               (int)(vvout * 100),
-               (int)(iiout * 10),
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+               // Readings
+               SafeInt(AlternatorTemperatureF),
+               SafeInt(DutyCycle),
+               SafeInt(BatteryV, 100),
+               SafeInt(MeasuredAmps, 10),
+               SafeInt(RPM),
+               SafeInt(Channel3V, 100),
+               SafeInt(IBV, 100),
+               SafeInt(Bcur, 10),
+               SafeInt(VictronVoltage, 100),
+               SafeInt(LoopTime),
+               SafeInt(WifiStrength),
+               SafeInt(WifiHeartBeat),
+               SafeInt(SendWifiTime),
+               SafeInt(AnalogReadTime),
+               SafeInt(VeTime),
+               SafeInt(MaximumLoopTime),
+               SafeInt(HeadingNMEA),
+               SafeInt(vvout, 100),
+               SafeInt(iiout, 10),
+               SafeInt(FreeHeap),
 
-               (int)AlternatorTemperatureLimitF,
-               (int)(ChargingVoltageTarget * 100),
-               (int)TargetAmps,
-               (int)(TargetFloatVoltage * 100),
-               (int)fffr,
-               (int)(interval * 100),
-               (int)(FieldAdjustmentInterval * 100),
-               (int)(ManualVoltageTarget * 100),
-               (int)SwitchControlOverride,
-               (int)OnOff,
-               (int)ManualFieldToggle,
-               (int)HiLow,
-               (int)LimpHome,
-               (int)VeData,
-               (int)NMEA0183Data,
-               (int)NMEA2KData);
+               // Settings
+               SafeInt(AlternatorTemperatureLimitF),
+               SafeInt(ChargingVoltageTarget, 100),
+               SafeInt(TargetAmps),
+               SafeInt(TargetFloatVoltage, 100),
+               SafeInt(fffr),
+               SafeInt(interval, 100),
+               SafeInt(FieldAdjustmentInterval),
+               SafeInt(ManualVoltageTarget, 100),
+               SafeInt(SwitchControlOverride),
+               SafeInt(OnOff),
+               SafeInt(ManualFieldToggle),
+               SafeInt(HiLow),
+               SafeInt(LimpHome),
+               SafeInt(VeData),
+               SafeInt(NMEA0183Data),
+               SafeInt(NMEA2KData));
 
-      events.send(payload, "BulkData");
+
+
+      events.send(payload, "CSVData");    // Changed event name to reflect new format
       SendWifiTime = micros() - start66;  // Calculate WiFi Send Time
     }
 
@@ -1577,9 +1555,33 @@ void SendWifiData() {
 
 
 
-// This is needed becasuse JavaScript allows NaN, but JSON does not—it only allows null, numbers, booleans, strings, arrays, and objects
-//So when  ESP32 sends a payload with NaN, the browser can’t parse it, and the whole stream fails
-String safeFloat(float value) {
-  if (isnan(value)) return "null";
-  return String(value);
+
+
+
+//Restart the ESP32 every hour just for maintenance because we can
+//eventaually want to use littleFS to store Battery Monitor Stuff first
+void checkAndRestart() {
+  unsigned long currentMillis = millis();
+
+  // Check if millis() has rolled over (happens after ~49.7 days)
+  if (currentMillis < lastRestartTime) {
+    lastRestartTime = 0;  // Reset on overflow
+  }
+
+  // Check if it's time to restart
+  if (currentMillis - lastRestartTime >= RESTART_INTERVAL) {
+    Serial.println("Performing scheduled restart for system maintenance");
+
+    // Optional: send a message to the web client before restarting
+    events.send("Device restarting for maintenance. Will reconnect shortly.", "status");
+
+    // Allow time for the message to be sent
+    delay(500);
+
+    // Restart the ESP32
+    ESP.restart();
+
+    // This line won't be reached, but for clarity:
+    lastRestartTime = currentMillis;
+  }
 }
