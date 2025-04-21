@@ -22,21 +22,36 @@ SiC45x sic45x(0x1D);
 #include <AsyncTCP.h>           // for wifi stuff, important, don't ever update, use mathieucarbou github repository
 #include <LittleFS.h>           // for wifi stuff
 #include <ESPAsyncWebServer.h>  // for wifi stuff, important, don't ever update, use mathieucarbou github repository
+#include <DNSServer.h>          // For captive portal (Wifi Network Provisioning) functionality
+#include <ESPmDNS.h>            // helps with wifi provisioning (to save users trouble of looking up ESP32's IP address)
+#include "freertos/FreeRTOS.h" // used for stack overflow detecton
+#include "freertos/task.h"     // used for stack overflow detection
 
 
-// Settings
-// Replace next 2 lines with your own WiFi network credentials
-const char *ssid = "MN2G";
-const char *password = "5FENYC8PDW";
+// extern TaskHandle_t tempTaskHandle; // used for stack overflow detection
+// #define LOOP_STACK_ALLOC_WORDS     2048   // Arduino loop() task = 8 KB
+// #define MYTASK_STACK_ALLOC_WORDS   4096   // Your TempTask = 16 KB
 
-// extern WebServer server;  // declared in user's main file
+// Settings - these will be moved to LittleFS
+const char *default_ssid = "MN2G";            // Default SSID if no saved credentials
+const char *default_password = "5FENYC8PDW";  // Default password if no saved credentials
+const char *ap_ssid = "ALTERNATOR_CONFIG";    // Name for the configuration AP
+const char *ap_password = "alternator123";    // Password for the configuration AP (optional)
 
-// const char* ap_ssid = "RegulatorSetup";
-// const char* ap_password = "changeme123";
+// WiFi connection timeout in milliseconds
+const unsigned long WIFI_TIMEOUT = 20000;  // 20 seconds
 
-// String sta_ssid = "";
-// String sta_password = "";
+// DNS Server for captive portal
+DNSServer dnsServer;
+const byte DNS_PORT = 53;
 
+// WiFi modes
+enum WiFiMode {
+  AWIFI_MODE_CLIENT,
+  AWIFI_MODE_AP
+};
+
+WiFiMode currentWiFiMode = AWIFI_MODE_CLIENT;
 
 
 
@@ -190,6 +205,10 @@ const char *VD = "VeData1";
 const char *N0 = "NMEA0183Data1";
 const char *N2 = "NMEA2KData1";
 
+// WiFi provisioning settings
+const char *WIFI_SSID_FILE = "/wifi_ssid.txt";
+const char *WIFI_PASS_FILE = "/wifi_pass.txt";
+
 
 typedef struct {
   unsigned long PGN;
@@ -239,7 +258,124 @@ uint8_t adsCurrentChannel = 0;
 unsigned long adsStartTime = 0;
 const unsigned long ADSConversionDelay = 155;  // 125 ms for 8 SPS but... Recommendation:Raise ADSConversionDelay to 150 or 160 ms — this gives ~20–30% margin without hurting performance much.     Can change this back later
 
+// Forward declarations for WiFi functions
+String readFile(fs::FS &fs, const char *path);
+void writeFile(fs::FS &fs, const char *path, const char *message);
+void setupWiFi();
+bool connectToWiFi(const char *ssid, const char *password, unsigned long timeout);
+void setupAccessPoint();
+void setupWiFiConfigServer();
+void dnsHandleRequest();
+void HandleNMEA2000Msg(const tN2kMsg &N2kMsg);
 
+// HTML for the WiFi configuration page
+const char WIFI_CONFIG_HTML[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Alternator WiFi Setup</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    .container {
+      background-color: white;
+      border-radius: 5px;
+      padding: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    input[type=text], input[type=password] {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      display: inline-block;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    input[type=submit] {
+      width: 100%;
+      background-color: #4CAF50;
+      color: white;
+      padding: 14px 20px;
+      margin: 8px 0;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    input[type=submit]:hover {
+      background-color: #45a049;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Alternator WiFi Setup</h1>
+    <p>Please enter the WiFi network details to connect your alternator controller:</p>
+    
+    <form action="/saveWiFi" method="POST">
+      <label for="ssid">WiFi Network Name:</label>
+      <input type="text" id="ssid" name="ssid" placeholder="Enter WiFi SSID" required>
+      
+      <label for="password">WiFi Password:</label>
+      <input type="password" id="password" name="password" placeholder="Enter WiFi password">
+      
+      <input type="submit" value="Save and Connect">
+    </form>
+    
+    <div id="status" class="status" style="display:none;"></div>
+  </div>
+
+  <script>
+    // Check if the form was submitted
+    window.onload = function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const status = urlParams.get('status');
+      const statusDiv = document.getElementById('status');
+      
+      if (status === 'saved') {
+        statusDiv.classList.add('success');
+        statusDiv.textContent = 'WiFi settings saved! The device will now try to connect to the network.';
+        statusDiv.style.display = 'block';
+      } else if (status === 'error') {
+        statusDiv.classList.add('error');
+        statusDiv.textContent = 'Error saving WiFi settings. Please try again.';
+        statusDiv.style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>
+)rawliteral";
 
 
 void setup() {
@@ -249,10 +385,15 @@ void setup() {
   pinMode(4, OUTPUT);  // This pin is used to provide a high signal to SiC450 Enable pin
   pinMode(2, OUTPUT);  // This pin is used to provide a heartbeat (pin 2 of ESP32 is the LED)
 
-  initWiFi();  // just leave it here
 
+  // Initialize LittleFS first
+  if (!LittleFS.begin(true)) {
+    Serial.println("An Error has occurred while mounting LittleFS");
+    // Continue anyway since we might be able to format and use it later
+  }
 
-
+  // Setup WiFi (this will either connect to a saved network or create an AP)
+  setupWiFi();
 
   //NMEA2K
   OutputStream = &Serial;
@@ -382,145 +523,6 @@ void setup() {
   }
 
 
-  //WIFI STUFF
-  if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.println("WiFi Failed and triggered a return!");
-    return;
-  }
-  Serial.println();
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
-
-  // Initialize LittleFS
-  if (!LittleFS.begin(true)) {
-    Serial.println("An Error has occurred while mounting LittleFS and triggered a return");
-    return;
-  }
-
-
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/index.html", "text/html", false, processor);
-  });
-
-
-  // Send a GET request to <ESP_IP>
-  server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request) {
-    String inputMessage;
-    if (request->hasParam(TLimit)) {
-      inputMessage = request->getParam(TLimit)->value();
-      writeFile(LittleFS, "/TemperatureLimitF.txt", inputMessage.c_str());  //Converts the contents of a String as a C-style null-terminated string.
-      AlternatorTemperatureLimitF = inputMessage.toInt();
-    } else if (request->hasParam(ManualV)) {
-      inputMessage = request->getParam(ManualV)->value();
-      writeFile(LittleFS, "/ManualVoltage.txt", inputMessage.c_str());
-      ManualVoltageTarget = inputMessage.toFloat();
-    } else if (request->hasParam(FullChargeV)) {
-      inputMessage = request->getParam(FullChargeV)->value();
-      writeFile(LittleFS, "/FullChargeVoltage.txt", inputMessage.c_str());
-      ChargingVoltageTarget = inputMessage.toFloat();
-    } else if (request->hasParam(TargetA)) {
-      inputMessage = request->getParam(TargetA)->value();
-      writeFile(LittleFS, "/TargetAmpz.txt", inputMessage.c_str());  //Take the string stored in inputMessage, and write it to a file called TargetAmpz.txt on the LittleFS filesystem inside the ESP32's flash.
-      TargetAmps = inputMessage.toInt();
-    } else if (request->hasParam(FrequencyP)) {
-      inputMessage = request->getParam(FrequencyP)->value();
-      writeFile(LittleFS, "/SwitchingFrequency.txt", inputMessage.c_str());
-      fffr = inputMessage.toInt();
-    } else if (request->hasParam(TFV)) {
-      inputMessage = request->getParam(TFV)->value();
-      writeFile(LittleFS, "/TargetFloatVoltage1.txt", inputMessage.c_str());
-      TargetFloatVoltage = inputMessage.toFloat();
-    } else if (request->hasParam(Intt)) {
-      inputMessage = request->getParam(Intt)->value();
-      writeFile(LittleFS, "/interval1.txt", inputMessage.c_str());
-      interval = inputMessage.toFloat();
-    } else if (request->hasParam(FAI)) {
-      inputMessage = request->getParam(FAI)->value();
-      writeFile(LittleFS, "/FieldAdjustmentInterval1.txt", inputMessage.c_str());
-      FieldAdjustmentInterval = inputMessage.toFloat();
-    } else if (request->hasParam(MFT)) {
-      inputMessage = request->getParam(MFT)->value();
-      writeFile(LittleFS, "/ManualFieldToggle1.txt", inputMessage.c_str());
-      ManualFieldToggle = inputMessage.toInt();
-    } else if (request->hasParam(SCO)) {
-      inputMessage = request->getParam(SCO)->value();
-      writeFile(LittleFS, "/SwitchControlOverride1.txt", inputMessage.c_str());
-      SwitchControlOverride = inputMessage.toInt();
-    } else if (request->hasParam(FF)) {
-      inputMessage = request->getParam(FF)->value();
-      writeFile(LittleFS, "/ForceFloat1.txt", inputMessage.c_str());
-      ForceFloat = inputMessage.toInt();
-    } else if (request->hasParam(OO)) {
-      inputMessage = request->getParam(OO)->value();
-      writeFile(LittleFS, "/OnOff1.txt", inputMessage.c_str());
-      OnOff = inputMessage.toInt();
-    } else if (request->hasParam(HL)) {
-      inputMessage = request->getParam(HL)->value();
-      writeFile(LittleFS, "/HiLow1.txt", inputMessage.c_str());
-      HiLow = inputMessage.toInt();
-    } else if (request->hasParam(LH)) {
-      inputMessage = request->getParam(LH)->value();
-      writeFile(LittleFS, "/LimpHome1.txt", inputMessage.c_str());
-      LimpHome = inputMessage.toInt();
-    } else if (request->hasParam(VD)) {
-      inputMessage = request->getParam(VD)->value();
-      writeFile(LittleFS, "/VeData1.txt", inputMessage.c_str());
-      VeData = inputMessage.toInt();
-    } else if (request->hasParam(N0)) {
-      inputMessage = request->getParam(N0)->value();
-      writeFile(LittleFS, "/NMEA0183Data1.txt", inputMessage.c_str());
-      NMEA0183Data = inputMessage.toInt();
-    } else if (request->hasParam(N2)) {
-      inputMessage = request->getParam(N2)->value();
-      writeFile(LittleFS, "/NMEA2KData1.txt", inputMessage.c_str());
-      NMEA2KData = inputMessage.toInt();
-    }
-
-    else {
-      inputMessage = "No message sent";
-    }
-
-    // Serial.println(inputMessage);
-    request->send(200, "text/text", inputMessage);
-  });
-
-  //server.onNotFound(notFound);
-
-  server.onNotFound([](AsyncWebServerRequest *request) {
-    String path = request->url();
-    Serial.print("Request for: ");
-    Serial.println(path);
-
-    if (LittleFS.exists(path)) {
-      Serial.println("File exists, serving...");
-
-      // Determine content type based on file extension
-      String contentType = "text/html";
-      if (path.endsWith(".css")) contentType = "text/css";
-      else if (path.endsWith(".js")) contentType = "application/javascript";
-      else if (path.endsWith(".json")) contentType = "application/json";
-      else if (path.endsWith(".png")) contentType = "image/png";
-      else if (path.endsWith(".jpg")) contentType = "image/jpeg";
-
-      request->send(LittleFS, path, contentType);
-    } else {
-      Serial.print("File not found: ");
-      Serial.println(path);
-      request->send(404, "text/plain", "File Not Found");
-    }
-  });
-
-  // Handle Web Server Events
-  events.onConnect([](AsyncEventSourceClient *client) {
-    if (client->lastId()) {
-      Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
-    }
-    // send event with message "hello!", id current millis
-    // and set reconnect delay to 1 second
-    client->send("hello!", NULL, millis(), 10000);
-  });
-  server.addHandler(&events);
-  server.begin();
 
   // If there are not settings in Flash memoery (files don't exist yet), populate them with the hardcoded values
   bool TempLimitfileexists = LittleFS.exists("/TemperatureLimitF.txt");
@@ -630,17 +632,6 @@ void setup() {
   NMEA0183Data = readFile(LittleFS, "/NMEA0183Data1.txt").toInt();
   NMEA2KData = readFile(LittleFS, "/NMEA2KData1.txt").toInt();
 
-  // This one worked (~7ms max loop time with analog inputs off) )but I'm trying core 0 to see if it's better
-  // xTaskCreatePinnedToCore(
-  //   TempTask,
-  //   "TempTask",
-  //   4096,
-  //   NULL,
-  //   1,
-  //   &tempTaskHandle,
-  //   1  // run on core 1 (user app core)
-  // );
-
   xTaskCreatePinnedToCore(
     TempTask,
     "TempTask",
@@ -652,30 +643,27 @@ void setup() {
   );
 }
 
-
-
 void loop() {
+ 
+ // reportStackUsageEverySecond();
 
   starttime = esp_timer_get_time();  //Record a start time for demonstration
-  //yield();
-  //ReadAnalogInputs();
-  // yield();
-  // Serial.print("ManualFieldToggle: ");
-  //Serial.println(ManualFieldToggle);
-  //Serial.print("HiLow: ");
-  //Serial.println(HiLow);
-  //Serial.print("NMEA0183Data: ");
-  // Serial.println(NMEA0183Data);
 
-  //Serial.print("AlternatorTemperatureLimitF: ");
-  // Serial.println(AlternatorTemperatureLimitF);
+  // Handle DNS requests if in AP mode
+  if (currentWiFiMode == AWIFI_MODE_AP) {
+    dnsHandleRequest();
+  } else { 
+    //MDNS.update();// Update mDNS to maintain hostname visibility    Turns out thsi was already being done on its own
+    // Only do these tasks if in normal client mode
+    // ReadAnalogInputs();
+    //ReadVEData();  //read Data from Victron VeDirect
+    // AdjustSic450();
+    // UpdateDisplay();
+    // FaultCheck();
 
-  // ReadVEData();  //read Data from Victron VeDirect
-
-  //AdjustSic450();
-  // UpdateDisplay();
-  // FaultCheck();
-
+    // Send WiFi data to client
+    SendWifiData();
+  }
 
   if (powersavemode == 1) {
     /// Replace this later with control from Ignition Signal
@@ -690,7 +678,7 @@ void loop() {
       } else {
         // turn it back on
         setCpuFrequencyMhz(240);
-        initWiFi();  // 2nd time using this, first is in setup
+        setupWiFi();  // Use our new WiFi setup function
         //Serial.println("Wifi is reinitialized");
       }
       Freq = getCpuFrequencyMhz();
@@ -701,7 +689,33 @@ void loop() {
     }
   }
 
-  SendWifiData();                          // break this out later to a different timed blink without delay thing
+  if (millis() - prev_millis743 > 5000) {  // every 5 seconds check CAN network (this might need adjustment)
+    if (NMEA2KData == 1) {
+      NMEA2000.ParseMessages();
+    }
+    prev_millis743 = millis();
+  }
+
+  // Check WiFi connection status if in client mode
+  if (currentWiFiMode == AWIFI_MODE_CLIENT && WiFi.status() != WL_CONNECTED) {
+    static unsigned long lastWiFiCheckTime = 0;
+
+    // Try to reconnect every 5 seconds
+    if (millis() - lastWiFiCheckTime > 5000) {
+      lastWiFiCheckTime = millis();
+
+      Serial.println("WiFi connection lost. Attempting to reconnect...");
+      String saved_ssid = readFile(LittleFS, WIFI_SSID_FILE);
+      String saved_password = readFile(LittleFS, WIFI_PASS_FILE);
+
+      if (connectToWiFi(saved_ssid.c_str(), saved_password.c_str(), 3000)) {
+        Serial.println("Reconnected to WiFi!");
+        // mDNS will be reinitialized in the connectToWiFi function
+      } else {
+        Serial.println("Failed to reconnect. Will try again in 5 seconds.");
+      }
+    }
+  }
 
   if (millis() - prev_millis743 > 5000) {  // every 5 seconds check CAN network (this might need adjustment)
     if (NMEA2KData == 1) {
@@ -710,12 +724,41 @@ void loop() {
     prev_millis743 = millis();
   }
 
-//Blink LED on and off every X seconds
+  //Blink LED on and off every X seconds
   if (millis() - previousMillisBLINK >= intervalBLINK) {
-  digitalWrite(2, (ledState = !ledState));
-  previousMillisBLINK = millis();
-}
+    // Use different blink patterns to indicate WiFi status
+    if (currentWiFiMode == AWIFI_MODE_AP) {
+      // Fast blink in AP mode (toggle twice)
+      digitalWrite(2, HIGH);
+      delay(50);
+      digitalWrite(2, LOW);
+      delay(50);
+      digitalWrite(2, HIGH);
+      delay(50);
+      digitalWrite(2, (ledState = !ledState));
+    } else if (WiFi.status() != WL_CONNECTED) {
+      // Medium blink when WiFi is disconnected
+      digitalWrite(2, HIGH);
+      delay(100);
+      digitalWrite(2, (ledState = !ledState));
+    } else {
+      // Normal blink when connected
+      digitalWrite(2, (ledState = !ledState));
+    }
+    previousMillisBLINK = millis();
+  }
 
+  endtime = esp_timer_get_time();  //Record a start time for demonstration
+  LoopTime = (endtime - starttime);
+
+  if (LoopTime > MaximumLoopTime) {
+    MaximumLoopTime = LoopTime;
+  }
+
+  if (millis() - prev_millis7888 > 3000) {  // every 3 seconds reset the maximum loop time
+    MaximumLoopTime = 0;
+    prev_millis7888 = millis();
+  }
 
   endtime = esp_timer_get_time();  //Record a start time for demonstration
   LoopTime = (endtime - starttime);
@@ -730,8 +773,6 @@ void loop() {
   }
   //Serial.println(MaximumLoopTime);
 }
-
-
 
 
 template<typename T> void PrintLabelValWithConversionCheckUnDef(const char *label, T val, double (*ConvFunc)(double val) = 0, bool AddLf = false, int8_t Desim = -1) {
