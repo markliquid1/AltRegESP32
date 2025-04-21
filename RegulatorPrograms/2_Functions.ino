@@ -688,33 +688,10 @@ String processor(const String &var) {
   }
   return String();
 }
-void initWiFi() {    // Initialize WiFi
-
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  Serial.print("Connecting to WiFi ..");
-  while (WiFi.status() != WL_CONNECTED) {
-    //  Serial.print('.');
-    delay(500);
-  }
-  if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.println("WiFi Failed and triggered a return!");
-    return;
-  }
-  Serial.println(WiFi.localIP());
-  Serial.println();
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
-  Serial.print("RRSI (lower absolute value is better!): ");
-  Serial.println(WiFi.RSSI());
-}
-
-
 int SafeInt(float f, int scale = 1) {
   // where this is matters!!   Put utility functions like SafeInt() above setup() and loop() , according to ChatGPT.  And I proved it matters.
   return isnan(f) || isinf(f) ? -1 : (int)(f * scale);
 }
-
 
 void SendWifiData() {
   if (millis() - prev_millis5 > webgaugesinterval) {
@@ -775,7 +752,6 @@ void SendWifiData() {
   }
 }
 
-
 void checkAndRestart() {
   //Restart the ESP32 every hour just for maintenance because we can eventaually want to use littleFS to store Battery Monitor Stuff first
   unsigned long currentMillis = millis();
@@ -804,73 +780,292 @@ void checkAndRestart() {
 }
 
 
-//Section for Wifi Provisioning
+// Function to set up WiFi - tries to connect to saved network, falls back to AP mode
+void setupWiFi() {
+  // Try to get saved WiFi credentials
+  String saved_ssid = readFile(LittleFS, WIFI_SSID_FILE);
+  String saved_password = readFile(LittleFS, WIFI_PASS_FILE);
 
-bool tryConnectSTA(unsigned long timeoutMs = 20000) {
+  // If no saved credentials, use defaults
+  if (saved_ssid.length() == 0) {
+    saved_ssid = default_ssid;
+    saved_password = default_password;
+  }
+
+  Serial.println("Attempting to connect to WiFi network: " + saved_ssid);
+
+  // Try to connect to the WiFi network
+  if (connectToWiFi(saved_ssid.c_str(), saved_password.c_str(), WIFI_TIMEOUT)) {
+    // Successfully connected to WiFi
+    currentWiFiMode = AWIFI_MODE_CLIENT;
+    Serial.println("Connected to WiFi network!");
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.localIP());
+
+    // Set up the web server for normal operation
+    setupServer();
+  } else {
+    // Failed to connect to WiFi, create access point instead
+    Serial.println("Failed to connect to WiFi. Starting AP mode for configuration...");
+    setupAccessPoint();
+    currentWiFiMode = AWIFI_MODE_AP;
+  }
+}
+// Function to connect to a WiFi network with timeout
+bool connectToWiFi(const char *ssid, const char *password, unsigned long timeout) {
+  if (strlen(ssid) == 0) {
+    Serial.println("No SSID provided");
+    return false;
+  }
+
+  Serial.printf("Attempting to connect to WiFi network: %s\n", ssid);
+  
   WiFi.mode(WIFI_STA);
-  WiFi.begin(sta_ssid.c_str(), sta_password.c_str());
-  unsigned long start = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - start < timeoutMs) {
-    delay(100);
+  WiFi.begin(ssid, password);
+  
+  unsigned long startTime = millis();
+  
+  // Wait for connection or timeout
+  while (WiFi.status() != WL_CONNECTED && millis() - startTime < timeout) {
+    delay(500);
+    Serial.print(".");
   }
-  return WiFi.status() == WL_CONNECTED;
-}
-
-bool loadWiFiCreds() {
-  File f = LittleFS.open("/wifi.txt", "r");
-  if (!f) return false;
-  sta_ssid = f.readStringUntil('\n');
-  sta_password = f.readStringUntil('\n');
-  sta_ssid.trim();
-  sta_password.trim();
-  return sta_ssid.length() > 0;
-}
-
-void saveWiFiCreds(String ssid, String pass) {
-  File f = LittleFS.open("/wifi.txt", "w");
-  if (!f) return;
-  f.println(ssid);
-  f.println(pass);
-  f.close();
-}
-
-void handleRoot() {
-  String html = "";
-  html += "<form method='POST' action='/save'>";
-  html += "SSID:<br><input name='ssid' type='text'><br>";
-  html += "Password:<br><input name='password' type='password' autocomplete='current-password'><br>";
-  html += "<input type='submit' value='Save and Reboot'>";
-  html += "</form>";
-  server.send(200, "text/html", html);
-}
-
-void handleSave() {
-  String ssid = server.arg("ssid");
-  String pass = server.arg("password");
-  if (ssid.length() > 0 && pass.length() > 0) {
-    saveWiFiCreds(ssid, pass);
-    server.send(200, "text/html", "Saved. Rebooting...");
-    delay(1000);
-    ESP.restart();
+  
+  Serial.println();
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("Connected to WiFi");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+    
+    // Initialize mDNS after successful connection
+    if (MDNS.begin("alternator")) {
+      Serial.println("mDNS responder started");
+      // Add service to mDNS
+      MDNS.addService("http", "tcp", 80);
+    } else {
+      Serial.println("Error setting up mDNS responder!");
+    }
+    
+    return true;
   } else {
-    server.send(400, "text/plain", "Missing SSID or password.");
+    Serial.println("Failed to connect to WiFi within timeout period");
+    return false;
+  }
+}
+// Function to set up the device as an access point
+void setupAccessPoint() {
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(ap_ssid, ap_password);
+
+  Serial.println("Access Point Started");
+  Serial.print("AP IP address: ");
+  Serial.println(WiFi.softAPIP());
+
+  // Start DNS server for captive portal
+  dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+
+  // Set up the configuration web server
+  setupWiFiConfigServer();
+}
+// Function to set up the configuration web server in AP mode
+void setupWiFiConfigServer() {
+  // Handle DNS requests for captive portal
+  server.onNotFound([](AsyncWebServerRequest *request) {
+    request->redirect("http://" + WiFi.softAPIP().toString());
+  });
+
+  // Serve the WiFi configuration page
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", WIFI_CONFIG_HTML);
+  });
+
+  // Handle form submission for saving WiFi credentials
+  server.on("/saveWiFi", HTTP_POST, [](AsyncWebServerRequest *request) {
+    String new_ssid;
+    String new_password;
+
+    if (request->hasParam("ssid", true)) {
+      new_ssid = request->getParam("ssid", true)->value();
+    }
+
+    if (request->hasParam("password", true)) {
+      new_password = request->getParam("password", true)->value();
+    }
+
+    // Save the new credentials to LittleFS
+    if (new_ssid.length() > 0) {
+      writeFile(LittleFS, WIFI_SSID_FILE, new_ssid.c_str());
+      writeFile(LittleFS, WIFI_PASS_FILE, new_password.c_str());
+
+      // Redirect with success message
+      request->redirect("/?status=saved");
+
+      // Set a timer to restart the ESP after a short delay
+      // This gives time for the response to be sent to the client
+      Serial.println("New WiFi credentials saved. Restarting in 5 seconds...");
+      delay(5000);
+      ESP.restart();
+    } else {
+      // Redirect with error message
+      request->redirect("/?status=error");
+    }
+  });
+
+  server.begin();
+}
+// Standard server setup for normal operation mode
+void setupServer() {
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(LittleFS, "/index.html", "text/html", false, processor);
+  });
+
+  // Send a GET request to <ESP_IP>
+  server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request) {
+    String inputMessage;
+    if (request->hasParam(TLimit)) {
+      inputMessage = request->getParam(TLimit)->value();
+      writeFile(LittleFS, "/TemperatureLimitF.txt", inputMessage.c_str());
+      AlternatorTemperatureLimitF = inputMessage.toInt();
+    } else if (request->hasParam(ManualV)) {
+      inputMessage = request->getParam(ManualV)->value();
+      writeFile(LittleFS, "/ManualVoltage.txt", inputMessage.c_str());
+      ManualVoltageTarget = inputMessage.toFloat();
+    } else if (request->hasParam(FullChargeV)) {
+      inputMessage = request->getParam(FullChargeV)->value();
+      writeFile(LittleFS, "/FullChargeVoltage.txt", inputMessage.c_str());
+      ChargingVoltageTarget = inputMessage.toFloat();
+    } else if (request->hasParam(TargetA)) {
+      inputMessage = request->getParam(TargetA)->value();
+      writeFile(LittleFS, "/TargetAmpz.txt", inputMessage.c_str());
+      TargetAmps = inputMessage.toInt();
+    } else if (request->hasParam(FrequencyP)) {
+      inputMessage = request->getParam(FrequencyP)->value();
+      writeFile(LittleFS, "/SwitchingFrequency.txt", inputMessage.c_str());
+      fffr = inputMessage.toInt();
+    } else if (request->hasParam(TFV)) {
+      inputMessage = request->getParam(TFV)->value();
+      writeFile(LittleFS, "/TargetFloatVoltage1.txt", inputMessage.c_str());
+      TargetFloatVoltage = inputMessage.toFloat();
+    } else if (request->hasParam(Intt)) {
+      inputMessage = request->getParam(Intt)->value();
+      writeFile(LittleFS, "/interval1.txt", inputMessage.c_str());
+      interval = inputMessage.toFloat();
+    } else if (request->hasParam(FAI)) {
+      inputMessage = request->getParam(FAI)->value();
+      writeFile(LittleFS, "/FieldAdjustmentInterval1.txt", inputMessage.c_str());
+      FieldAdjustmentInterval = inputMessage.toFloat();
+    } else if (request->hasParam(MFT)) {
+      inputMessage = request->getParam(MFT)->value();
+      writeFile(LittleFS, "/ManualFieldToggle1.txt", inputMessage.c_str());
+      ManualFieldToggle = inputMessage.toInt();
+    } else if (request->hasParam(SCO)) {
+      inputMessage = request->getParam(SCO)->value();
+      writeFile(LittleFS, "/SwitchControlOverride1.txt", inputMessage.c_str());
+      SwitchControlOverride = inputMessage.toInt();
+    } else if (request->hasParam(FF)) {
+      inputMessage = request->getParam(FF)->value();
+      writeFile(LittleFS, "/ForceFloat1.txt", inputMessage.c_str());
+      ForceFloat = inputMessage.toInt();
+    } else if (request->hasParam(OO)) {
+      inputMessage = request->getParam(OO)->value();
+      writeFile(LittleFS, "/OnOff1.txt", inputMessage.c_str());
+      OnOff = inputMessage.toInt();
+    } else if (request->hasParam(HL)) {
+      inputMessage = request->getParam(HL)->value();
+      writeFile(LittleFS, "/HiLow1.txt", inputMessage.c_str());
+      HiLow = inputMessage.toInt();
+    } else if (request->hasParam(LH)) {
+      inputMessage = request->getParam(LH)->value();
+      writeFile(LittleFS, "/LimpHome1.txt", inputMessage.c_str());
+      LimpHome = inputMessage.toInt();
+    } else if (request->hasParam(VD)) {
+      inputMessage = request->getParam(VD)->value();
+      writeFile(LittleFS, "/VeData1.txt", inputMessage.c_str());
+      VeData = inputMessage.toInt();
+    } else if (request->hasParam(N0)) {
+      inputMessage = request->getParam(N0)->value();
+      writeFile(LittleFS, "/NMEA0183Data1.txt", inputMessage.c_str());
+      NMEA0183Data = inputMessage.toInt();
+    } else if (request->hasParam(N2)) {
+      inputMessage = request->getParam(N2)->value();
+      writeFile(LittleFS, "/NMEA2KData1.txt", inputMessage.c_str());
+      NMEA2KData = inputMessage.toInt();
+    } else {
+      inputMessage = "No message sent";
+    }
+
+    request->send(200, "text/text", inputMessage);
+  });
+
+  server.onNotFound([](AsyncWebServerRequest *request) {
+    String path = request->url();
+    Serial.print("Request for: ");
+    Serial.println(path);
+
+    if (LittleFS.exists(path)) {
+      Serial.println("File exists, serving...");
+
+      // Determine content type based on file extension
+      String contentType = "text/html";
+      if (path.endsWith(".css")) contentType = "text/css";
+      else if (path.endsWith(".js")) contentType = "application/javascript";
+      else if (path.endsWith(".json")) contentType = "application/json";
+      else if (path.endsWith(".png")) contentType = "image/png";
+      else if (path.endsWith(".jpg")) contentType = "image/jpeg";
+
+      request->send(LittleFS, path, contentType);
+    } else {
+      Serial.print("File not found: ");
+      Serial.println(path);
+      request->send(404, "text/plain", "File Not Found");
+    }
+  });
+
+  // Handle Web Server Events
+  events.onConnect([](AsyncEventSourceClient *client) {
+    if (client->lastId()) {
+      Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
+    }
+    // send event with message "hello!", id current millis
+    // and set reconnect delay to 1 second
+    client->send("hello!", NULL, millis(), 10000);
+  });
+
+  server.addHandler(&events);
+  server.begin();
+}
+// Process DNS requests for captive portal
+void dnsHandleRequest() {
+  if (currentWiFiMode == AWIFI_MODE_AP) {
+    dnsServer.processNextRequest();
   }
 }
 
-void InitWiFiWithFallback() {
-  bool credsLoaded = loadWiFiCreds();
-  bool connected = credsLoaded && tryConnectSTA(20000);
 
-  if (connected) {
-    Serial.println("WiFi connected: " + WiFi.localIP().toString());
-    // continue normal boot (leave AP mode disabled)
-  } else {
-    Serial.println("Starting fallback AP mode");
-    WiFi.mode(WIFI_AP);
-    WiFi.softAP(ap_ssid, ap_password);
-    Serial.println("AP IP: " + WiFi.softAPIP().toString());
-    server.on("/", handleRoot);
-    server.on("/save", HTTP_POST, handleSave);
-    server.begin();
-  }
-}
+
+// void reportStackUsageEverySecond() {
+//   static unsigned long lastCheck = 0;
+//   static UBaseType_t minLoopStack = UINT32_MAX;
+//   static UBaseType_t minMyTaskStack = UINT32_MAX;
+
+//   if (millis() - lastCheck >= 1000) {
+//     UBaseType_t loopStack = uxTaskGetStackHighWaterMark(NULL);  // current task (loop)
+//     UBaseType_t taskStack = tempTaskHandle ? uxTaskGetStackHighWaterMark(tempTaskHandle) : 0;
+
+//     if (loopStack < minLoopStack) minLoopStack = loopStack;
+//     if (taskStack < minMyTaskStack) minMyTaskStack = taskStack;
+
+//     float loopUsedPct = 100.0f * (LOOP_STACK_ALLOC_WORDS - minLoopStack) / LOOP_STACK_ALLOC_WORDS;
+//     float taskUsedPct = myTaskHandle
+//                           ? 100.0f * (MYTASK_STACK_ALLOC_WORDS - minMyTaskStack) / MYTASK_STACK_ALLOC_WORDS
+//                           : 0.0f;
+
+//     Serial.printf("Stack usage: loop %.1f%% | myTask %.1f%%\n", loopUsedPct, taskUsedPct);
+
+//     // Reset for next interval
+//     minLoopStack = UINT32_MAX;
+//     minMyTaskStack = UINT32_MAX;
+//     lastCheck = millis();
+//   }
+// }
