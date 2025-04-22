@@ -24,13 +24,38 @@ SiC45x sic45x(0x1D);
 #include <ESPAsyncWebServer.h>  // for wifi stuff, important, don't ever update, use mathieucarbou github repository
 #include <DNSServer.h>          // For captive portal (Wifi Network Provisioning) functionality
 #include <ESPmDNS.h>            // helps with wifi provisioning (to save users trouble of looking up ESP32's IP address)
-#include "freertos/FreeRTOS.h" // used for stack overflow detecton
-#include "freertos/task.h"     // used for stack overflow detection
+#include "esp_heap_caps.h"      // needed for tracking heap usage
+#include "freertos/FreeRTOS.h"  // for stack usage
+#include "freertos/task.h"      // for stack usage
+#define configGENERATE_RUN_TIME_STATS 1 // for CPU use tracking
 
 
-// extern TaskHandle_t tempTaskHandle; // used for stack overflow detection
-// #define LOOP_STACK_ALLOC_WORDS     2048   // Arduino loop() task = 8 KB
-// #define MYTASK_STACK_ALLOC_WORDS   4096   // Your TempTask = 16 KB
+
+// ===== HEAP MONITORING =====
+int rawFreeHeap = 0;           // in bytes
+int FreeHeap = 0;              // in KB
+int MinFreeHeap = 0;           // in KB
+int FreeInternalRam = 0;       // in KB
+int Heapfrag = 0;              // 0–100 %, integer only
+
+// ===== TASK STACK MONITORING =====
+const int MAX_TASKS = 20;  // Adjust if you're running lots of tasks
+TaskStatus_t taskArray[MAX_TASKS];
+// Optional: reuse these across calls if needed
+int numTasks = 0;
+int tasksCaptured = 0;
+int stackBytes = 0;
+int core = 0;
+
+
+//CPU
+// ===== CPU LOAD TRACKING =====
+unsigned long lastIdle0Time = 0;    // Previous IDLE0 task runtime counter
+unsigned long lastIdle1Time = 0;    // Previous IDLE1 task runtime counter
+unsigned long lastCheckTime = 0;    // Last time CPU load was measured
+int cpuLoadCore0 = 0;               // CPU load percentage for Core 0
+int cpuLoadCore1 = 0;               // CPU load percentage for Core 1
+
 
 // Settings - these will be moved to LittleFS
 const char *default_ssid = "MN2G";            // Default SSID if no saved credentials
@@ -147,7 +172,6 @@ int LoopTime;             // must not use unsigned long becasue cant run String(
 int WifiStrength;         // must not use unsigned long becasue cant run String() on an unsigned long and that's done by the wifi code
 int MaximumLoopTime;      // must not use unsigned long becasue cant run String() on an unsigned long and that's done by the wifi code
 int prev_millis7888 = 0;  // used to reset the meximum loop time
-int FreeHeap;             // as it says, free memory tracker
 
 //"Blink without delay" style timer variables used to control how often differnet parts of code execute
 static unsigned long prev_millis4;   // used to delay checking of faults in the SiC450
@@ -795,3 +819,7 @@ template<typename T> void PrintLabelValWithConversionCheckUnDef(const char *labe
   if (AddLf) OutputStream->println();
 }
 //*****************************************************************************
+
+
+
+
