@@ -1,4 +1,3 @@
-
 void AdjustSic450() {
   if (Ignition == 1 && OnOff == 1) {
 
@@ -181,28 +180,32 @@ void ReadAnalogInputs() {
   }
 }
 void TempTask(void *parameter) {
+
+  // a placeholder for the temperature measurment- uncomment this and comment out temp measurement for debugging
   for (;;) {
-    // Step 1: Trigger a conversion
-    sensors.requestTemperaturesByAddress(tempDeviceAddress);
-
-    // Step 2: Wait for conversion to complete while other things run
-    vTaskDelay(pdMS_TO_TICKS(9000));  // This is the spacing between reads
-
-    // Step 3: Read the completed result
-    uint8_t scratchPad[9];
-    if (sensors.readScratchPad(tempDeviceAddress, scratchPad)) {
-      int16_t raw = (scratchPad[1] << 8) | scratchPad[0];
-      float tempC = raw / 16.0;
-      AlternatorTemperatureF = tempC * 1.8 + 32.0;
-    } else {
-      AlternatorTemperatureF = NAN;
-      Serial.println("Temp read failed");
-    }
-    Serial.printf("Temp: %.2f °F at %lu ms\n", AlternatorTemperatureF, millis());
-
-
-    // Immediately loop again — next conversion starts right now
+    vTaskDelay(pdMS_TO_TICKS(1000));  // sleep for 1 second
   }
+
+  // for (;;) {
+  //   // Step 1: Trigger a conversion
+  //   sensors.requestTemperaturesByAddress(tempDeviceAddress);
+
+  //   // Step 2: Wait for conversion to complete while other things run
+  //   vTaskDelay(pdMS_TO_TICKS(9000));  // This is the spacing between reads
+
+  //   // Step 3: Read the completed result
+  //   uint8_t scratchPad[9];
+  //   if (sensors.readScratchPad(tempDeviceAddress, scratchPad)) {
+  //     int16_t raw = (scratchPad[1] << 8) | scratchPad[0];
+  //     float tempC = raw / 16.0;
+  //     AlternatorTemperatureF = tempC * 1.8 + 32.0;
+  //   } else {
+  //     AlternatorTemperatureF = NAN;
+  //     Serial.println("Temp read failed");
+  //   }
+  //   Serial.printf("Temp: %.2f °F at %lu ms\n", AlternatorTemperatureF, millis());
+  //   // Immediately loop again — next conversion starts right now
+  // }
 }
 void UpdateDisplay() {
   if (millis() - prev_millis66 > 3000) {  // update display every 3 seconds
@@ -698,8 +701,14 @@ void SendWifiData() {
     WifiStrength = WiFi.RSSI();
     WifiHeartBeat++;
     if (WifiStrength >= -70) {
-      int start66 = micros();               // Start timing the wifi section
-      FreeHeap = ESP.getFreeHeap() / 1024;  // making it smaller to transmit in kb
+      int start66 = micros();  // Start timing the wifi section
+
+      printHeapStats();           //   Should be ~25–65 µs with no serial prints
+      printBasicTaskStackInfo();  //Should be ~70–170 µs µs for 10 tasks (conservative estimate with no serial prints)
+      updateCpuLoad();            //~200–250 for 10 tasks
+      testTaskStats();            // 👈 Add this line to test
+
+
       // Build CSV string with all data as integers
       // Format: multiply floats by 10, 100 or 1000 to preserve decimal precision as needed
       char payload[512];  // Smaller buffer size since CSV is more compact
@@ -819,25 +828,25 @@ bool connectToWiFi(const char *ssid, const char *password, unsigned long timeout
   }
 
   Serial.printf("Attempting to connect to WiFi network: %s\n", ssid);
-  
+
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-  
+
   unsigned long startTime = millis();
-  
+
   // Wait for connection or timeout
   while (WiFi.status() != WL_CONNECTED && millis() - startTime < timeout) {
     delay(500);
     Serial.print(".");
   }
-  
+
   Serial.println();
-  
+
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("Connected to WiFi");
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
-    
+
     // Initialize mDNS after successful connection
     if (MDNS.begin("alternator")) {
       Serial.println("mDNS responder started");
@@ -846,7 +855,7 @@ bool connectToWiFi(const char *ssid, const char *password, unsigned long timeout
     } else {
       Serial.println("Error setting up mDNS responder!");
     }
-    
+
     return true;
   } else {
     Serial.println("Failed to connect to WiFi within timeout period");
@@ -914,6 +923,7 @@ void setupWiFiConfigServer() {
 
   server.begin();
 }
+
 // Standard server setup for normal operation mode
 void setupServer() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -1035,6 +1045,7 @@ void setupServer() {
   server.addHandler(&events);
   server.begin();
 }
+
 // Process DNS requests for captive portal
 void dnsHandleRequest() {
   if (currentWiFiMode == AWIFI_MODE_AP) {
@@ -1042,30 +1053,124 @@ void dnsHandleRequest() {
   }
 }
 
+void printBasicTaskStackInfo() {
+  numTasks = uxTaskGetNumberOfTasks();
+  if (numTasks > MAX_TASKS) numTasks = MAX_TASKS;  // Prevent overflow
+
+  tasksCaptured = uxTaskGetSystemState(taskArray, numTasks, NULL);
+
+  Serial.println(F("\n===== TASK STACK REMAINING (BYTES) ====="));
+  Serial.println(F("Task Name        | Core | Stack Remaining | Alert"));
+
+  char coreIdBuffer[8]; // Buffer for core ID display
+  
+  for (int i = 0; i < tasksCaptured; i++) {
+    const char *taskName = taskArray[i].pcTaskName;
+    stackBytes = taskArray[i].usStackHighWaterMark * sizeof(StackType_t);
+    core = taskArray[i].xCoreID;
+    
+    // Format core ID
+    if (core < 0 || core > 16) {
+      snprintf(coreIdBuffer, sizeof(coreIdBuffer), "N/A");
+    } else {
+      snprintf(coreIdBuffer, sizeof(coreIdBuffer), "%d", core);
+    }
+    
+    const char *alert = "";
+if (
+  strcmp(taskName, "IDLE0") == 0 ||
+  strcmp(taskName, "IDLE1") == 0 ||
+  strcmp(taskName, "ipc0") == 0 ||
+  strcmp(taskName, "ipc1") == 0
+) {
+  if (stackBytes < 256) {
+    alert = "LOW STACK";
+  }
+} else {
+  if (stackBytes < 256) {
+    alert = "LOW STACK";
+  } else if (stackBytes < 512) {
+    alert = "WARN";
+  }
+}
 
 
-// void reportStackUsageEverySecond() {
-//   static unsigned long lastCheck = 0;
-//   static UBaseType_t minLoopStack = UINT32_MAX;
-//   static UBaseType_t minMyTaskStack = UINT32_MAX;
+    Serial.printf("%-16s |  %-3s  |     %5d B     | %s\n", 
+                  taskName, 
+                  coreIdBuffer, 
+                  stackBytes, 
+                  alert);
+  }
 
-//   if (millis() - lastCheck >= 1000) {
-//     UBaseType_t loopStack = uxTaskGetStackHighWaterMark(NULL);  // current task (loop)
-//     UBaseType_t taskStack = tempTaskHandle ? uxTaskGetStackHighWaterMark(tempTaskHandle) : 0;
+  Serial.println(F("==========================================\n"));
+}
 
-//     if (loopStack < minLoopStack) minLoopStack = loopStack;
-//     if (taskStack < minMyTaskStack) minMyTaskStack = taskStack;
+void printHeapStats() {
+  rawFreeHeap = esp_get_free_heap_size();                                 // in bytes
+  FreeHeap = rawFreeHeap / 1024;                                          // in KB
+  MinFreeHeap = esp_get_minimum_free_heap_size() / 1024;                  // in KB
+  FreeInternalRam = heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024;  // in KB
 
-//     float loopUsedPct = 100.0f * (LOOP_STACK_ALLOC_WORDS - minLoopStack) / LOOP_STACK_ALLOC_WORDS;
-//     float taskUsedPct = myTaskHandle
-//                           ? 100.0f * (MYTASK_STACK_ALLOC_WORDS - minMyTaskStack) / MYTASK_STACK_ALLOC_WORDS
-//                           : 0.0f;
+  if (rawFreeHeap == 0) {
+    Heapfrag = 100;
+  } else {
+    Heapfrag = 100 - ((heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) * 100) / rawFreeHeap);
+  }
 
-//     Serial.printf("Stack usage: loop %.1f%% | myTask %.1f%%\n", loopUsedPct, taskUsedPct);
+  Serial.println(F("========== HEAP STATS =========="));
+  Serial.printf("Free Heap:               %5u KB\n", FreeHeap);
+  Serial.printf("Minimum Ever Free Heap:  %5u KB\n", MinFreeHeap);
+  Serial.printf("Free Internal RAM:       %5u KB\n", FreeInternalRam);
+  Serial.printf("Heap Fragmentation:      %5u %%\n", Heapfrag);
+  Serial.println(F("================================"));
+}
 
-//     // Reset for next interval
-//     minLoopStack = UINT32_MAX;
-//     minMyTaskStack = UINT32_MAX;
-//     lastCheck = millis();
-//   }
-// }
+void updateCpuLoad() {
+  const int MAX_TASKS = 20;
+  TaskStatus_t taskSnapshot[MAX_TASKS];
+  UBaseType_t taskCount = uxTaskGetSystemState(taskSnapshot, MAX_TASKS, NULL);
+  unsigned long idle0Time = 0;
+  unsigned long idle1Time = 0;
+  unsigned long now = millis();
+  for (int i = 0; i < taskCount; i++) {
+    if (strcmp(taskSnapshot[i].pcTaskName, "IDLE0") == 0) {
+      idle0Time = taskSnapshot[i].ulRunTimeCounter;
+    } else if (strcmp(taskSnapshot[i].pcTaskName, "IDLE1") == 0) {
+      idle1Time = taskSnapshot[i].ulRunTimeCounter;
+    }
+  }
+  if (lastCheckTime == 0) {
+    lastIdle0Time = idle0Time;
+    lastIdle1Time = idle1Time;
+    lastCheckTime = now;
+    return;
+  }
+  unsigned long deltaIdle0 = idle0Time - lastIdle0Time;
+  unsigned long deltaIdle1 = idle1Time - lastIdle1Time;
+  unsigned long timeDiff = now - lastCheckTime;
+  if (timeDiff == 0) return;
+  // Fixed calculation - using your existing variables
+  cpuLoadCore0 = 100 - ((deltaIdle0 * 100) / (timeDiff * 100));
+  cpuLoadCore1 = 100 - ((deltaIdle1 * 100) / (timeDiff * 100));
+  // Ensure values stay in valid range
+  if (cpuLoadCore0 < 0) cpuLoadCore0 = 0;
+  if (cpuLoadCore0 > 100) cpuLoadCore0 = 100;
+  if (cpuLoadCore1 < 0) cpuLoadCore1 = 0;
+  if (cpuLoadCore1 > 100) cpuLoadCore1 = 100;
+  lastIdle0Time = idle0Time;
+  lastIdle1Time = idle1Time;
+  lastCheckTime = now;
+  // Print CPU load directly
+  Serial.printf("CPU Load: Core 0 = %3d%%, Core 1 = %3d%%\n", cpuLoadCore0, cpuLoadCore1);
+}   
+
+
+void testTaskStats() {
+  char statsBuffer[1024];  // Enough for 15–20 tasks
+
+  vTaskGetRunTimeStats(statsBuffer);
+
+  Serial.println(F("========== TASK CPU USAGE =========="));
+  Serial.println(statsBuffer);
+  Serial.println(F("====================================\n"));
+}
