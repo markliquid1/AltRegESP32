@@ -114,6 +114,8 @@ void ReadAnalogInputs() {
       // Serial.print("INA228 Battery Bcur (Amps): ");
       ShuntVoltage_mV = INA.getShuntVoltage_mV();
       Bcur = ShuntVoltage_mV * 10;
+      BatteryCurrent_scaled = Bcur *10;
+
       //Serial.print(Bcur);
       //Serial.println();
 
@@ -1062,43 +1064,39 @@ void printBasicTaskStackInfo() {
   Serial.println(F("\n===== TASK STACK REMAINING (BYTES) ====="));
   Serial.println(F("Task Name        | Core | Stack Remaining | Alert"));
 
-  char coreIdBuffer[8]; // Buffer for core ID display
-  
+  char coreIdBuffer[8];  // Buffer for core ID display
+
   for (int i = 0; i < tasksCaptured; i++) {
     const char *taskName = taskArray[i].pcTaskName;
     stackBytes = taskArray[i].usStackHighWaterMark * sizeof(StackType_t);
     core = taskArray[i].xCoreID;
-    
+
     // Format core ID
     if (core < 0 || core > 16) {
       snprintf(coreIdBuffer, sizeof(coreIdBuffer), "N/A");
     } else {
       snprintf(coreIdBuffer, sizeof(coreIdBuffer), "%d", core);
     }
-    
+
     const char *alert = "";
-if (
-  strcmp(taskName, "IDLE0") == 0 ||
-  strcmp(taskName, "IDLE1") == 0 ||
-  strcmp(taskName, "ipc0") == 0 ||
-  strcmp(taskName, "ipc1") == 0
-) {
-  if (stackBytes < 256) {
-    alert = "LOW STACK";
-  }
-} else {
-  if (stackBytes < 256) {
-    alert = "LOW STACK";
-  } else if (stackBytes < 512) {
-    alert = "WARN";
-  }
-}
+    if (
+      strcmp(taskName, "IDLE0") == 0 || strcmp(taskName, "IDLE1") == 0 || strcmp(taskName, "ipc0") == 0 || strcmp(taskName, "ipc1") == 0) {
+      if (stackBytes < 256) {
+        alert = "LOW STACK";
+      }
+    } else {
+      if (stackBytes < 256) {
+        alert = "LOW STACK";
+      } else if (stackBytes < 512) {
+        alert = "WARN";
+      }
+    }
 
 
-    Serial.printf("%-16s |  %-3s  |     %5d B     | %s\n", 
-                  taskName, 
-                  coreIdBuffer, 
-                  stackBytes, 
+    Serial.printf("%-16s |  %-3s  |     %5d B     | %s\n",
+                  taskName,
+                  coreIdBuffer,
+                  stackBytes,
                   alert);
   }
 
@@ -1162,8 +1160,7 @@ void updateCpuLoad() {
   lastCheckTime = now;
   // Print CPU load directly
   Serial.printf("CPU Load: Core 0 = %3d%%, Core 1 = %3d%%\n", cpuLoadCore0, cpuLoadCore1);
-}   
-
+}
 
 void testTaskStats() {
   char statsBuffer[1024];  // Enough for 15–20 tasks
@@ -1173,4 +1170,266 @@ void testTaskStats() {
   Serial.println(F("========== TASK CPU USAGE =========="));
   Serial.println(statsBuffer);
   Serial.println(F("====================================\n"));
+}
+
+void UpdateBatterySOC(unsigned long elapsedMillis) {
+  // Convert elapsed milliseconds to seconds for calculations
+  unsigned long elapsedSeconds = elapsedMillis / 1000;
+  if (elapsedSeconds < 1) elapsedSeconds = 1;
+
+  // Update scaled values
+  Voltage_scaled = BatteryV * 100;
+  AlternatorCurrent_scaled = MeasuredAmps * 10;
+  BatteryPower_scaled = (Voltage_scaled * BatteryCurrent_scaled) / 10;  // W × 100
+  EnergyDelta_scaled = (BatteryPower_scaled * elapsedSeconds) / 3600;
+  AlternatorPower_scaled = (int)(BatteryV * MeasuredAmps * 100);  // W × 100
+  AltEnergyDelta_scaled = (AlternatorPower_scaled * elapsedSeconds) / 3600;
+
+  // Calculate fuel used based on alternator energy output (Wh × 100)
+  joulesOut = (AltEnergyDelta_scaled * 3600) / 100;  // Joules
+  fuelEnergyUsed_J = joulesOut * 2;                  // Assume 50% alternator efficiency
+AlternatorFuelUsed += (fuelEnergyUsed_J / 36000);  // Inline the mL calc
+
+  alternatorIsOn = (AlternatorCurrent_scaled > CurrentThreshold_scaled);
+
+  if (alternatorIsOn) {
+    alternatorOnAccumulator += elapsedMillis;
+    if (alternatorOnAccumulator >= 60000) {
+      AlternatorOnTime += alternatorOnAccumulator / 60000;
+      alternatorOnAccumulator %= 60000;
+    }
+  }
+
+  alternatorWasOn = alternatorIsOn;
+
+  // Correctly scaled threshold for BatteryCurrent_scaled
+  if (abs(BatteryCurrent_scaled) < 5) return;  // 0.5 * 10 = 5
+
+  // Use integer math for deltaAh
+  int deltaAh_scaled = (BatteryCurrent_scaled * elapsedSeconds) / 360;  // scaled by 100 to match CoulombCount_Ah_scaled
+
+  if (BatteryCurrent_scaled >= 0) {
+    // Apply charge efficiency (ChargeEfficiency_scaled is already percentage)
+    int batteryDeltaAh_scaled = (deltaAh_scaled * ChargeEfficiency_scaled) / 100;
+    CoulombCount_Ah_scaled += batteryDeltaAh_scaled;
+  } else {
+    // Apply Peukert compensation (PeukertExponent_scaled is × 100)
+    int batteryDeltaAh_scaled = (deltaAh_scaled * 100) / PeukertExponent_scaled;
+    CoulombCount_Ah_scaled += batteryDeltaAh_scaled;
+  }
+
+  CoulombCount_Ah_scaled = constrain(CoulombCount_Ah_scaled, 0, BatteryCapacity_Ah * 100);
+SoC_percent = CoulombCount_Ah_scaled / BatteryCapacity_Ah / 100; // divide by 100 becasue CoulombCount is scaled
+
+  // --- Full Charge Detection (Integer Only, No Temps) ---
+  if ((abs(BatteryCurrent_scaled * 100) <= (TailCurrent_scaled * BatteryCapacity_Ah)) &&
+      (Voltage_scaled >= ChargedVoltage_scaled)) {
+    FullChargeTimer += elapsedSeconds;
+    if (FullChargeTimer >= ChargedDetectionTime) {
+      SoC_percent = 100;
+      CoulombCount_Ah_scaled = BatteryCapacity_Ah * 100;
+      FullChargeDetected = true;
+    }
+  } else {
+    FullChargeTimer = 0;
+    FullChargeDetected = false;
+  }
+
+
+
+
+}
+
+void UpdateEngineRuntime(unsigned long elapsedMillis) {
+  // Check if engine is running (RPM > 100)
+  bool engineIsRunning = (RPM > 100 && RPM < 6000);
+
+  if (engineIsRunning) {
+    // Add time to engine running counter
+    engineRunAccumulator += elapsedMillis;
+
+    // Update total engine run time every minute
+    if (engineRunAccumulator >= 60000) {  // 1 minute in milliseconds
+      int minutesRun = engineRunAccumulator / 60000;
+      EngineRunTime += minutesRun;
+
+      // Update engine cycles (RPM * minutes)
+      EngineCycles += RPM * minutesRun;
+
+      // Keep the remainder milliseconds
+      engineRunAccumulator %= 60000;
+    }
+  }
+
+  // Update engine state
+  engineWasRunning = engineIsRunning;
+}
+
+void SaveAllData() {
+  // Save SOC and energy data
+  SaveSOCData();
+
+  // Save runtime data
+  SaveRuntimeData();
+}
+
+void SaveSOCData() {
+  // Save SOC and energy data
+  // Create directory if it doesn't exist (LittleFS doesn't need this, but included for completeness)
+  // Write files, creating them if they don't exist
+  writeFile(LittleFS, "/InitialSOC.txt", String(SoC_percent).c_str());
+  writeFile(LittleFS, "/ChargedEnergy.txt", String(ChargedEnergy).c_str());
+  writeFile(LittleFS, "/DischargedEnergy.txt", String(DischargedEnergy).c_str());
+  writeFile(LittleFS, "/AltEnergy.txt", String(AlternatorChargedEnergy).c_str());
+  writeFile(LittleFS, "/FuelUsed.txt", String(AlternatorFuelUsed).c_str());
+}
+
+void SaveRuntimeData() {
+  // Save engine and alternator runtime data
+  writeFile(LittleFS, "/EngineRunTime.txt", String(EngineRunTime).c_str());
+  writeFile(LittleFS, "/EngineCycles.txt", String(EngineCycles).c_str());
+  writeFile(LittleFS, "/AlternatorOnTime.txt", String(AlternatorOnTime).c_str());
+}
+
+void InitBatterySettings() {
+  // Check if battery parameter settings exist in LittleFS, create with defaults if not
+  // Then load the values into the variables
+
+  if (!LittleFS.exists("/BatteryCapacity.txt")) {
+    writeFile(LittleFS, "/BatteryCapacity.txt", String(BatteryCapacity_Ah).c_str());
+  } else {
+    BatteryCapacity_Ah = readFile(LittleFS, "/BatteryCapacity.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/PeukertExponent.txt")) {
+    writeFile(LittleFS, "/PeukertExponent.txt", String(PeukertExponent_scaled).c_str());
+  } else {
+    PeukertExponent_scaled = readFile(LittleFS, "/PeukertExponent.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/ChargeEfficiency.txt")) {
+    writeFile(LittleFS, "/ChargeEfficiency.txt", String(ChargeEfficiency_scaled).c_str());
+  } else {
+    ChargeEfficiency_scaled = readFile(LittleFS, "/ChargeEfficiency.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/ChargedVoltage.txt")) {
+    writeFile(LittleFS, "/ChargedVoltage.txt", String(ChargedVoltage_scaled).c_str());
+  } else {
+    ChargedVoltage_scaled = readFile(LittleFS, "/ChargedVoltage.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/TailCurrent.txt")) {
+    writeFile(LittleFS, "/TailCurrent.txt", String(TailCurrent_scaled).c_str());
+  } else {
+    TailCurrent_scaled = readFile(LittleFS, "/TailCurrent.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/FuelEfficiency.txt")) {
+    writeFile(LittleFS, "/FuelEfficiency.txt", String(FuelEfficiency_scaled).c_str());
+  } else {
+    FuelEfficiency_scaled = readFile(LittleFS, "/FuelEfficiency.txt").toInt();
+  }
+}
+
+void LoadRuntimeSettings() {
+  // Load engine runtime data
+  if (LittleFS.exists("/EngineRunTime.txt")) {
+    EngineRunTime = readFile(LittleFS, "/EngineRunTime.txt").toInt();
+  } else {
+    writeFile(LittleFS, "/EngineRunTime.txt", String(EngineRunTime).c_str());
+  }
+
+  if (LittleFS.exists("/EngineCycles.txt")) {
+    EngineCycles = readFile(LittleFS, "/EngineCycles.txt").toInt();
+  } else {
+    writeFile(LittleFS, "/EngineCycles.txt", String(EngineCycles).c_str());
+  }
+
+  if (LittleFS.exists("/AlternatorOnTime.txt")) {
+    AlternatorOnTime = readFile(LittleFS, "/AlternatorOnTime.txt").toInt();
+  } else {
+    writeFile(LittleFS, "/AlternatorOnTime.txt", String(AlternatorOnTime).c_str());
+  }
+}
+
+void ResetRuntimeCounters() {
+  // Reset runtime tracking variables
+  EngineRunTime = 0;
+  EngineCycles = 0;
+  AlternatorOnTime = 0;
+  engineRunAccumulator = 0;
+  alternatorOnAccumulator = 0;
+
+  // Save the reset values
+  SaveRuntimeData();
+}
+
+void ResetEnergyCounters() {
+  // Reset all energy tracking variables
+  ChargedEnergy = 0;
+  DischargedEnergy = 0;
+  AlternatorChargedEnergy = 0;
+  AlternatorFuelUsed = 0;
+
+  // Save the reset values
+  SaveSOCData();
+}
+
+void LoadAllSettings() {
+  // Check if SOC value exists in LittleFS
+  bool SOCExists = LittleFS.exists("/InitialSOC.txt");
+  if (SOCExists) {
+    // Load saved SOC
+    String savedSOC = readFile(LittleFS, "/InitialSOC.txt");
+    InitialStateOfCharge = savedSOC.toInt();
+  } else {
+    // Create default value
+    String stringSOC = String(InitialStateOfCharge);
+    writeFile(LittleFS, "/InitialSOC.txt", stringSOC.c_str());
+  }
+
+  // Check if Battery Capacity exists in LittleFS
+  bool CapacityExists = LittleFS.exists("/BatteryCapacity.txt");
+  if (CapacityExists) {
+    // Load saved capacity
+    String savedCapacity = readFile(LittleFS, "/BatteryCapacity.txt");
+    BatteryCapacity_Ah = savedCapacity.toInt();
+  } else {
+    // Create default value
+    String stringCapacity = String(BatteryCapacity_Ah);
+    writeFile(LittleFS, "/BatteryCapacity.txt", stringCapacity.c_str());
+  }
+
+  // Load energy tracking data
+  if (LittleFS.exists("/ChargedEnergy.txt")) {
+    ChargedEnergy = readFile(LittleFS, "/ChargedEnergy.txt").toInt();
+  } else {
+    writeFile(LittleFS, "/ChargedEnergy.txt", String(ChargedEnergy).c_str());
+  }
+
+  if (LittleFS.exists("/DischargedEnergy.txt")) {
+    DischargedEnergy = readFile(LittleFS, "/DischargedEnergy.txt").toInt();
+  } else {
+    writeFile(LittleFS, "/DischargedEnergy.txt", String(DischargedEnergy).c_str());
+  }
+
+  if (LittleFS.exists("/AltEnergy.txt")) {
+    AlternatorChargedEnergy = readFile(LittleFS, "/AltEnergy.txt").toInt();
+  } else {
+    writeFile(LittleFS, "/AltEnergy.txt", String(AlternatorChargedEnergy).c_str());
+  }
+
+  if (LittleFS.exists("/FuelUsed.txt")) {
+    AlternatorFuelUsed = readFile(LittleFS, "/FuelUsed.txt").toInt();
+  } else {
+    writeFile(LittleFS, "/FuelUsed.txt", String(AlternatorFuelUsed).c_str());
+  }
+
+  // Also load engine runtime data
+  LoadRuntimeSettings();
+
+  // Initialize Coulomb count from SOC
+  SoC_percent = InitialStateOfCharge;
+  CoulombCount_Ah_scaled = (SoC_percent * BatteryCapacity_Ah);
 }
