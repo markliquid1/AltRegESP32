@@ -19,24 +19,22 @@ SiC45x sic45x(0x1D);
 #include <N2kMessages.h>
 #include <N2kMessagesEnumToStr.h>  // questionably needed
 #include <WiFi.h>
-#include <AsyncTCP.h>           // for wifi stuff, important, don't ever update, use mathieucarbou github repository
-#include <LittleFS.h>           // for wifi stuff
-#include <ESPAsyncWebServer.h>  // for wifi stuff, important, don't ever update, use mathieucarbou github repository
-#include <DNSServer.h>          // For captive portal (Wifi Network Provisioning) functionality
-#include <ESPmDNS.h>            // helps with wifi provisioning (to save users trouble of looking up ESP32's IP address)
-#include "esp_heap_caps.h"      // needed for tracking heap usage
-#include "freertos/FreeRTOS.h"  // for stack usage
-#include "freertos/task.h"      // for stack usage
-#define configGENERATE_RUN_TIME_STATS 1 // for CPU use tracking
-
-
+#include <AsyncTCP.h>                    // for wifi stuff, important, don't ever update, use mathieucarbou github repository
+#include <LittleFS.h>                    // for wifi stuff
+#include <ESPAsyncWebServer.h>           // for wifi stuff, important, don't ever update, use mathieucarbou github repository
+#include <DNSServer.h>                   // For captive portal (Wifi Network Provisioning) functionality
+#include <ESPmDNS.h>                     // helps with wifi provisioning (to save users trouble of looking up ESP32's IP address)
+#include "esp_heap_caps.h"               // needed for tracking heap usage
+#include "freertos/FreeRTOS.h"           // for stack usage
+#include "freertos/task.h"               // for stack usage
+#define configGENERATE_RUN_TIME_STATS 1  // for CPU use tracking
 
 // ===== HEAP MONITORING =====
-int rawFreeHeap = 0;           // in bytes
-int FreeHeap = 0;              // in KB
-int MinFreeHeap = 0;           // in KB
-int FreeInternalRam = 0;       // in KB
-int Heapfrag = 0;              // 0–100 %, integer only
+int rawFreeHeap = 0;      // in bytes
+int FreeHeap = 0;         // in KB
+int MinFreeHeap = 0;      // in KB
+int FreeInternalRam = 0;  // in KB
+int Heapfrag = 0;         // 0–100 %, integer only
 
 // ===== TASK STACK MONITORING =====
 const int MAX_TASKS = 20;  // Adjust if you're running lots of tasks
@@ -47,15 +45,13 @@ int tasksCaptured = 0;
 int stackBytes = 0;
 int core = 0;
 
-
 //CPU
 // ===== CPU LOAD TRACKING =====
-unsigned long lastIdle0Time = 0;    // Previous IDLE0 task runtime counter
-unsigned long lastIdle1Time = 0;    // Previous IDLE1 task runtime counter
-unsigned long lastCheckTime = 0;    // Last time CPU load was measured
-int cpuLoadCore0 = 0;               // CPU load percentage for Core 0
-int cpuLoadCore1 = 0;               // CPU load percentage for Core 1
-
+unsigned long lastIdle0Time = 0;  // Previous IDLE0 task runtime counter
+unsigned long lastIdle1Time = 0;  // Previous IDLE1 task runtime counter
+unsigned long lastCheckTime = 0;  // Last time CPU load was measured
+int cpuLoadCore0 = 0;             // CPU load percentage for Core 0
+int cpuLoadCore1 = 0;             // CPU load percentage for Core 1
 
 // Settings - these will be moved to LittleFS
 const char *default_ssid = "MN2G";            // Default SSID if no saved credentials
@@ -77,9 +73,6 @@ enum WiFiMode {
 };
 
 WiFiMode currentWiFiMode = AWIFI_MODE_CLIENT;
-
-
-
 
 //delete this later ?
 int powersavemode = 0;
@@ -131,7 +124,6 @@ float DutyCycle;                        // SIC outout %
 float vvout;                            // SIC output volts
 float iiout;                            // SIC output current
 float AlternatorTemperatureF = NAN;     // alternator temperature
-float AlternatorTemperatureFMax = NAN;  // used to track maximum alternator temperature
 TaskHandle_t tempTaskHandle = NULL;     // make a separate cpu task for temp reading because it's so slow
 float VictronVoltage = 0;               // battery reading from VeDirect
 float HeadingNMEA = 0;                  // Just here to test NMEA functionality
@@ -144,19 +136,58 @@ float MeasuredAmpsMax;  // used to track maximum alternator output
 float RPMMax;           // used to track maximum RPM
 int ADS1115Disconnected = 0;
 
-//Engine Run Time Related Tracking
-int EngineRunTime = 0;     // time engine has been spinning
-int EngineCycles = 0;      // average RPM * Minutes of run time
-int AlternatorOnTime = 0;  // might be useful for belt replacement or other maintenance
+// Battery SOC Monitoring Variables
+int BatteryCapacity_Ah = 300;       // Battery capacity in Amp-hours
+int SoC_percent = 75;               // State of Charge percentage (0-100)
+int CoulombCount_Ah_scaled = 7500;  // Current energy in battery (Ah × 100 for precision)
+int InitialStateOfCharge = 75;      // Starting SOC value (%)
+bool FullChargeDetected = false;    // Flag for full charge detection
+unsigned long FullChargeTimer = 600;  // Timer for full charge detection, 10 minutes
+// Timing variables
+unsigned long currentTime = 0;
+unsigned long elapsedMillis = 0;
+unsigned long lastSOCUpdateTime = 0;      // Last time SOC was updated
+unsigned long lastEngineMonitorTime = 0;  // Last time engine metrics were updated
+unsigned long lastDataSaveTime = 0;       // Last time data was saved to LittleFS
+int SOCUpdateInterval = 1000;             // Update SOC every 1 second
+int DataSaveInterval = 300000;            // Save data every 5 minutes (300,000 ms)
+// Accumulators for runtime tracking
+unsigned long engineRunAccumulator = 0;     // Milliseconds accumulator for engine runtime
+unsigned long alternatorOnAccumulator = 0;  // Milliseconds accumulator for alternator runtime
+// SOC Parameters
+int CurrentThreshold_scaled = 10;           // Ignore currents below this (A × 100)
+int PeukertExponent_scaled = 105;           // Peukert exponent × 100 (112 = 1.12)
+int ChargeEfficiency_scaled = 99;           // Charging efficiency % (0-100)
+int ChargedVoltage_scaled = 1450;           // Voltage threshold for "charged" (V × 100)
+int TailCurrent_scaled = 200;               // Current threshold for "charged" (% of capacity × 100)
+unsigned long ChargedDetectionTime = 3600;  // Time at charged state to consider 100% (seconds)
 
-//Battery Monitor style variables
-int SOC;                      // Battery State of charge
-int ChargedEnergy;            // Total Charged Energy from Battery
-int DischargedEnergy;         // Total Discharged Energy from Battery
-int AlternatorChargedEnergy;  // Total Energy from Alternator
-int AlternatorFuelUsed;       // Estimate of fuel used by Alternator
-int SolarFuelSaved;           //Charged Energy - AlternatorChargedEnergy * constant
+int Voltage_scaled = 0;            // Battery voltage scaled (V × 100)
+int BatteryCurrent_scaled = 0;     // Battery current scaled (A × 10)
+int AlternatorCurrent_scaled = 0;  // Alternator current scaled (A × 10)
+int BatteryPower_scaled = 0;       // Battery power (W × 100)
+int EnergyDelta_scaled = 0;        // Energy change (Wh × 100)
+int AlternatorPower_scaled = 0;    // Alternator power (W × 100)
+int AltEnergyDelta_scaled = 0;     // Alternator energy change (Wh × 100)
+int joulesOut = 0;
+int fuelEnergyUsed_J = 0;
+int AlternatorFuelUsed = 0;  // Total fuel used by alternator (mL)
 
+
+bool alternatorIsOn = false;  // Current alternator state
+
+
+// Energy Tracking Variables
+int ChargedEnergy = 0;            // Total charged energy from battery (Wh)
+int DischargedEnergy = 0;         // Total discharged energy from battery (Wh)
+int AlternatorChargedEnergy = 0;  // Total energy from alternator (Wh)
+int FuelEfficiency_scaled = 250;  // Engine efficiency: Wh per mL of fuel (× 100)
+// Engine & Alternator Runtime Tracking
+int EngineRunTime = 0;          // Time engine has been spinning (minutes)
+int EngineCycles = 0;           // Average RPM * Minutes of run time
+int AlternatorOnTime = 0;       // Time alternator has been producing current (minutes)
+bool engineWasRunning = false;  // Engine state in previous check
+bool alternatorWasOn = false;   // Alternator state in previous check
 //Controls For LittleFS
 int ResetTemp;              // reset the maximum alternator temperature tracker
 int ResetVotage;            // reset the maximum battery voltage measured
@@ -409,6 +440,8 @@ void setup() {
   pinMode(4, OUTPUT);  // This pin is used to provide a high signal to SiC450 Enable pin
   pinMode(2, OUTPUT);  // This pin is used to provide a heartbeat (pin 2 of ESP32 is the LED)
 
+
+  InitBatterySettings();  // if there is battery /energy monitor data in LittleFs, pull it out
 
   // Initialize LittleFS first
   if (!LittleFS.begin(true)) {
@@ -668,15 +701,28 @@ void setup() {
 }
 
 void loop() {
- 
- // reportStackUsageEverySecond();
+
+
+  //SOC Stuff
+  currentTime = millis();
+  if (currentTime - lastSOCUpdateTime >= SOCUpdateInterval) {
+    elapsedMillis = currentTime - lastSOCUpdateTime;
+    lastSOCUpdateTime = currentTime;
+    UpdateEngineRuntime(elapsedMillis);
+    UpdateBatterySOC(elapsedMillis);
+  }
+  // Periodic Data Save Logic - run every DataSaveInterval
+  if (currentTime - lastDataSaveTime >= DataSaveInterval) {
+    lastDataSaveTime = currentTime;
+    SaveAllData();
+  }
 
   starttime = esp_timer_get_time();  //Record a start time for demonstration
 
   // Handle DNS requests if in AP mode
   if (currentWiFiMode == AWIFI_MODE_AP) {
     dnsHandleRequest();
-  } else { 
+  } else {
     //MDNS.update();// Update mDNS to maintain hostname visibility    Turns out thsi was already being done on its own
     // Only do these tasks if in normal client mode
     // ReadAnalogInputs();
@@ -819,7 +865,3 @@ template<typename T> void PrintLabelValWithConversionCheckUnDef(const char *labe
   if (AddLf) OutputStream->println();
 }
 //*****************************************************************************
-
-
-
-
