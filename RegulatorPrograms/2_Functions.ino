@@ -1,8 +1,8 @@
-void AdjustSic450() {
+void AdjustField() {
   if (Ignition == 1 && OnOff == 1) {
 
-    if (millis() - prev_millis22 > FieldAdjustmentInterval) {  // adjust SIC450 every half second
-      digitalWrite(4, SIC450Enabler);                          // Enable the SIC450
+    if (millis() - prev_millis22 > FieldAdjustmentInterval) {  // adjust Field every half second
+      digitalWrite(4, FieldEnabler);                          // Enable the Field
 
       //The below code is only used when engine is running and we want field to adjust to meet the alternator amps target
       if (ManualFieldToggle == 0) {
@@ -12,7 +12,7 @@ void AdjustSic450() {
         if (MeasuredAmps > TargetAmps && vout > (MinimumFieldVoltage + interval)) {  // if amps are high and field isn't too low, drop field
           vout = vout - interval;
         }
-        // HAVE TO MAKE SURE THESE VALUES DON'T GET TOO LOW FOR SIC450 COMMAND VALIDITY.   THIS LOGIC IS ALSO NOT GREAT IF INTERVAL GETS BIG FOR ANY REASON
+        // HAVE TO MAKE SURE THESE VALUES DON'T GET TOO LOW FOR Field COMMAND VALIDITY.   THIS LOGIC IS ALSO NOT GREAT IF INTERVAL GETS BIG FOR ANY REASON
         if (AlternatorTemperatureF > AlternatorTemperatureLimitF && vout > (MinimumFieldVoltage + 2 * interval)) {
           vout = vout - (2 * interval);  // if no *2, the adjustments offset, so this makes the Temp correction win
         }
@@ -23,82 +23,13 @@ void AdjustSic450() {
       } else {
         vout = ManualVoltageTarget;
       }
-
-      // adjust limits, not discussed in datasheeet but at least some of these (VOUT_SCALE_LOOP, OV_FAULT_LIMIT are necessary for stability
-      // sic45x.setPowerGoodOn(vout * 0.9);        // .9    Try deleting this later
-      // sic45x.setPowerGoodOff(vout * 0.85);      // .85   Try deleting this later
-      sic45x.setVoutOvFaultLimit(vout * 1.15);  //    I think this one is required
-                                                //  sic45x.setVoutOvWarnLimit(vout * 1.1);    // 110  Try deleting this later
-                                                // sic45x.setVoutUvWarnLimit(vout * 0.9);    // .9 Try delting this later
-                                                //  sic45x.setVoutUvFaultLimit(vout * 0.8);   // .8 Try deleting this later
-                                                //  sic45x.setVoutMarginLow(vout * 0.95);     //.95   Try delting this later
-                                                //  sic45x.setVoutMarginHigh(vout * 1.05);    //105 Try deleting this later
-
-      //VOUT_SCALE_LOOP, according to Vishay, this matters.   Most of my early testing was between 5 and 12V, so I was possibly just in blissful ignorance before learning this
-      if (vout < 1.8) {
-        sic45x.setVoutScaleLoop(SIC45X_VOUT_SCALE_LOOP_0V3_1V8);
-      }
-      if (vout >= 1.8 && vout < 3.3) {
-        sic45x.setVoutScaleLoop(SIC45X_VOUT_SCALE_LOOP_1V8_3V3);
-      }
-      if (vout >= 3.3 && vout < 5) {
-        sic45x.setVoutScaleLoop(SIC45X_VOUT_SCALE_LOOP_3V3_5V0);
-      }
-      if (vout >= 5) {
-        sic45x.setVoutScaleLoop(SIC45X_VOUT_SCALE_LOOP_5V0_12V0);
-      }
-
-      sic45x.setFrequencySwitch(fffr);  //range is 300 kHz to 1500 kHz, resolution is 50 kHz,
-      sic45x.setVoutCommand(vout);      // Update the field voltage
-      sic45x.sendClearFaults();         // may or may not be a good idea, testing will determine
+        // Update the field voltage here
     }
   } else {
-    sic45x.setOperation(SIC45X_OPERATION_ON_OFF_DISABLED);  // Output is disabled
     vout = MinimumFieldVoltage;                             // start over from a low field voltage when it comes time to turn back on
   }
 }
-void FaultCheck() {
-  if (millis() - prev_millis4 > 20000 && FaultCheckToggle == 1) {  // every 20 seconds check faults
-    // Serial.print("getReadVin:");
-    // Serial.print(sic45x.getReadVin());
-    // Serial.print("\t");  // prints a tab
-    // Serial.print("getReadIin:");
-    // Serial.print(sic45x.getReadIin());
-    // Serial.print("\t");  // prints a tab
-    // Serial.print("getReadVout:");
-    // Serial.print(sic45x.getReadVout());
 
-    // Serial.print("\t");  // prints a tab
-    // Serial.print("getReadIout:");
-    // Serial.print(sic45x.getReadIout());
-
-    // Serial.print("\t");  // prints a tab
-    // Serial.print("getReadTemperature:");
-    // Serial.print(sic45x.getReadTemperature());
-    // Serial.print("\t");  // prints a tab
-    // Serial.print("getReadDutyCycle:");
-    // Serial.print(sic45x.getReadDutyCycle());
-
-    // Serial.print("\t");  // prints a tab
-    // Serial.print("getReadPout:");
-    // Serial.print(sic45x.getReadPout());
-    // Serial.print("\t");  // prints a tab
-    // Serial.print("getReadPin:");
-    // Serial.print(sic45x.getReadPin());
-    // Serial.print("\t");  // prints a tab
-
-    sic45x.printStatusByte();
-    sic45x.printStatusWord();
-    sic45x.printStatusVout();
-    sic45x.printStatusIout();
-    sic45x.printStatusInput();
-    sic45x.printStatusTemperature();
-    sic45x.printStatusCml();
-    sic45x.printStatusMfrSpecific();
-    Serial.println();
-    prev_millis4 = millis();
-  }
-}
 void ReadAnalogInputs() {
 
 
@@ -114,7 +45,7 @@ void ReadAnalogInputs() {
       // Serial.print("INA228 Battery Bcur (Amps): ");
       ShuntVoltage_mV = INA.getShuntVoltage_mV();
       Bcur = ShuntVoltage_mV * 10;
-      BatteryCurrent_scaled = Bcur *10;
+      BatteryCurrent_scaled = Bcur * 100;
 
       //Serial.print(Bcur);
       //Serial.println();
@@ -160,7 +91,7 @@ void ReadAnalogInputs() {
             break;
           case 1:
             Channel1V = Raw / 32768.0 * 6.144 * 2;
-            MeasuredAmps = (2.5 - Channel1V) * 80;
+            MeasuredAmps = (2.5 - Channel1V) * 80; // alternator current
             break;
           case 2:
             Channel2V = Raw / 32768.0 * 6.144 * 2133.2 * 2;
@@ -720,11 +651,11 @@ void SendWifiData() {
                SafeInt(AlternatorTemperatureF),
                SafeInt(DutyCycle),
                SafeInt(BatteryV, 100),
-               SafeInt(MeasuredAmps, 10),
+               SafeInt(MeasuredAmps, 100),
                SafeInt(RPM),
                SafeInt(Channel3V, 100),
                SafeInt(IBV, 100),
-               SafeInt(Bcur, 10),
+               SafeInt(Bcur, 100),
                SafeInt(VictronVoltage, 100),
                SafeInt(LoopTime),
                SafeInt(WifiStrength),
@@ -892,39 +823,51 @@ void setupWiFiConfigServer() {
   });
 
   // Handle form submission for saving WiFi credentials
-  server.on("/saveWiFi", HTTP_POST, [](AsyncWebServerRequest *request) {
-    String new_ssid;
-    String new_password;
+  server.on("/wifi", HTTP_POST, [](AsyncWebServerRequest *request) {
+String ssid = request->getParam("ssid", true)->value();
+ssid.trim();
 
-    if (request->hasParam("ssid", true)) {
-      new_ssid = request->getParam("ssid", true)->value();
+String password = request->getParam("password", true)->value();
+password.trim();
+
+
+    writeFile(LittleFS, "/ssid.txt", ssid.c_str());
+    writeFile(LittleFS, "/pass.txt", password.c_str());
+
+    String response = "<!DOCTYPE html><html><head><title>WiFi Setup</title>";
+    response += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+    response += "<style>";
+    response += ":root {--primary: #333333; --accent: #ff6600; --bg-light: #f5f5f5; --text-dark: #333333; ";
+    response += "--card-light: #ffffff; --radius: 4px; }";
+    response += "body {font-family: Arial, Helvetica, sans-serif; background-color: var(--bg-light); color: var(--text-dark); padding: 20px; line-height: 1.6; font-size: 14px;}";
+    response += "h2 {color: var(--text-dark); border-bottom: 2px solid var(--accent); padding-bottom: 0.25rem; margin-top: 1rem; margin-bottom: 0.75rem; font-size: 18px;}";
+    response += ".card {background: var(--card-light); padding: 16px; border-left: 2px solid var(--accent); border-radius: var(--radius); box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-bottom: 16px;}";
+    response += "a {color: var(--accent); text-decoration: none; font-weight: bold;}";
+    response += "b {color: var(--text-dark); font-weight: bold;}";
+    response += "</style></head><body><div class='card'>";
+    response += "<h2>WiFi Configuration Saved</h2>";
+    response += "<p>The Regulator will now automatically connect to your ship's Wifi when in range.</p>";
+    response += "<p><b>Next steps:</b></p>";
+    response += "<p>1. Close this page.</p>";
+    response += "<p>2. Re-connect your phone / tablet / computer to your ship's WiFi network: <b>" + ssid + "</b></p>";
+    response += "<p>3. Open any web browser and go to:</p>";
+
+    if (WiFi.status() == WL_CONNECTED) {
+      response += "<p><b>http://" + WiFi.localIP().toString() + "</b></p>";
+      response += "<p><b>or</b></p>";
     }
 
-    if (request->hasParam("password", true)) {
-      new_password = request->getParam("password", true)->value();
-    }
+    response += "<p><a href='http://alternator.local'>http://alternator.local</a> <span style='color:#333'>(if your device supports it)</span></p>";
+    response += "<p><b>Optional:</b> Add the address to your browser's favorites for future convenience.</p>";
+    response += "<p><b>Important:</b> If out of range (or bad credentials) AND you re-boot the Regulator, it will automatically return to this Access Point (AP) mode after 15 seconds, broadcasting <b>ALTERNATOR_CONFIG</b>, and you can try again.</p>";
+    response += "</div></body></html>";
 
-    // Save the new credentials to LittleFS
-    if (new_ssid.length() > 0) {
-      writeFile(LittleFS, WIFI_SSID_FILE, new_ssid.c_str());
-      writeFile(LittleFS, WIFI_PASS_FILE, new_password.c_str());
-
-      // Redirect with success message
-      request->redirect("/?status=saved");
-
-      // Set a timer to restart the ESP after a short delay
-      // This gives time for the response to be sent to the client
-      Serial.println("New WiFi credentials saved. Restarting in 5 seconds...");
-      delay(5000);
-      ESP.restart();
-    } else {
-      // Redirect with error message
-      request->redirect("/?status=error");
-    }
+    request->send(200, "text/html", response);
   });
 
   server.begin();
 }
+
 
 // Standard server setup for normal operation mode
 void setupServer() {
@@ -1179,8 +1122,8 @@ void UpdateBatterySOC(unsigned long elapsedMillis) {
 
   // Update scaled values
   Voltage_scaled = BatteryV * 100;
-  AlternatorCurrent_scaled = MeasuredAmps * 10;
-  BatteryPower_scaled = (Voltage_scaled * BatteryCurrent_scaled) / 10;  // W × 100
+  AlternatorCurrent_scaled = MeasuredAmps * 100;
+  BatteryPower_scaled = (Voltage_scaled * BatteryCurrent_scaled) / 100;  // W × 100
   EnergyDelta_scaled = (BatteryPower_scaled * elapsedSeconds) / 3600;
   AlternatorPower_scaled = (int)(BatteryV * MeasuredAmps * 100);  // W × 100
   AltEnergyDelta_scaled = (AlternatorPower_scaled * elapsedSeconds) / 3600;
@@ -1188,7 +1131,7 @@ void UpdateBatterySOC(unsigned long elapsedMillis) {
   // Calculate fuel used based on alternator energy output (Wh × 100)
   joulesOut = (AltEnergyDelta_scaled * 3600) / 100;  // Joules
   fuelEnergyUsed_J = joulesOut * 2;                  // Assume 50% alternator efficiency
-AlternatorFuelUsed += (fuelEnergyUsed_J / 36000);  // Inline the mL calc
+  AlternatorFuelUsed += (fuelEnergyUsed_J / 36000);  // Inline the mL calc
 
   alternatorIsOn = (AlternatorCurrent_scaled > CurrentThreshold_scaled);
 
@@ -1203,10 +1146,10 @@ AlternatorFuelUsed += (fuelEnergyUsed_J / 36000);  // Inline the mL calc
   alternatorWasOn = alternatorIsOn;
 
   // Correctly scaled threshold for BatteryCurrent_scaled
-  if (abs(BatteryCurrent_scaled) < 5) return;  // 0.5 * 10 = 5
+  if (abs(BatteryCurrent_scaled) < 50) return;  // 0.5 * 100 = 50
 
   // Use integer math for deltaAh
-  int deltaAh_scaled = (BatteryCurrent_scaled * elapsedSeconds) / 360;  // scaled by 100 to match CoulombCount_Ah_scaled
+  int deltaAh_scaled = (BatteryCurrent_scaled * elapsedSeconds) / 3600;  // scaled by 100 to match CoulombCount_Ah_scaled
 
   if (BatteryCurrent_scaled >= 0) {
     // Apply charge efficiency (ChargeEfficiency_scaled is already percentage)
@@ -1219,10 +1162,10 @@ AlternatorFuelUsed += (fuelEnergyUsed_J / 36000);  // Inline the mL calc
   }
 
   CoulombCount_Ah_scaled = constrain(CoulombCount_Ah_scaled, 0, BatteryCapacity_Ah * 100);
-SoC_percent = CoulombCount_Ah_scaled / BatteryCapacity_Ah / 100; // divide by 100 becasue CoulombCount is scaled
+  SoC_percent = CoulombCount_Ah_scaled / BatteryCapacity_Ah / 100; // divide by 100 because CoulombCount is scaled
 
   // --- Full Charge Detection (Integer Only, No Temps) ---
-  if ((abs(BatteryCurrent_scaled * 100) <= (TailCurrent_scaled * BatteryCapacity_Ah)) &&
+  if ((abs(BatteryCurrent_scaled) <= (TailCurrent_scaled * BatteryCapacity_Ah)) &&
       (Voltage_scaled >= ChargedVoltage_scaled)) {
     FullChargeTimer += elapsedSeconds;
     if (FullChargeTimer >= ChargedDetectionTime) {
@@ -1234,11 +1177,8 @@ SoC_percent = CoulombCount_Ah_scaled / BatteryCapacity_Ah / 100; // divide by 10
     FullChargeTimer = 0;
     FullChargeDetected = false;
   }
-
-
-
-
 }
+
 
 void UpdateEngineRuntime(unsigned long elapsedMillis) {
   // Check if engine is running (RPM > 100)
@@ -1431,5 +1371,5 @@ void LoadAllSettings() {
 
   // Initialize Coulomb count from SOC
   SoC_percent = InitialStateOfCharge;
-  CoulombCount_Ah_scaled = (SoC_percent * BatteryCapacity_Ah);
+  CoulombCount_Ah_scaled = (SoC_percent * BatteryCapacity_Ah * 100);
 }
