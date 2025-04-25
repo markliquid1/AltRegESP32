@@ -9,8 +9,6 @@ ADS1115_lite adc(ADS1115_DEFAULT_ADDRESS);
 #include "VeDirectFrameHandler.h"  // for victron communication
 #include "INA228.h"
 INA228 INA(0x40);
-#include "SiC45x.h"  // heart of system, DC/DC converter chip
-SiC45x sic45x(0x1D);
 //DONT MOVE THE NEXT 6 LINES AROUND, MUST STAY IN THIS ORDER
 #include <Arduino.h>                  // maybe not needed, was in NMEA2K example I copied
 #define ESP32_CAN_RX_PIN GPIO_NUM_16  //
@@ -55,7 +53,7 @@ int cpuLoadCore1 = 0;             // CPU load percentage for Core 1
 
 // Settings - these will be moved to LittleFS
 const char *default_ssid = "MN2G";            // Default SSID if no saved credentials
-const char *default_password = "5FENYC8PDW";  // Default password if no saved credentials
+const char *default_password = "X";  // Default password if no saved credentials // 5FENYC8PDW
 const char *ap_ssid = "ALTERNATOR_CONFIG";    // Name for the configuration AP
 const char *ap_password = "alternator123";    // Password for the configuration AP (optional)
 
@@ -101,9 +99,8 @@ int Ignition = 1;                         // This will eventually be an over-rid
 int HiLow = 1;                            // 0 will be a low setting, 1 a high setting
 int LimpHome = 0;                         // 1 will set to limp home mode, whatever that gets set up to be
 float vout = 1;                           // default field output voltage
-int FaultCheckToggle = 0;                 // Set to 1 to get a serial print out over 20 seconds of error data, delete later
 int resolution = 12;                      // for OneWire temp sensor measurement
-float fffr = 1200;                        // this is the switching frequency for SIC450 in khz units
+float fffr = 1200;                        // this is the switching frequency in Hz
 int VeData = 0;                           // Set to 1 if VE serial data exists
 int NMEA0183Data = 0;                     // Set to 1 if NMEA serial data exists doesn't do anything yet
 int NMEA2KData = 1;                       // doesn't do anything yet
@@ -120,9 +117,9 @@ float ShuntVoltage_mV;                  // Battery shunt voltage from INA228
 float Bcur;                             // battery shunt current from INA228
 float IBV;                              // Ina 228 battery voltage
 float IBVMax = NAN;                     // used to track maximum battery voltage
-float DutyCycle;                        // SIC outout %
-float vvout;                            // SIC output volts
-float iiout;                            // SIC output current
+float DutyCycle;                        // Field outout %
+float vvout;                            // Field output volts
+float iiout;                            // Field output current
 float AlternatorTemperatureF = NAN;     // alternator temperature
 TaskHandle_t tempTaskHandle = NULL;     // make a separate cpu task for temp reading because it's so slow
 float VictronVoltage = 0;               // battery reading from VeDirect
@@ -155,16 +152,16 @@ int DataSaveInterval = 300000;            // Save data every 5 minutes (300,000 
 unsigned long engineRunAccumulator = 0;     // Milliseconds accumulator for engine runtime
 unsigned long alternatorOnAccumulator = 0;  // Milliseconds accumulator for alternator runtime
 // SOC Parameters
-int CurrentThreshold_scaled = 10;           // Ignore currents below this (A × 100)
+int CurrentThreshold_scaled = 100;           // Ignore currents below this (A × 100)
 int PeukertExponent_scaled = 105;           // Peukert exponent × 100 (112 = 1.12)
 int ChargeEfficiency_scaled = 99;           // Charging efficiency % (0-100)
 int ChargedVoltage_scaled = 1450;           // Voltage threshold for "charged" (V × 100)
-int TailCurrent_scaled = 200;               // Current threshold for "charged" (% of capacity × 100)
+int TailCurrent_scaled = 2000;               // Current threshold for "charged" (% of capacity × 100)
 unsigned long ChargedDetectionTime = 3600;  // Time at charged state to consider 100% (seconds)
 
 int Voltage_scaled = 0;            // Battery voltage scaled (V × 100)
-int BatteryCurrent_scaled = 0;     // Battery current scaled (A × 10)
-int AlternatorCurrent_scaled = 0;  // Alternator current scaled (A × 10)
+int BatteryCurrent_scaled = 0;     // A × 100
+int AlternatorCurrent_scaled = 0;  // Alternator current scaled (A × 100)
 int BatteryPower_scaled = 0;       // Battery power (W × 100)
 int EnergyDelta_scaled = 0;        // Energy change (Wh × 100)
 int AlternatorPower_scaled = 0;    // Alternator power (W × 100)
@@ -172,11 +169,7 @@ int AltEnergyDelta_scaled = 0;     // Alternator energy change (Wh × 100)
 int joulesOut = 0;
 int fuelEnergyUsed_J = 0;
 int AlternatorFuelUsed = 0;  // Total fuel used by alternator (mL)
-
-
 bool alternatorIsOn = false;  // Current alternator state
-
-
 // Energy Tracking Variables
 int ChargedEnergy = 0;            // Total charged energy from battery (Wh)
 int DischargedEnergy = 0;         // Total discharged energy from battery (Wh)
@@ -205,9 +198,9 @@ int MaximumLoopTime;      // must not use unsigned long becasue cant run String(
 int prev_millis7888 = 0;  // used to reset the meximum loop time
 
 //"Blink without delay" style timer variables used to control how often differnet parts of code execute
-static unsigned long prev_millis4;   // used to delay checking of faults in the SiC450
+static unsigned long prev_millis4;   //  Not Needed?
 static unsigned long prev_millis66;  //used to delay the updating of the display
-static unsigned long prev_millis22;  // used to delay sampling of sic450
+static unsigned long prev_millis22;  // used to delay sampling of sic450    //Maybe obsolete
 static unsigned long prev_millis3;   // used to delay sampling of ADS1115 to every 2 seconds for example
 //static unsigned long prev_millis2;    // used to delay sampling of temp sensor to every 2 seconds for example
 static unsigned long prev_millis33;    // used to delay sampling of Serial Data (ve direct)
@@ -228,8 +221,8 @@ DallasTemperature sensors(&oneWire);
 DeviceAddress tempDeviceAddress;
 
 
-//SIC450 control
-bool SIC450Enabler = 1;
+//Field control
+bool FieldEnabler = 1;
 
 //Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);´
 Adafruit_SSD1306 display(128, 64, 23, 18, 19, -1, 5);
@@ -328,116 +321,105 @@ const char WIFI_CONFIG_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Alternator WiFi Setup</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <title>WiFi Setup</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    :root {
+      --primary: #333333;
+      --accent: #ff6600;
+      --bg-light: #f5f5f5;
+      --text-dark: #333333;
+      --card-light: #ffffff;
+      --radius: 4px;
+      --input-border: #999999;
+    }
     body {
-      font-family: Arial, sans-serif;
-      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: var(--bg-light);
+      color: var(--text-dark);
       padding: 20px;
-      background-color: #f4f4f4;
+      line-height: 1.6;
+      font-size: 14px;
     }
-    .container {
-      background-color: white;
-      border-radius: 5px;
-      padding: 20px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      max-width: 600px;
+    h2 {
+      color: var(--text-dark);
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 0.25rem;
+      margin-top: 1rem;
+      margin-bottom: 0.75rem;
+      font-size: 18px;
+    }
+    .card {
+      background: var(--card-light);
+      padding: 16px;
+      border-left: 2px solid var(--accent);
+      border-radius: var(--radius);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      max-width: 400px;
       margin: 0 auto;
-    }
-    h1 {
-      color: #333;
-      text-align: center;
     }
     label {
       display: block;
-      margin-top: 10px;
+      margin-bottom: 6px;
       font-weight: bold;
     }
-    input[type=text], input[type=password] {
+    input[type="text"], input[type="password"] {
       width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      display: inline-block;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      padding: 8px;
+      margin-bottom: 12px;
+      border: 1px solid var(--input-border);
+      border-radius: var(--radius);
+      font-size: 14px;
+      background-color: #fff;
       box-sizing: border-box;
     }
-    input[type=submit] {
-      width: 100%;
-      background-color: #4CAF50;
-      color: white;
-      padding: 14px 20px;
-      margin: 8px 0;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    input[type=submit]:hover {
-      background-color: #45a049;
-    }
-    .status {
-      margin-top: 20px;
-      padding: 10px;
-      border-radius: 4px;
+    .submit-row {
       text-align: center;
+      margin-top: 16px;
     }
-    .success {
-      background-color: #d4edda;
-      color: #155724;
+    input[type="submit"] {
+      background-color: var(--accent);
+      color: var(--text-light);
+      padding: 10px 20px;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 14px;
     }
-    .error {
-      background-color: #f8d7da;
-      color: #721c24;
+    input[type="submit"]:hover {
+      background-color: #e65c00;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Alternator WiFi Setup</h1>
-    <p>Please enter the WiFi network details to connect your alternator controller:</p>
-    
-    <form action="/saveWiFi" method="POST">
-      <label for="ssid">WiFi Network Name:</label>
-      <input type="text" id="ssid" name="ssid" placeholder="Enter WiFi SSID" required>
-      
-      <label for="password">WiFi Password:</label>
-      <input type="password" id="password" name="password" placeholder="Enter WiFi password">
-      
-      <input type="submit" value="Save and Connect">
-    </form>
-    
-    <div id="status" class="status" style="display:none;"></div>
-  </div>
+  <div class="card">
+    <h2>Configure WiFi</h2>
+    <p>Enter your ship's WiFi network credentials to allow automatic Regulator connection.</p>
+    <form action="/wifi" method="POST">
+      <label for="ssid">Network Name (SSID):</label>
+      <input type="text" id="ssid" name="ssid" required>
 
-  <script>
-    // Check if the form was submitted
-    window.onload = function() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const status = urlParams.get('status');
-      const statusDiv = document.getElementById('status');
-      
-      if (status === 'saved') {
-        statusDiv.classList.add('success');
-        statusDiv.textContent = 'WiFi settings saved! The device will now try to connect to the network.';
-        statusDiv.style.display = 'block';
-      } else if (status === 'error') {
-        statusDiv.classList.add('error');
-        statusDiv.textContent = 'Error saving WiFi settings. Please try again.';
-        statusDiv.style.display = 'block';
-      }
-    }
-  </script>
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" required>
+
+      <div class="submit-row">
+        <input type="submit" value="Save and Connect">
+      </div>
+    </form>
+  </div>
 </body>
 </html>
 )rawliteral";
+
 
 
 void setup() {
   setCpuFrequencyMhz(240);
   Serial.begin(115200);
   delay(500);          // not sure if this is needed
-  pinMode(4, OUTPUT);  // This pin is used to provide a high signal to SiC450 Enable pin
+  pinMode(4, OUTPUT);  // This pin is used to provide a high signal to Field Enable pin      PROBABLY OBSOLETE
   pinMode(2, OUTPUT);  // This pin is used to provide a heartbeat (pin 2 of ESP32 is the LED)
 
 
@@ -496,50 +478,6 @@ void setup() {
   display.clearDisplay();
 
   ChargingVoltageTarget = TargetFloatVoltage;
-
-  //SIC450
-  //The range of settings allowed for each register varies stupidly with this chip, must stay within the below limits:
-  //The VIN_OV_FAULT_LIMIT,VIN_UV_WARN_LIMIT  range is 1 V to 80 V, resolution is 0.5 V
-  //output voltage’s range is 0.3 V to 14 V
-  ///same for vout, margin high, margin low,VOUT_OV_FAULT_LIMIT,VOUT_OV_WARN_LIMIT...
-  //The POWER_GOOD_ON and POWER_GOOD_OFF range is 0.24 V to 14 V
-  //0V to 14V for VOUT_UV_WARN_LIMIT ,VOUT_UV_FAULT_LIMIT
-  //The VIN_ON and VIN_OFF range is 1 V to 80 V, resolution is 0.5 V
-  sic45x.begin();
-  sic45x.sendClearFaults();
-  sic45x.setVinOn(6);                    // The VIN_ON command sets the value of the input voltage, in volt, at which the PMBus unit should start power conversion
-  sic45x.setVinOff(5);                   // The VIN_OFF command sets the value of the input voltage, in volt, at which the PMBus unit, once operation has started, should stop power conversion
-  sic45x.setVoutMax(14);                 // The VOUT_MAX command sets an upper limit on the output voltage the unit cancommand regardless of any other commands or combinations 1.953 mV resolution 0.3 to 14 range
-  sic45x.setVoutTransitionRate(0.0625);  // this is millivolts per microsecond and the lowest speed allowed. Highest would be .125 and resolution is .0625
-  sic45x.setInterleave(SIC45X_INTERLEAVE_MODE_MASTER);
-  sic45x.setVoutOvFaultResponse(SIC45X_VOUT_OV_FAULT_RESPONSE_OVRSP_CONTINUE);  // The PMBus device continues operation without interruption
-  sic45x.setVoutUvFaultResponse(SIC45X_VOUT_UV_FAULT_RESPONSE_UVRSP_CONTINUE);  // The device continues operation without interruption
-  sic45x.setIoutOcFaultResponse(SIC45X_IOUT_OC_FAULT_RESPONSE_OCRSP_CONTINUE);  // The device continues operation without interruption
-  sic45x.setOtFaultResponse(SIC45X_OT_FAULT_RESPONSE_OTRSP_CONTINUE);           // The device continues operation without interruption
-  sic45x.setVinOvFaultResponse(SIC45X_VIN_OV_FAULT_RESPONSE_OVRSP_CONTINUE);    // The device continues operation without interruption
-  sic45x.setVinOvFaultLimit(79);                                                // this should do nothing anyway, was 15 by default
-  sic45x.setOnOffConfiguration(SIC45X_ON_OFF_CONFIGURATION_PU_COMMAND);         // Regulator does not power up until commanded by the CONTROLEN pin and OPERATION command
-  sic45x.setOnOffConfiguration(SIC45X_ON_OFF_CONFIGURATION_CMD_RESPOND);        // Regulator responds the "on" bit in the OPERATION command
-  sic45x.setOperation(SIC45X_OPERATION_OFF_B_IMMEDIATE);                        // Output is turned off immediately and power off sequence commands ignored
-  sic45x.setOperation(SIC45X_OPERATION_MARGIN_COMMAND);                         // Output voltage is set by the PMBus VOUT_COMMAND data
-  sic45x.setOperation(SIC45X_OPERATION_ON_OFF_ENABLED);                         // Enable output, the might be wrong order with next line, not sure
-  sic45x.setOperation(SIC45X_OPERATION_MRGNFLT_IGNORE);                         // Faults caused by selecting VOUT_MARGIN_HIGH or VOUT_MARGIN_LOW as the nominal output voltage source are ignored
-  sic45x.setOnOffConfiguration(SIC45X_ON_OFF_CONFIGURATION_EN_REQUIRE);         // Regulator requires the EN pin to be asserted to start the unit
-  sic45x.setOnOffConfiguration(SIC45X_ON_OFF_CONFIGURATION_ENPOL_HIGH);         // EN signal is active high
-  sic45x.setOnOffConfiguration(SIC45X_ON_OFF_CONFIGURATION_OFFB1_IMMEDIATE);    // Regulator turns off immediately
-  //Temporary setup specific stuff
-  sic45x.setVoutScaleLoop(SIC45X_VOUT_SCALE_LOOP_0V3_1V8);  // get ready to output 0.5V for now
-  sic45x.setFrequencySwitch(fffr);                          //range is 300 kHz to 1500 kHz, resolution is 50 kHz,
-  sic45x.setPowerGoodOn(vout * 0.9);                        // .9    Try deleting this later
-  sic45x.setPowerGoodOff(vout * 0.85);                      // .85   Try deleting this later
-  sic45x.setVoutOvFaultLimit(vout * 1.15);                  //    I think this one is required
-  sic45x.setVoutOvWarnLimit(vout * 1.1);                    // 110  Try deleting this later
-  sic45x.setVoutUvWarnLimit(vout * 0.9);                    // .9 Try delting this later
-  sic45x.setVoutUvFaultLimit(vout * 0.8);                   // .8 Try deleting this later
-  sic45x.setVoutMarginLow(vout * 0.95);                     //.95   Try delting this later
-  sic45x.setVoutMarginHigh(vout * 1.05);                    //105 Try deleting this later
-  sic45x.setVoutCommand(vout);                              // Update the field voltage, during setup, it's 0.5V
-
 
   //ADS1115
   //Connection check
@@ -727,9 +665,7 @@ void loop() {
     // Only do these tasks if in normal client mode
     // ReadAnalogInputs();
     //ReadVEData();  //read Data from Victron VeDirect
-    // AdjustSic450();
     // UpdateDisplay();
-    // FaultCheck();
 
     // Send WiFi data to client
     SendWifiData();
