@@ -2,7 +2,7 @@ void AdjustField() {
   if (Ignition == 1 && OnOff == 1) {
 
     if (millis() - prev_millis22 > FieldAdjustmentInterval) {  // adjust Field every half second
-      digitalWrite(4, FieldEnabler);                          // Enable the Field
+      digitalWrite(4, FieldEnabler);                           // Enable the Field
 
       //The below code is only used when engine is running and we want field to adjust to meet the alternator amps target
       if (ManualFieldToggle == 0) {
@@ -23,17 +23,17 @@ void AdjustField() {
       } else {
         vout = ManualVoltageTarget;
       }
-        // Update the field voltage here
+      // Update the field voltage here
     }
   } else {
-    vout = MinimumFieldVoltage;                             // start over from a low field voltage when it comes time to turn back on
+    vout = MinimumFieldVoltage;  // start over from a low field voltage when it comes time to turn back on
   }
 }
 
 void ReadAnalogInputs() {
 
 
-  if (millis() - lastINARead >= 900) {  // could go down to 600 here
+  if (millis() - lastINARead >= 900) {  // could go down to 600 here, but this logic belongs in Loop anyway
     if (INADisconnected == 0) {
       //Serial.println();
       //Serial.print("INA228 Battery Voltage: ");
@@ -91,7 +91,7 @@ void ReadAnalogInputs() {
             break;
           case 1:
             Channel1V = Raw / 32768.0 * 6.144 * 2;
-            MeasuredAmps = (2.5 - Channel1V) * 80; // alternator current
+            MeasuredAmps = (2.5 - Channel1V) * 80;  // alternator current
             break;
           case 2:
             Channel2V = Raw / 32768.0 * 6.144 * 2133.2 * 2;
@@ -111,6 +111,12 @@ void ReadAnalogInputs() {
       }
       break;
   }
+
+  // Lazy check and update of maximum values, clean this up later if desired
+  if (!isnan(IBV) && IBV > IBVMax) IBVMax = IBV;
+  if (MeasuredAmps > MeasuredAmpsMax) MeasuredAmpsMax = MeasuredAmps;
+  if (RPM > RPMMax) RPMMax = RPM;
+  if (!isnan(MaxAlternatorTemperatureF) && AlternatorTemperatureF > MaxAlternatorTemperatureF) MaxAlternatorTemperatureF = AlternatorTemperatureF;
 }
 void TempTask(void *parameter) {
 
@@ -644,9 +650,10 @@ void SendWifiData() {
 
       // Build CSV string with all data as integers
       // Format: multiply floats by 10, 100 or 1000 to preserve decimal precision as needed
+      // CSV field order: see index.html -> fields[] mapping
       char payload[512];  // Smaller buffer size since CSV is more compact
       snprintf(payload, sizeof(payload),
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                // Readings
                SafeInt(AlternatorTemperatureF),
                SafeInt(DutyCycle),
@@ -668,6 +675,18 @@ void SendWifiData() {
                SafeInt(vvout, 100),
                SafeInt(iiout, 10),
                SafeInt(FreeHeap),
+               SafeInt(IBVMax, 100),
+               SafeInt(MeasuredAmpsMax, 100),
+               SafeInt(RPMMax),
+               SafeInt(SoC_percent, 100),
+               SafeInt(EngineRunTime),
+               SafeInt(EngineCycles),
+               SafeInt(AlternatorOnTime),
+               SafeInt(AlternatorFuelUsed),
+               SafeInt(ChargedEnergy),
+               SafeInt(DischargedEnergy),
+               SafeInt(AlternatorChargedEnergy),
+               SafeInt(MaxAlternatorTemperatureF),
 
                // Settings
                SafeInt(AlternatorTemperatureLimitF),
@@ -686,6 +705,10 @@ void SendWifiData() {
                SafeInt(VeData),
                SafeInt(NMEA0183Data),
                SafeInt(NMEA2KData));
+//Serial.print("Payload: "); //For debug
+//Serial.println(payload); // for debug
+
+
       events.send(payload, "CSVData");    // Changed event name to reflect new format
       SendWifiTime = micros() - start66;  // Calculate WiFi Send Time
     }
@@ -824,11 +847,11 @@ void setupWiFiConfigServer() {
 
   // Handle form submission for saving WiFi credentials
   server.on("/wifi", HTTP_POST, [](AsyncWebServerRequest *request) {
-String ssid = request->getParam("ssid", true)->value();
-ssid.trim();
+    String ssid = request->getParam("ssid", true)->value();
+    ssid.trim();
 
-String password = request->getParam("password", true)->value();
-password.trim();
+    String password = request->getParam("password", true)->value();
+    password.trim();
 
 
     writeFile(LittleFS, "/ssid.txt", ssid.c_str());
@@ -846,21 +869,22 @@ password.trim();
     response += "b {color: var(--text-dark); font-weight: bold;}";
     response += "</style></head><body><div class='card'>";
     response += "<h2>WiFi Configuration Saved</h2>";
-    response += "<p>The Regulator will now automatically connect to your ship's Wifi when in range.</p>";
+    response += "<p>The Regulator will now connect to your ship's Wifi automatically.</p>";
     response += "<p><b>Next steps:</b></p>";
-    response += "<p>1. Close this page.</p>";
-    response += "<p>2. Re-connect your phone / tablet / computer to your ship's WiFi network: <b>" + ssid + "</b></p>";
+    response += "<p>1. Close/Cancel this page.</p>";
+    response += "<p>2. Re-connect your phone / tablet / computer to the ship's WiFi network: <b>" + ssid + "</b></p>";
     response += "<p>3. Open any web browser and go to:</p>";
 
     if (WiFi.status() == WL_CONNECTED) {
-      response += "<p><b>http://" + WiFi.localIP().toString() + "</b></p>";
-      response += "<p><b>or</b></p>";
+      response += "<p>&emsp;<b>http://" + WiFi.localIP().toString() + "</b></p>";
+      response += "<p>&emsp;&emsp;<b>or</b></p>";
     }
 
-    response += "<p><a href='http://alternator.local'>http://alternator.local</a> <span style='color:#333'>(if your device supports it)</span></p>";
-    response += "<p><b>Optional:</b> Add the address to your browser's favorites for future convenience.</p>";
+    response += "<p>&emsp;<b>http://alternator.local</b> <span style='color:#333'>(if your device supports it)</span></p>";
+    response += "<p>4. <b>Optional:</b> Add the address to your browser's favorites for future convenience.</p>";
     response += "<p><b>Important:</b> If out of range (or bad credentials) AND you re-boot the Regulator, it will automatically return to this Access Point (AP) mode after 15 seconds, broadcasting <b>ALTERNATOR_CONFIG</b>, and you can try again.</p>";
     response += "</div></body></html>";
+
 
     request->send(200, "text/html", response);
   });
@@ -1162,11 +1186,10 @@ void UpdateBatterySOC(unsigned long elapsedMillis) {
   }
 
   CoulombCount_Ah_scaled = constrain(CoulombCount_Ah_scaled, 0, BatteryCapacity_Ah * 100);
-  SoC_percent = CoulombCount_Ah_scaled / BatteryCapacity_Ah / 100; // divide by 100 because CoulombCount is scaled
+  SoC_percent = CoulombCount_Ah_scaled / BatteryCapacity_Ah / 100;  // divide by 100 because CoulombCount is scaled
 
   // --- Full Charge Detection (Integer Only, No Temps) ---
-  if ((abs(BatteryCurrent_scaled) <= (TailCurrent_scaled * BatteryCapacity_Ah)) &&
-      (Voltage_scaled >= ChargedVoltage_scaled)) {
+  if ((abs(BatteryCurrent_scaled) <= (TailCurrent_scaled * BatteryCapacity_Ah)) && (Voltage_scaled >= ChargedVoltage_scaled)) {
     FullChargeTimer += elapsedSeconds;
     if (FullChargeTimer >= ChargedDetectionTime) {
       SoC_percent = 100;
@@ -1206,41 +1229,57 @@ void UpdateEngineRuntime(unsigned long elapsedMillis) {
 }
 
 void SaveAllData() {
-  // Save SOC and energy data
-  SaveSOCData();
-
-  // Save runtime data
-  SaveRuntimeData();
-}
-
-void SaveSOCData() {
-  // Save SOC and energy data
+  // Save all persistent energy data
   // Create directory if it doesn't exist (LittleFS doesn't need this, but included for completeness)
   // Write files, creating them if they don't exist
-  writeFile(LittleFS, "/InitialSOC.txt", String(SoC_percent).c_str());
-  writeFile(LittleFS, "/ChargedEnergy.txt", String(ChargedEnergy).c_str());
-  writeFile(LittleFS, "/DischargedEnergy.txt", String(DischargedEnergy).c_str());
   writeFile(LittleFS, "/AltEnergy.txt", String(AlternatorChargedEnergy).c_str());
   writeFile(LittleFS, "/FuelUsed.txt", String(AlternatorFuelUsed).c_str());
-}
-
-void SaveRuntimeData() {
-  // Save engine and alternator runtime data
+  writeFile(LittleFS, "/IBVMax.txt", String(IBVMax, 3).c_str());
+  writeFile(LittleFS, "/MeasuredAmpsMax.txt", String(MeasuredAmpsMax, 3).c_str());
+  writeFile(LittleFS, "/RPMMax.txt", String(RPMMax).c_str());
+  writeFile(LittleFS, "/SoC_percent.txt", String(SoC_percent).c_str());
   writeFile(LittleFS, "/EngineRunTime.txt", String(EngineRunTime).c_str());
   writeFile(LittleFS, "/EngineCycles.txt", String(EngineCycles).c_str());
   writeFile(LittleFS, "/AlternatorOnTime.txt", String(AlternatorOnTime).c_str());
+  writeFile(LittleFS, "/AlternatorFuelUsed.txt", String(AlternatorFuelUsed).c_str());
+  writeFile(LittleFS, "/ChargedEnergy.txt", String(ChargedEnergy).c_str());
+  writeFile(LittleFS, "/DischargedEnergy.txt", String(DischargedEnergy).c_str());
+  writeFile(LittleFS, "/AlternatorChargedEnergy.txt", String(AlternatorChargedEnergy).c_str());
+  writeFile(LittleFS, "/MaxAlternatorTemperatureF.txt", String(MaxAlternatorTemperatureF).c_str());
 }
 
-void InitBatterySettings() {
-  // Check if battery parameter settings exist in LittleFS, create with defaults if not
-  // Then load the values into the variables
 
+void ResetRuntimeCounters() {
+  // Reset runtime tracking variables
+  EngineRunTime = 0;
+  EngineCycles = 0;
+  AlternatorOnTime = 0;
+  engineRunAccumulator = 0;
+  alternatorOnAccumulator = 0;
+
+  // Save the reset values
+  SaveAllData();
+}
+
+void ResetEnergyCounters() {
+  // Reset all energy tracking variables
+  ChargedEnergy = 0;
+  DischargedEnergy = 0;
+  AlternatorChargedEnergy = 0;
+  AlternatorFuelUsed = 0;
+
+  // Save the reset values
+  SaveAllData();
+}
+
+void InitSystemSettings() {
+
+  // Unified initializer for all persistent config and runtime variables
   if (!LittleFS.exists("/BatteryCapacity.txt")) {
     writeFile(LittleFS, "/BatteryCapacity.txt", String(BatteryCapacity_Ah).c_str());
   } else {
     BatteryCapacity_Ah = readFile(LittleFS, "/BatteryCapacity.txt").toInt();
   }
-
   if (!LittleFS.exists("/PeukertExponent.txt")) {
     writeFile(LittleFS, "/PeukertExponent.txt", String(PeukertExponent_scaled).c_str());
   } else {
@@ -1270,106 +1309,77 @@ void InitBatterySettings() {
   } else {
     FuelEfficiency_scaled = readFile(LittleFS, "/FuelEfficiency.txt").toInt();
   }
-}
 
-void LoadRuntimeSettings() {
-  // Load engine runtime data
-  if (LittleFS.exists("/EngineRunTime.txt")) {
-    EngineRunTime = readFile(LittleFS, "/EngineRunTime.txt").toInt();
+  if (!LittleFS.exists("/IBVMax.txt")) {
+    writeFile(LittleFS, "/IBVMax.txt", String(IBVMax, 3).c_str());
   } else {
+    IBVMax = readFile(LittleFS, "/IBVMax.txt").toFloat();
+  }
+
+  if (!LittleFS.exists("/MeasuredAmpsMax.txt")) {
+    writeFile(LittleFS, "/MeasuredAmpsMax.txt", String(MeasuredAmpsMax, 3).c_str());
+  } else {
+    MeasuredAmpsMax = readFile(LittleFS, "/MeasuredAmpsMax.txt").toFloat();
+  }
+
+  if (!LittleFS.exists("/RPMMax.txt")) {
+    writeFile(LittleFS, "/RPMMax.txt", String(RPMMax).c_str());
+  } else {
+    RPMMax = readFile(LittleFS, "/RPMMax.txt").toInt();
+  }
+
+
+  if (!LittleFS.exists("/SoC_percent.txt")) {
+    writeFile(LittleFS, "/SoC_percent.txt", String(SoC_percent).c_str());
+  } else {
+    SoC_percent = readFile(LittleFS, "/SoC_percent.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/EngineRunTime.txt")) {
     writeFile(LittleFS, "/EngineRunTime.txt", String(EngineRunTime).c_str());
+  } else {
+    EngineRunTime = readFile(LittleFS, "/EngineRunTime.txt").toInt();
   }
 
-  if (LittleFS.exists("/EngineCycles.txt")) {
-    EngineCycles = readFile(LittleFS, "/EngineCycles.txt").toInt();
-  } else {
+  if (!LittleFS.exists("/EngineCycles.txt")) {
     writeFile(LittleFS, "/EngineCycles.txt", String(EngineCycles).c_str());
+  } else {
+    EngineCycles = readFile(LittleFS, "/EngineCycles.txt").toInt();
   }
 
-  if (LittleFS.exists("/AlternatorOnTime.txt")) {
-    AlternatorOnTime = readFile(LittleFS, "/AlternatorOnTime.txt").toInt();
-  } else {
+  if (!LittleFS.exists("/AlternatorOnTime.txt")) {
     writeFile(LittleFS, "/AlternatorOnTime.txt", String(AlternatorOnTime).c_str());
-  }
-}
-
-void ResetRuntimeCounters() {
-  // Reset runtime tracking variables
-  EngineRunTime = 0;
-  EngineCycles = 0;
-  AlternatorOnTime = 0;
-  engineRunAccumulator = 0;
-  alternatorOnAccumulator = 0;
-
-  // Save the reset values
-  SaveRuntimeData();
-}
-
-void ResetEnergyCounters() {
-  // Reset all energy tracking variables
-  ChargedEnergy = 0;
-  DischargedEnergy = 0;
-  AlternatorChargedEnergy = 0;
-  AlternatorFuelUsed = 0;
-
-  // Save the reset values
-  SaveSOCData();
-}
-
-void LoadAllSettings() {
-  // Check if SOC value exists in LittleFS
-  bool SOCExists = LittleFS.exists("/InitialSOC.txt");
-  if (SOCExists) {
-    // Load saved SOC
-    String savedSOC = readFile(LittleFS, "/InitialSOC.txt");
-    InitialStateOfCharge = savedSOC.toInt();
   } else {
-    // Create default value
-    String stringSOC = String(InitialStateOfCharge);
-    writeFile(LittleFS, "/InitialSOC.txt", stringSOC.c_str());
+    AlternatorOnTime = readFile(LittleFS, "/AlternatorOnTime.txt").toInt();
   }
 
-  // Check if Battery Capacity exists in LittleFS
-  bool CapacityExists = LittleFS.exists("/BatteryCapacity.txt");
-  if (CapacityExists) {
-    // Load saved capacity
-    String savedCapacity = readFile(LittleFS, "/BatteryCapacity.txt");
-    BatteryCapacity_Ah = savedCapacity.toInt();
+  if (!LittleFS.exists("/AlternatorFuelUsed.txt")) {
+    writeFile(LittleFS, "/AlternatorFuelUsed.txt", String(AlternatorFuelUsed).c_str());
   } else {
-    // Create default value
-    String stringCapacity = String(BatteryCapacity_Ah);
-    writeFile(LittleFS, "/BatteryCapacity.txt", stringCapacity.c_str());
+    AlternatorFuelUsed = readFile(LittleFS, "/AlternatorFuelUsed.txt").toInt();
   }
 
-  // Load energy tracking data
-  if (LittleFS.exists("/ChargedEnergy.txt")) {
-    ChargedEnergy = readFile(LittleFS, "/ChargedEnergy.txt").toInt();
-  } else {
+  if (!LittleFS.exists("/ChargedEnergy.txt")) {
     writeFile(LittleFS, "/ChargedEnergy.txt", String(ChargedEnergy).c_str());
+  } else {
+    ChargedEnergy = readFile(LittleFS, "/ChargedEnergy.txt").toInt();
   }
 
-  if (LittleFS.exists("/DischargedEnergy.txt")) {
-    DischargedEnergy = readFile(LittleFS, "/DischargedEnergy.txt").toInt();
-  } else {
+  if (!LittleFS.exists("/DischargedEnergy.txt")) {
     writeFile(LittleFS, "/DischargedEnergy.txt", String(DischargedEnergy).c_str());
-  }
-
-  if (LittleFS.exists("/AltEnergy.txt")) {
-    AlternatorChargedEnergy = readFile(LittleFS, "/AltEnergy.txt").toInt();
   } else {
-    writeFile(LittleFS, "/AltEnergy.txt", String(AlternatorChargedEnergy).c_str());
+    DischargedEnergy = readFile(LittleFS, "/DischargedEnergy.txt").toInt();
   }
 
-  if (LittleFS.exists("/FuelUsed.txt")) {
-    AlternatorFuelUsed = readFile(LittleFS, "/FuelUsed.txt").toInt();
+  if (!LittleFS.exists("/AlternatorChargedEnergy.txt")) {
+    writeFile(LittleFS, "/AlternatorChargedEnergy.txt", String(AlternatorChargedEnergy).c_str());
   } else {
-    writeFile(LittleFS, "/FuelUsed.txt", String(AlternatorFuelUsed).c_str());
+    AlternatorChargedEnergy = readFile(LittleFS, "/AlternatorChargedEnergy.txt").toInt();
   }
 
-  // Also load engine runtime data
-  LoadRuntimeSettings();
-
-  // Initialize Coulomb count from SOC
-  SoC_percent = InitialStateOfCharge;
-  CoulombCount_Ah_scaled = (SoC_percent * BatteryCapacity_Ah * 100);
+  if (!LittleFS.exists("/MaxAlternatorTemperatureF.txt")) {
+    writeFile(LittleFS, "/MaxAlternatorTemperatureF.txt", String(MaxAlternatorTemperatureF).c_str());
+  } else {
+    MaxAlternatorTemperatureF = readFile(LittleFS, "/MaxAlternatorTemperatureF.txt").toInt();
+  }
 }
