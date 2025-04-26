@@ -53,7 +53,7 @@ int cpuLoadCore1 = 0;             // CPU load percentage for Core 1
 
 // Settings - these will be moved to LittleFS
 const char *default_ssid = "MN2G";            // Default SSID if no saved credentials
-const char *default_password = "X";  // Default password if no saved credentials // 5FENYC8PDW
+const char *default_password = "5FENYC8PDW";  // Default password if no saved credentials // 5FENYC8PDW
 const char *ap_ssid = "ALTERNATOR_CONFIG";    // Name for the configuration AP
 const char *ap_password = "alternator123";    // Password for the configuration AP (optional)
 
@@ -121,6 +121,7 @@ float DutyCycle;                        // Field outout %
 float vvout;                            // Field output volts
 float iiout;                            // Field output current
 float AlternatorTemperatureF = NAN;     // alternator temperature
+float MaxAlternatorTemperatureF = NAN;  // maximum alternator temperature
 TaskHandle_t tempTaskHandle = NULL;     // make a separate cpu task for temp reading because it's so slow
 float VictronVoltage = 0;               // battery reading from VeDirect
 float HeadingNMEA = 0;                  // Just here to test NMEA functionality
@@ -137,7 +138,6 @@ int ADS1115Disconnected = 0;
 int BatteryCapacity_Ah = 300;       // Battery capacity in Amp-hours
 int SoC_percent = 75;               // State of Charge percentage (0-100)
 int CoulombCount_Ah_scaled = 7500;  // Current energy in battery (Ah × 100 for precision)
-int InitialStateOfCharge = 75;      // Starting SOC value (%)
 bool FullChargeDetected = false;    // Flag for full charge detection
 unsigned long FullChargeTimer = 600;  // Timer for full charge detection, 10 minutes
 // Timing variables
@@ -147,7 +147,7 @@ unsigned long lastSOCUpdateTime = 0;      // Last time SOC was updated
 unsigned long lastEngineMonitorTime = 0;  // Last time engine metrics were updated
 unsigned long lastDataSaveTime = 0;       // Last time data was saved to LittleFS
 int SOCUpdateInterval = 1000;             // Update SOC every 1 second
-int DataSaveInterval = 300000;            // Save data every 5 minutes (300,000 ms)
+int DataSaveInterval = 300000;            // Save data every 5 minutes (300,000 ms).  Flash will hit 20K cycle end of life in 70 years, good enough!
 // Accumulators for runtime tracking
 unsigned long engineRunAccumulator = 0;     // Milliseconds accumulator for engine runtime
 unsigned long alternatorOnAccumulator = 0;  // Milliseconds accumulator for alternator runtime
@@ -396,7 +396,7 @@ const char WIFI_CONFIG_HTML[] PROGMEM = R"rawliteral(
 <body>
   <div class="card">
     <h2>Configure WiFi</h2>
-    <p>Enter your ship's WiFi network credentials to allow automatic Regulator connection.</p>
+    <p>Enter the ship's WiFi network credentials</p>
     <form action="/wifi" method="POST">
       <label for="ssid">Network Name (SSID):</label>
       <input type="text" id="ssid" name="ssid" required>
@@ -405,7 +405,7 @@ const char WIFI_CONFIG_HTML[] PROGMEM = R"rawliteral(
       <input type="password" id="password" name="password" required>
 
       <div class="submit-row">
-        <input type="submit" value="Save and Connect">
+        <input type="submit" value="Save">
       </div>
     </form>
   </div>
@@ -422,17 +422,17 @@ void setup() {
   pinMode(4, OUTPUT);  // This pin is used to provide a high signal to Field Enable pin      PROBABLY OBSOLETE
   pinMode(2, OUTPUT);  // This pin is used to provide a heartbeat (pin 2 of ESP32 is the LED)
 
-
-  InitBatterySettings();  // if there is battery /energy monitor data in LittleFs, pull it out
-
   // Initialize LittleFS first
   if (!LittleFS.begin(true)) {
     Serial.println("An Error has occurred while mounting LittleFS");
     // Continue anyway since we might be able to format and use it later
   }
 
+  InitSystemSettings(); // load all persistent settings from LittleFS.  If no files exist, create them.
+
   // Setup WiFi (this will either connect to a saved network or create an AP)
   setupWiFi();
+  setupServer();
 
   //NMEA2K
   OutputStream = &Serial;
@@ -516,7 +516,6 @@ void setup() {
     Serial.println("WARNING: No DS18B20 sensors found on the bus.");
     sensors.setWaitForConversion(false);  // this is critical!
   }
-
 
 
   // If there are not settings in Flash memoery (files don't exist yet), populate them with the hardcoded values
