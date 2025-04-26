@@ -296,6 +296,8 @@
 
 <body>
   <iframe name="hidden-form" style="display:none"></iframe>
+
+
   <h2>Settings</h2>
   <div class="settings-grid">
     <div class="settings-card">
@@ -316,7 +318,6 @@
           </form>
         </div>
       </div>
-
       <hr />
       <div class="form-row">
         <div class="form-label">Charge Rate (<span id="HiLow1_echo">%HiLow1%</span>):</div>
@@ -333,7 +334,6 @@
           </form>
         </div>
       </div>
-
       <hr />
       <div class="form-row">
         <div class="form-label">Limp Home Mode (<span id="LimpHome1_echo">%LimpHome1%</span>):</div>
@@ -350,7 +350,6 @@
           </form>
         </div>
       </div>
-
       <hr />
       <div class="form-row">
         <div class="form-label">Switch Panel Override (<span
@@ -369,10 +368,7 @@
           </form>
         </div>
       </div>
-
-
-
-      <hr />
+      <hr/>
       <div class="form-row">
         <div class="form-label">Alternator Temp Limit (F) (<span
             id="TemperatureLimitF_echo">%TemperatureLimitF%</span>):</div>
@@ -395,7 +391,6 @@
       </div>
       <hr />
       <div class="form-row">
-
         <div class="form-label">Charge Rate (A) (<span id="TargetAmpz_echo">%TargetAmpz%</span>):</div>
         <div class="form-input">
           <form action="/get" target="hidden-form">
@@ -478,12 +473,13 @@
         </div>
       </div>
     </div>
+
+
+
+
+
     <div class="settings-card">
       <div class="section-title">System</div>
-
-
-
-
       <hr />
       <div class="form-row">
         <div class="form-label">VE.Direct Data (<span id="VeData1_echo">%VeData1%</span>):</div>
@@ -502,7 +498,6 @@
       </div>
       <hr />
       <div class="form-row">
-
         <div class="form-label">NMEA 0183 Data (<span id="NMEA0183Data1_echo">%NMEA0183Data1%</span>):</div>
         <div class="form-input">
           <form action="/get" target="hidden-form">
@@ -534,16 +529,15 @@
           </form>
         </div>
       </div>
-
     </div>
-
-
-
-
-
   </div>
+
+
+
   <h2>Live Data</h2>
   <div class="settings-grid">
+
+
     <div class="settings-card">
       <div class="section-title">Battery</div>
       <div class="grid">
@@ -560,11 +554,28 @@
           <p class="reading"><span id="IBVID">0</span> V</p>
         </div>
         <div class="card">
-          <p>INA Battery Current</p>
+          <p>INA Max Battery Voltage</p>
+          <p class="reading"><span id="IBVMaxID">0</span> V</p>
+        </div>
+        <div class="card">
+          <p>State of Charge</p>
+          <p class="reading"><span id="SoC_percentID">0</span> %</p>
+        </div>
+        <div class="card">
+          <p>Charged Energy</p>
+          <p class="reading"><span id="ChargedEnergyID">0</span> Wh</p>
+        </div>
+        <div class="card">
+          <p>Discharged Energy</p>
+          <p class="reading"><span id="DischargedEnergyID">0</span> Wh</p>
+        </div>
+        <div class="card">
+          <p>Battery Current</p>
           <p class="reading"><span id="BCurrID">0</span> A</p>
         </div>
       </div>
     </div>
+
     <div class="settings-card">
       <div class="section-title">Alternator</div>
       <div class="grid">
@@ -588,28 +599,70 @@
           <p>Field Current</p>
           <p class="reading"><span id="FieldAmpsID">0</span> A</p>
         </div>
+        <div class="card">
+          <p>Alternator On Time</p>
+          <p class="reading"><span id="AlternatorOnTimeID">0</span></p>
+        </div>
+        <div class="card">
+          <p>Fuel Used</p>
+          <p class="reading"><span id="AlternatorFuelUsedID">0</span> mL</p>
+        </div>
+        <div class="card">
+          <p>Charged Energy</p>
+          <p class="reading"><span id="AlternatorChargedEnergyID">0</span> Wh</p>
+        </div>
+        <div class="card">
+          <p>Max Output Current</p>
+          <p class="reading"><span id="MeasuredAmpsMaxID">0</span> A</p>
+        </div>
+        <div class="card">
+          <p>Max Alternator Temp</p>
+          <p class="reading"><span id="MaxAlternatorTemperatureF_ID">0</span> °F</p>
+        </div>
       </div>
     </div>
+
     <div class="settings-card">
-      <div class="section-title">System</div>
+      <div class="section-title">Engine</div>
       <div class="grid">
         <div class="card">
           <p>Engine Speed</p>
           <p class="reading"><span id="RPMID">0</span> rev/min</p>
         </div>
         <div class="card">
-          <p>GPS Heading</p>
-          <p class="reading"><span id="GPSHID">0</span> °</p>
+          <p>Engine Run Time</p>
+          <p class="reading"><span id="EngineRunTimeID">0</span></p>
         </div>
         <div class="card">
-          <p>ADS Ch3 Voltage</p>
-          <p class="reading"><span id="ADS3ID">0</span> V</p>
+          <p>Engine Cycles</p>
+          <p class="reading"><span id="EngineCyclesID">0</span> rev-min</p>
+        </div>
+        <div class="card">
+          <p>Max RPM</p>
+          <p class="reading"><span id="RPMMaxID">0</span> rev/min</p>
         </div>
       </div>
     </div>
   </div>
+
+
   <div class="settings-card">
-    <div class="section-title">Hardware and Code</div>
+    <div class="section-title">Other</div>
+    <div class="grid">
+      <div class="card">
+        <p>GPS Heading</p>
+        <p class="reading"><span id="GPSHID">0</span> °</p>
+      </div>
+      <div class="card">
+        <p>ADS Ch3 Voltage</p>
+        <p class="reading"><span id="ADS3ID">0</span> V</p>
+      </div>
+    </div>
+  </div>
+  
+
+  <div class="settings-card">
+    <div class="section-title">Regulator Computing</div>
     <div class="grid">
       <div class="card">
         <p>Loop Time</p>
@@ -645,6 +698,9 @@
       </div>
     </div>
   </div>
+
+
+
   <h2>Plots</h2>
 
   <div class="settings-card">
@@ -703,23 +759,36 @@
       vvout: 17,
       iiout: 18,
       FreeHeap: 19,
-      TemperatureLimitF: 20,
-      FullChargeVoltage: 21,
-      TargetAmpz: 22,
-      TargetFloatVoltage1: 23,
-      SwitchingFrequency: 24,
-      interval1: 25,
-      FieldAdjustmentInterval1: 26,
-      ManualVoltage: 27,
-      SwitchControlOverride1: 28,
-      OnOff1: 29,
-      ManualFieldToggle1: 30,
-      HiLow1: 31,
-      LimpHome1: 32,
-      VeData1: 33,
-      NMEA0183Data1: 34,
-      NMEA2KData1: 35
+      IBVMax: 20,
+      MeasuredAmpsMax: 21,
+      RPMMax: 22,
+      SoC_percent: 23,
+      EngineRunTime: 24,
+      EngineCycles: 25,
+      AlternatorOnTime: 26,
+      AlternatorFuelUsed: 27,
+      ChargedEnergy: 28,
+      DischargedEnergy: 29,
+      AlternatorChargedEnergy: 30,
+      MaxAlternatorTemperatureF: 31,
+      TemperatureLimitF: 32,
+      FullChargeVoltage: 33,
+      TargetAmpz: 34,
+      TargetFloatVoltage1: 35,
+      SwitchingFrequency: 36,
+      interval1: 37,
+      FieldAdjustmentInterval1: 38,
+      ManualVoltage: 39,
+      SwitchControlOverride1: 40,
+      OnOff1: 41,
+      ManualFieldToggle1: 42,
+      HiLow1: 43,
+      LimpHome1: 44,
+      VeData1: 45,
+      NMEA0183Data1: 46,
+      NMEA2KData1: 47
     };
+
 
 
     function updateInlineStatus(isConnected) {
@@ -1170,8 +1239,6 @@
       if (!!window.EventSource) {
         const fields = {
           AltTempID: "AlternatorTemperatureF",
-          LoopTimeID: "LoopTime",
-          MaximumLoopTimeID: "MaximumLoopTime",
           DutyCycleID: "DutyCycle",
           BatteryVID: "BatteryV",
           MeasAmpsID: "MeasuredAmps",
@@ -1180,14 +1247,29 @@
           IBVID: "IBV",
           BCurrID: "Bcur",
           VictronVoltageID: "VictronVoltage",
-          FieldVoltsID: "vvout",
-          FieldAmpsID: "iiout",
-          GPSHID: "HeadingNMEA",
+          LoopTimeID: "LoopTime",
           WifiStrengthID: "WifiStrength",
           WifiHeartBeatID: "WifiHeartBeat",
-          AnalogReadTimeID: "AnalogReadTime",
           SendWifiTimeID: "SendWifiTime",
+          AnalogReadTimeID: "AnalogReadTime",
           VeTimeID: "VeTime",
+          MaximumLoopTimeID: "MaximumLoopTime",
+          GPSHID: "HeadingNMEA",
+          FieldVoltsID: "vvout",
+          FieldAmpsID: "iiout",
+          FreeHeapID: "FreeHeap",
+          IBVMaxID: "IBVMax",
+          MeasuredAmpsMaxID: "MeasuredAmpsMax",
+          RPMMaxID: "RPMMax",
+          SoC_percentID: "SoC_percent",
+          EngineRunTimeID: "EngineRunTime",
+          EngineCyclesID: "EngineCycles",
+          AlternatorOnTimeID: "AlternatorOnTime",
+          AlternatorFuelUsedID: "AlternatorFuelUsed",
+          ChargedEnergyID: "ChargedEnergy",
+          DischargedEnergyID: "DischargedEnergy",
+          AlternatorChargedEnergyID: "AlternatorChargedEnergy",
+          MaxAlternatorTemperatureF_ID: "MaxAlternatorTemperatureF",
           TemperatureLimitF_echo: "TemperatureLimitF",
           FullChargeVoltage_echo: "FullChargeVoltage",
           TargetAmpz_echo: "TargetAmpz",
@@ -1203,9 +1285,9 @@
           LimpHome1_echo: "LimpHome1",
           VeData1_echo: "VeData1",
           NMEA0183Data1_echo: "NMEA0183Data1",
-          NMEA2KData1_echo: "NMEA2KData1",
-          FreeHeapID: "FreeHeap" // Add this line for free heap memory
+          NMEA2KData1_echo: "NMEA2KData1"
         };
+
 
         // this is the numerical displays, with scaling done locally
         const source = new EventSource('/events');
@@ -1272,6 +1354,18 @@
             vvout: values[fieldIndexes.vvout],
             iiout: values[fieldIndexes.iiout],
             FreeHeap: values[fieldIndexes.FreeHeap],
+            IBVMax: values[fieldIndexes.IBVMax],
+            MeasuredAmpsMax: values[fieldIndexes.MeasuredAmpsMax],
+            RPMMax: values[fieldIndexes.RPMMax],
+            SoC_percent: values[fieldIndexes.SoC_percent],
+            EngineRunTime: values[fieldIndexes.EngineRunTime],
+            EngineCycles: values[fieldIndexes.EngineCycles],
+            AlternatorOnTime: values[fieldIndexes.AlternatorOnTime],
+            AlternatorFuelUsed: values[fieldIndexes.AlternatorFuelUsed],
+            ChargedEnergy: values[fieldIndexes.ChargedEnergy],
+            DischargedEnergy: values[fieldIndexes.DischargedEnergy],
+            AlternatorChargedEnergy: values[fieldIndexes.AlternatorChargedEnergy],
+            MaxAlternatorTemperatureF: values[fieldIndexes.MaxAlternatorTemperatureF],
             TemperatureLimitF: values[fieldIndexes.TemperatureLimitF],
             FullChargeVoltage: values[fieldIndexes.FullChargeVoltage],
             TargetAmpz: values[fieldIndexes.TargetAmpz],
@@ -1289,6 +1383,7 @@
             NMEA0183Data1: values[fieldIndexes.NMEA0183Data1],
             NMEA2KData1: values[fieldIndexes.NMEA2KData1]
           };
+
 
 
           // The rest of the function remains the same - update display elements
