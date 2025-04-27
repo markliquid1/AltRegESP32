@@ -953,28 +953,34 @@ void setupServer() {
     request->send(200, "text/plain", inputMessage);
   });
 
-  server.on("/setPassword", HTTP_POST, [](AsyncWebServerRequest *request) {
-    if (!request->hasParam("newpassword", true)) {
-      request->send(400, "text/plain", "Missing password");
-      return;
+server.on("/setPassword", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (!request->hasParam("password", true) || !request->hasParam("newpassword", true)) {
+        request->send(400, "text/plain", "Missing fields");
+        return;
     }
 
+    String password = request->getParam("password", true)->value();
     String newPassword = request->getParam("newpassword", true)->value();
+
+    password.trim();
     newPassword.trim();
 
     if (newPassword.length() == 0) {
-      request->send(400, "text/plain", "Empty password");
-      return;
+        request->send(400, "text/plain", "Empty new password");
+        return;
     }
 
-    // Update the plaintext password variable in memory
-    strncpy(requiredPassword, newPassword.c_str(), sizeof(requiredPassword) - 1);
+    // Validate the existing admin password first
+    if (!validatePassword(password.c_str())) {
+        request->send(403, "text/plain", "FAIL");  // Wrong password
+        return;
+    }
 
-    // Also save plaintext to file for persistence across reboots
+    // Save the plaintext password for recovery
     File plainFile = LittleFS.open("/password.txt", "w");
     if (plainFile) {
-      plainFile.println(newPassword);
-      plainFile.close();
+        plainFile.println(newPassword);
+        plainFile.close();
     }
 
     // Create and save the hash
@@ -983,16 +989,35 @@ void setupServer() {
 
     File file = LittleFS.open("/password.hash", "w");
     if (!file) {
-      request->send(500, "text/plain", "Failed to open password file");
-      return;
+        request->send(500, "text/plain", "Failed to open password file");
+        return;
     }
 
     file.println(hash);
     file.close();
+
+    // Update RAM copy
+    strncpy(requiredPassword, newPassword.c_str(), sizeof(requiredPassword) - 1);
     strncpy(storedPasswordHash, hash, sizeof(storedPasswordHash) - 1);
 
-    request->send(200, "text/plain", "Password updated");
-  });
+    request->send(200, "text/plain", "OK");
+});
+
+server.on("/checkPassword", HTTP_POST, [](AsyncWebServerRequest *request) {
+  if (!request->hasParam("password", true)) {
+    request->send(400, "text/plain", "Missing password");
+    return;
+  }
+  String password = request->getParam("password", true)->value();
+  password.trim();
+
+  if (validatePassword(password.c_str())) {
+    request->send(200, "text/plain", "OK");
+  } else {
+    request->send(403, "text/plain", "FAIL");
+  }
+});
+
 
   server.onNotFound([](AsyncWebServerRequest *request) {
     String path = request->url();
@@ -1451,7 +1476,6 @@ void savePasswordHash() {
   }
 }
 
-
 void savePasswordPlaintext(const char *password) {
   File file = LittleFS.open("/password.txt", "w");
   if (file) {
@@ -1461,4 +1485,13 @@ void savePasswordPlaintext(const char *password) {
   } else {
     Serial.println("Failed to open password.txt for writing");
   }
+}
+
+bool validatePassword(const char* password) {
+  if (!password) return false;
+
+  char hash[65] = {0};
+  sha256(password, hash);
+
+  return (strcmp(hash, storedPasswordHash) == 0);
 }
