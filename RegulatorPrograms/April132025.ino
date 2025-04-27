@@ -27,6 +27,13 @@ INA228 INA(0x40);
 #include "freertos/task.h"               // for stack usage
 #define configGENERATE_RUN_TIME_STATS 1  // for CPU use tracking
 
+
+// Settings - these will be moved to LittleFS
+const char *default_ssid = "MN2G";   // Default SSID if no saved credentials
+const char *default_password = "X";  // Default password if no saved credentials // 5FENYC8ABC
+// WiFi connection timeout when trying to avoid Access Point Mode (and connect to ship's wifi on reboot)
+const unsigned long WIFI_TIMEOUT = 20000;  // 20 seconds
+
 // ===== HEAP MONITORING =====
 int rawFreeHeap = 0;      // in bytes
 int FreeHeap = 0;         // in KB
@@ -51,14 +58,6 @@ unsigned long lastCheckTime = 0;  // Last time CPU load was measured
 int cpuLoadCore0 = 0;             // CPU load percentage for Core 0
 int cpuLoadCore1 = 0;             // CPU load percentage for Core 1
 
-// Settings - these will be moved to LittleFS
-const char *default_ssid = "MN2G";            // Default SSID if no saved credentials
-const char *default_password = "5FENYC8PDW";  // Default password if no saved credentials // 5FENYC8PDW
-const char *ap_ssid = "ALTERNATOR_CONFIG";    // Name for the configuration AP
-const char *ap_password = "alternator123";    // Password for the configuration AP (optional)
-
-// WiFi connection timeout in milliseconds
-const unsigned long WIFI_TIMEOUT = 20000;  // 20 seconds
 
 // DNS Server for captive portal
 DNSServer dnsServer;
@@ -135,10 +134,10 @@ float RPMMax;           // used to track maximum RPM
 int ADS1115Disconnected = 0;
 
 // Battery SOC Monitoring Variables
-int BatteryCapacity_Ah = 300;       // Battery capacity in Amp-hours
-int SoC_percent = 75;               // State of Charge percentage (0-100)
-int CoulombCount_Ah_scaled = 7500;  // Current energy in battery (Ah × 100 for precision)
-bool FullChargeDetected = false;    // Flag for full charge detection
+int BatteryCapacity_Ah = 300;         // Battery capacity in Amp-hours
+int SoC_percent = 75;                 // State of Charge percentage (0-100)
+int CoulombCount_Ah_scaled = 7500;    // Current energy in battery (Ah × 100 for precision)
+bool FullChargeDetected = false;      // Flag for full charge detection
 unsigned long FullChargeTimer = 600;  // Timer for full charge detection, 10 minutes
 // Timing variables
 unsigned long currentTime = 0;
@@ -152,11 +151,11 @@ int DataSaveInterval = 300000;            // Save data every 5 minutes (300,000 
 unsigned long engineRunAccumulator = 0;     // Milliseconds accumulator for engine runtime
 unsigned long alternatorOnAccumulator = 0;  // Milliseconds accumulator for alternator runtime
 // SOC Parameters
-int CurrentThreshold_scaled = 100;           // Ignore currents below this (A × 100)
+int CurrentThreshold_scaled = 100;          // Ignore currents below this (A × 100)
 int PeukertExponent_scaled = 105;           // Peukert exponent × 100 (112 = 1.12)
 int ChargeEfficiency_scaled = 99;           // Charging efficiency % (0-100)
 int ChargedVoltage_scaled = 1450;           // Voltage threshold for "charged" (V × 100)
-int TailCurrent_scaled = 2000;               // Current threshold for "charged" (% of capacity × 100)
+int TailCurrent_scaled = 2000;              // Current threshold for "charged" (% of capacity × 100)
 unsigned long ChargedDetectionTime = 3600;  // Time at charged state to consider 100% (seconds)
 
 int Voltage_scaled = 0;            // Battery voltage scaled (V × 100)
@@ -168,7 +167,7 @@ int AlternatorPower_scaled = 0;    // Alternator power (W × 100)
 int AltEnergyDelta_scaled = 0;     // Alternator energy change (Wh × 100)
 int joulesOut = 0;
 int fuelEnergyUsed_J = 0;
-int AlternatorFuelUsed = 0;  // Total fuel used by alternator (mL)
+int AlternatorFuelUsed = 0;   // Total fuel used by alternator (mL)
 bool alternatorIsOn = false;  // Current alternator state
 // Energy Tracking Variables
 int ChargedEnergy = 0;            // Total charged energy from battery (Wh)
@@ -210,6 +209,8 @@ static unsigned long lastINARead = 0;  // don't read the INA228 needlessly often
 // Global variable to track ESP32 restart time
 unsigned long lastRestartTime = 0;
 const unsigned long RESTART_INTERVAL = 3600000;  // 1 hour in milliseconds
+
+
 
 // pre-setup stuff
 // onewire    Data wire is connetec to the Arduino digital pin 13
@@ -254,8 +255,8 @@ const char *N0 = "NMEA0183Data1";
 const char *N2 = "NMEA2KData1";
 
 // WiFi provisioning settings
-const char *WIFI_SSID_FILE = "/wifi_ssid.txt";
-const char *WIFI_PASS_FILE = "/wifi_pass.txt";
+const char *WIFI_SSID_FILE = "/ssid.txt";
+const char *WIFI_PASS_FILE = "/pass.txt";
 
 
 typedef struct {
@@ -422,13 +423,16 @@ void setup() {
   pinMode(4, OUTPUT);  // This pin is used to provide a high signal to Field Enable pin      PROBABLY OBSOLETE
   pinMode(2, OUTPUT);  // This pin is used to provide a heartbeat (pin 2 of ESP32 is the LED)
 
+
+
+
   // Initialize LittleFS first
   if (!LittleFS.begin(true)) {
     Serial.println("An Error has occurred while mounting LittleFS");
     // Continue anyway since we might be able to format and use it later
   }
 
-  InitSystemSettings(); // load all persistent settings from LittleFS.  If no files exist, create them.
+  InitSystemSettings();  // load all persistent settings from LittleFS.  If no files exist, create them.
 
   // Setup WiFi (this will either connect to a saved network or create an AP)
   setupWiFi();
