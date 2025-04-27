@@ -26,13 +26,19 @@ INA228 INA(0x40);
 #include "freertos/FreeRTOS.h"           // for stack usage
 #include "freertos/task.h"               // for stack usage
 #define configGENERATE_RUN_TIME_STATS 1  // for CPU use tracking
+#include <mbedtls/md.h>                  // security
 
 
 // Settings - these will be moved to LittleFS
 const char *default_ssid = "MN2G";   // Default SSID if no saved credentials
-const char *default_password = "X";  // Default password if no saved credentials // 5FENYC8ABC
+const char *default_password = "5FENYC8ABC";  // Default password if no saved credentials // 5FENYC8ABC
 // WiFi connection timeout when trying to avoid Access Point Mode (and connect to ship's wifi on reboot)
 const unsigned long WIFI_TIMEOUT = 20000;  // 20 seconds
+
+//Security
+char requiredPassword[32] = "admin";  // Max password length = 31 chars     Password for access to change settings from browser
+char storedPasswordHash[65] = {0};
+
 
 // ===== HEAP MONITORING =====
 int rawFreeHeap = 0;      // in bytes
@@ -437,6 +443,7 @@ void setup() {
   // Setup WiFi (this will either connect to a saved network or create an AP)
   setupWiFi();
   setupServer();
+  loadPasswordHash();
 
   //NMEA2K
   OutputStream = &Serial;
