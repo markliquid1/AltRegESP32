@@ -156,6 +156,17 @@
       margin: 8px 0;
     }
 
+
+    .confirm-msg {
+      transition: opacity 1s ease;
+      opacity: 1;
+    }
+
+    .confirm-msg.fade-out {
+      opacity: 0;
+    }
+
+
     .form-row {
       display: flex;
       justify-content: space-between;
@@ -305,7 +316,8 @@
       <div class="form-row">
         <div class="form-label">Regulator Output (<span id="OnOff1_echo">%OnOff1%</span>):</div>
         <div class="form-input">
-          <form action="/get" target="hidden-form">
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
             <span class="toggle-label">Off</span>
             <label class="switch">
               <input id="OnOff1_checkbox" type="checkbox"
@@ -321,7 +333,8 @@
       <div class="form-row">
         <div class="form-label">Charge Rate (<span id="HiLow1_echo">%HiLow1%</span>):</div>
         <div class="form-input">
-          <form action="/get" target="hidden-form">
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
             <span class="toggle-label">Low</span>
             <label class="switch">
               <input id="HiLow1_checkbox" type="checkbox"
@@ -337,7 +350,8 @@
       <div class="form-row">
         <div class="form-label">Limp Home Mode (<span id="LimpHome1_echo">%LimpHome1%</span>):</div>
         <div class="form-input">
-          <form action="/get" target="hidden-form">
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
             <span class="toggle-label">Off</span>
             <label class="switch">
               <input id="LimpHome1_checkbox" type="checkbox"
@@ -354,7 +368,8 @@
         <div class="form-label">Switch Panel Override (<span
             id="SwitchControlOverride1_echo">%SwitchControlOverride1%</span>):</div>
         <div class="form-input">
-          <form action="/get" target="hidden-form">
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
             <span class="toggle-label">Off</span>
             <label class="switch">
               <input id="SwitchControlOverride1_checkbox" type="checkbox"
@@ -372,7 +387,8 @@
         <div class="form-label">Alternator Temp Limit (F) (<span
             id="TemperatureLimitF_echo">%TemperatureLimitF%</span>):</div>
         <div class="form-input">
-          <form action="/get" target="hidden-form">
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
             <input name="TemperatureLimitF" type="number" step="1" min="0" />
             <input onclick="submitMessage()" type="submit" value="Set" />
           </form>
@@ -382,7 +398,8 @@
       <div class="form-row">
         <div class="form-label">Bulk Voltage (<span id="FullChargeVoltage_echo">%FullChargeVoltage%</span>):</div>
         <div class="form-input">
-          <form action="/get" target="hidden-form">
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
             <input name="FullChargeVoltage" type="number" step="0.01" min="0" />
             <input onclick="submitMessage()" type="submit" value="Set" />
           </form>
@@ -392,7 +409,8 @@
       <div class="form-row">
         <div class="form-label">Charge Rate (A) (<span id="TargetAmpz_echo">%TargetAmpz%</span>):</div>
         <div class="form-input">
-          <form action="/get" target="hidden-form">
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
             <input name="TargetAmpz" type="number" step="1" min="0" />
             <input onclick="submitMessage()" type="submit" value="Set" />
           </form>
@@ -403,7 +421,8 @@
         <div class="form-label">Float Voltage (<span id="TargetFloatVoltage1_echo">%TargetFloatVoltage1%</span>):
         </div>
         <div class="form-input">
-          <form action="/get" target="hidden-form">
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
             <input name="TargetFloatVoltage1" type="number" step="0.01" min="0" />
             <input onclick="submitMessage()" type="submit" value="Set" />
           </form>
@@ -416,7 +435,8 @@
         <div class="form-label">Field Switch Freq (hz) (<span id="SwitchingFrequency_echo">%SwitchingFrequency%</span>):
         </div>
         <div class="form-input">
-          <form action="/get" target="hidden-form">
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
             <input name="SwitchingFrequency" type="number" step="1" min="0" />
             <input onclick="submitMessage()" type="submit" value="Set" />
           </form>
@@ -426,7 +446,8 @@
       <div class="form-row">
         <div class="form-label">Field Adj Step (V) (<span id="interval1_echo">%interval1%</span>):</div>
         <div class="form-input">
-          <form action="/get" target="hidden-form">
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
             <input name="interval1" type="number" step="0.001" min="0" />
             <input onclick="submitMessage()" type="submit" value="Set" />
           </form>
@@ -437,7 +458,8 @@
         <div class="form-label">Field Adj. Time Interval (ms) (<span
             id="FieldAdjustmentInterval1_echo">%FieldAdjustmentInterval1%</span>):</div>
         <div class="form-input">
-          <form action="/get" target="hidden-form">
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
             <input name="FieldAdjustmentInterval1" type="number" step="1" min="0" />
             <input onclick="submitMessage()" type="submit" value="Set" />
           </form>
@@ -448,7 +470,8 @@
         <div class="form-label">Manual Field Control (<span id="ManualFieldToggle1_echo">%ManualFieldToggle1%</span>):
         </div>
         <div class="form-input">
-          <form action="/get" target="hidden-form">
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
             <span class="toggle-label">Off</span>
             <label class="switch">
               <input id="ManualFieldToggle1_checkbox" type="checkbox"
@@ -465,7 +488,8 @@
       <div class="form-row">
         <div class="form-label">Manual Field Setpoint (V) (<span id="ManualVoltage_echo">%ManualVoltage%</span>):</div>
         <div class="form-input">
-          <form action="/get" target="hidden-form">
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
             <input name="ManualVoltage" type="number" step="0.01" min="0" />
             <input onclick="submitMessage()" type="submit" value="Set" />
           </form>
@@ -473,14 +497,14 @@
       </div>
     </div>
 
-
     <div class="settings-card">
       <div class="section-title">System</div>
       <hr />
       <div class="form-row">
         <div class="form-label">VE.Direct Data (<span id="VeData1_echo">%VeData1%</span>):</div>
         <div class="form-input">
-          <form action="/get" target="hidden-form">
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
             <span class="toggle-label">Off</span>
             <label class="switch">
               <input id="VeData1_checkbox" type="checkbox"
@@ -496,7 +520,8 @@
       <div class="form-row">
         <div class="form-label">NMEA 0183 Data (<span id="NMEA0183Data1_echo">%NMEA0183Data1%</span>):</div>
         <div class="form-input">
-          <form action="/get" target="hidden-form">
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
             <span class="toggle-label">Off</span>
             <label class="switch">
               <input id="NMEA0183Data1_checkbox" type="checkbox"
@@ -513,7 +538,8 @@
       <div class="form-row">
         <div class="form-label">NMEA 2000 Data (<span id="NMEA2KData1_echo">%NMEA2KData1%</span>):</div>
         <div class="form-input">
-          <form action="/get" target="hidden-form">
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
             <span class="toggle-label">Off</span>
             <label class="switch">
               <input id="NMEA2KData1_checkbox" type="checkbox"
@@ -525,7 +551,46 @@
           </form>
         </div>
       </div>
+
+      <div class="section-title">Security</div>
+
+      <div class="form-row">
+        <div class="form-label">Enter Password:</div>
+        <div class="form-input">
+          <form action="/get" method="GET" target="hidden-form" onsubmit="setAdminPassword(); return false;"
+            style="display: flex; justify-content: flex-end; align-items: center;">
+            <input type="hidden" name="dummy" value="1" />
+            <input type="text" id="admin_password" name="admin_password" style="width: 80px; margin-right: 8px;" />
+            <input type="submit" id="admin_password_set" value="Set" />
+            <span id="admin_password_msg" style="margin-left:8px; font-size:12px; color:green;"></span>
+          </form>
+        </div>
+      </div>
+
+
+
+
+      <div class="form-row">
+        <div class="form-label">New Password:</div>
+        <div class="form-input">
+          <form action="/setPassword" method="POST" target="hidden-form" onsubmit="return setNewPassword();"
+            style="display: flex; justify-content: flex-end; align-items: center;">
+            <input type="hidden" name="password" class="password_field">
+            <input type="text" id="newpassword" name="newpassword" style="width: 80px; margin-right: 8px;" />
+            <input type="submit" id="newpassword_set" value="Set" />
+            <span id="newpassword_msg" style="margin-left:8px; font-size:12px; color:green;"></span>
+          </form>
+        </div>
+      </div>
+
+
+
+
+
+
+
     </div>
+  </div>
   </div>
 
 
@@ -729,6 +794,18 @@
         timer = setTimeout(() => fn.apply(this, args), delay);
       };
     }
+
+    let currentAdminPassword = "";
+
+    function updatePasswordFields() {
+      const password = currentAdminPassword || document.getElementById("admin_password").value;
+      const passwordFields = document.querySelectorAll('.password_field');
+      passwordFields.forEach(field => {
+        field.value = password;
+      });
+    }
+
+
 
     const fieldIndexes = {
       AlternatorTemperatureF: 0,
@@ -1215,6 +1292,67 @@
       rpmPlot.setData(rpmData);
     }
 
+    function setAdminPassword() {
+      currentAdminPassword = document.getElementById("admin_password").value;
+      updatePasswordFields();
+      const button = document.getElementById('admin_password_set');
+      const input = document.getElementById('admin_password');
+      const msg = document.getElementById('admin_password_msg');
+
+      button.disabled = true;
+      msg.textContent = "Password Set";
+      msg.classList.add('confirm-msg');
+
+      setTimeout(() => {
+        msg.classList.add('fade-out');
+      }, 50);
+
+      setTimeout(() => {
+        msg.textContent = "";
+        msg.classList.remove('confirm-msg', 'fade-out');
+        button.disabled = false;
+        input.value = ""; // Still clear for security, but we saved the value
+      }, 1000);
+    }
+
+
+    function setNewPassword() {
+      const button = document.getElementById('newpassword_set');
+      const input = document.getElementById('newpassword');
+      const msg = document.getElementById('newpassword_msg');
+
+      // Disable the button to prevent multiple submissions
+      button.disabled = true;
+
+      // Make sure the password field contains the admin password for authentication
+      updatePasswordFields();
+
+      // We need to keep the new password value during form submission
+      // So we'll wait until after submission to clear it and show feedback
+
+      // Set up a timer to show the confirmation after submission has had time to complete
+      setTimeout(() => {
+        // Now it's safe to clear the input and show feedback
+        input.value = "";
+        msg.textContent = "Password Changed";
+        msg.classList.add('confirm-msg');
+
+        setTimeout(() => {
+          msg.classList.add('fade-out');
+        }, 50);
+
+        setTimeout(() => {
+          button.disabled = false;
+          msg.textContent = "";
+          msg.classList.remove('confirm-msg', 'fade-out');
+        }, 1000);
+      }, 500); // Wait 500ms for form submission to complete
+
+      submitMessage();
+      return true;
+    }
+
+
 
 
 
@@ -1379,7 +1517,7 @@
           for (const [elementId, key] of Object.entries(fields)) {
             const el = document.getElementById(elementId);
             if (el && key in data) {
-              if (key === "BatteryV" || key === "Channel3V" || key === "IBV" || key === "VictronVoltage" || key === "vvout") {
+              if (key === "BatteryV" || key === "Channel3V" || key === "IBV" || key === "VictronVoltage" || key === "vvout" || key === "SoC_percent") {
                 el.innerHTML = (data[key] / 100).toFixed(2);  // no commas
               }
               else if (key === "MeasuredAmps" || key === "Bcur" || key === "iiout") {
@@ -1558,6 +1696,8 @@
       document.getElementById("VeData1_checkbox").checked = (document.getElementById("VeData1").value === "1");
       document.getElementById("NMEA0183Data1_checkbox").checked = (document.getElementById("NMEA0183Data1").value === "1");
       document.getElementById("NMEA2KData1_checkbox").checked = (document.getElementById("NMEA2KData1").value === "1");
+
+      document.getElementById("admin_password").addEventListener("change", updatePasswordFields);
     });
   </script>
 
