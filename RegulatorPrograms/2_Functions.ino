@@ -1,3 +1,5 @@
+
+
 void AdjustField() {
   if (Ignition == 1 && OnOff == 1) {
 
@@ -634,7 +636,6 @@ int SafeInt(float f, int scale = 1) {
   // where this is matters!!   Put utility functions like SafeInt() above setup() and loop() , according to ChatGPT.  And I proved it matters.
   return isnan(f) || isinf(f) ? -1 : (int)(f * scale);
 }
-
 void SendWifiData() {
   if (millis() - prev_millis5 > webgaugesinterval) {
     WifiStrength = WiFi.RSSI();
@@ -705,18 +706,14 @@ void SendWifiData() {
                SafeInt(VeData),
                SafeInt(NMEA0183Data),
                SafeInt(NMEA2KData));
-//Serial.print("Payload: "); //For debug
-//Serial.println(payload); // for debug
-
-
+      //Serial.print("Payload: "); //For debug
+      //Serial.println(payload); // for debug
       events.send(payload, "CSVData");    // Changed event name to reflect new format
       SendWifiTime = micros() - start66;  // Calculate WiFi Send Time
     }
-
     prev_millis5 = millis();
   }
 }
-
 void checkAndRestart() {
   //Restart the ESP32 every hour just for maintenance because we can eventaually want to use littleFS to store Battery Monitor Stuff first
   unsigned long currentMillis = millis();
@@ -743,7 +740,6 @@ void checkAndRestart() {
     lastRestartTime = currentMillis;
   }
 }
-
 
 // Function to set up WiFi - tries to connect to saved network, falls back to AP mode
 void setupWiFi() {
@@ -820,6 +816,9 @@ bool connectToWiFi(const char *ssid, const char *password, unsigned long timeout
 }
 // Function to set up the device as an access point
 void setupAccessPoint() {
+  const char *ap_ssid = "ALTERNATOR_CONFIG";  // Hardcoded AP SSID
+  const char *ap_password = "alternator123";  // Hardcoded AP password
+
   WiFi.mode(WIFI_AP);
   WiFi.softAP(ap_ssid, ap_password);
 
@@ -833,75 +832,46 @@ void setupAccessPoint() {
   // Set up the configuration web server
   setupWiFiConfigServer();
 }
+
 // Function to set up the configuration web server in AP mode
 void setupWiFiConfigServer() {
-  // Handle DNS requests for captive portal
   server.onNotFound([](AsyncWebServerRequest *request) {
     request->redirect("http://" + WiFi.softAPIP().toString());
   });
 
-  // Serve the WiFi configuration page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/html", WIFI_CONFIG_HTML);
   });
 
-  // Handle form submission for saving WiFi credentials
   server.on("/wifi", HTTP_POST, [](AsyncWebServerRequest *request) {
     String ssid = request->getParam("ssid", true)->value();
-    ssid.trim();
-
     String password = request->getParam("password", true)->value();
+    ssid.trim();
     password.trim();
-
-
     writeFile(LittleFS, "/ssid.txt", ssid.c_str());
     writeFile(LittleFS, "/pass.txt", password.c_str());
 
     String response = "<!DOCTYPE html><html><head><title>WiFi Setup</title>";
     response += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
-    response += "<style>";
-    response += ":root {--primary: #333333; --accent: #ff6600; --bg-light: #f5f5f5; --text-dark: #333333; ";
-    response += "--card-light: #ffffff; --radius: 4px; }";
-    response += "body {font-family: Arial, Helvetica, sans-serif; background-color: var(--bg-light); color: var(--text-dark); padding: 20px; line-height: 1.6; font-size: 14px;}";
-    response += "h2 {color: var(--text-dark); border-bottom: 2px solid var(--accent); padding-bottom: 0.25rem; margin-top: 1rem; margin-bottom: 0.75rem; font-size: 18px;}";
-    response += ".card {background: var(--card-light); padding: 16px; border-left: 2px solid var(--accent); border-radius: var(--radius); box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-bottom: 16px;}";
-    response += "a {color: var(--accent); text-decoration: none; font-weight: bold;}";
-    response += "b {color: var(--text-dark); font-weight: bold;}";
-    response += "</style></head><body><div class='card'>";
+    response += "<style>:root{--primary:#333;--accent:#f60;--bg-light:#f5f5f5;--text-dark:#333;--card-light:#fff;--radius:4px}body{font-family:Arial,sans-serif;background-color:var(--bg-light);color:var(--text-dark);padding:20px;line-height:1.6;font-size:14px}h2{color:var(--text-dark);border-bottom:2px solid var(--accent);padding-bottom:.25rem;margin-top:1rem;margin-bottom:.75rem;font-size:18px}.card{background:var(--card-light);padding:16px;border-left:2px solid var(--accent);border-radius:var(--radius);box-shadow:0 1px 2px rgba(0,0,0,0.1);margin-bottom:16px}a{color:var(--accent);text-decoration:none;font-weight:bold}b{color:var(--text-dark);font-weight:bold}</style></head><body><div class='card'>";
     response += "<h2>WiFi Configuration Saved</h2>";
-    response += "<p>The Regulator will now connect to your ship's Wifi automatically.</p>";
-    response += "<p><b>Next steps:</b></p>";
-    response += "<p>1. Close/Cancel this page.</p>";
-    response += "<p>2. Re-connect your phone / tablet / computer to the ship's WiFi network: <b>" + ssid + "</b></p>";
-    response += "<p>3. Open any web browser and go to:</p>";
-
-    if (WiFi.status() == WL_CONNECTED) {
-      response += "<p>&emsp;<b>http://" + WiFi.localIP().toString() + "</b></p>";
-      response += "<p>&emsp;&emsp;<b>or</b></p>";
-    }
-
-    response += "<p>&emsp;<b>http://alternator.local</b> <span style='color:#333'>(if your device supports it)</span></p>";
-    response += "<p>4. <b>Optional:</b> Add the address to your browser's favorites for future convenience.</p>";
-    response += "<p><b>Important:</b> If out of range (or bad credentials) AND you re-boot the Regulator, it will automatically return to this Access Point (AP) mode after 15 seconds, broadcasting <b>ALTERNATOR_CONFIG</b>, and you can try again.</p>";
+    response += "<p>The regulator will now attempt to connect to WiFi</p>";
+    response += "<p><b>Next:</b> Close this page, connect your device to the ship WiFi, and browse to <b>http://alternator.local</b> (if your browser supports it) or the device's IP address (192.168.4.1)</p>";
     response += "</div></body></html>";
-
 
     request->send(200, "text/html", response);
   });
 
   server.begin();
 }
-
-
-// Standard server setup for normal operation mode
 void setupServer() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(LittleFS, "/index.html", "text/html", false, processor);
   });
 
-  // Send a GET request to <ESP_IP>
   server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request) {
     String inputMessage;
+
     if (request->hasParam(TLimit)) {
       inputMessage = request->getParam(TLimit)->value();
       writeFile(LittleFS, "/TemperatureLimitF.txt", inputMessage.c_str());
@@ -961,20 +931,20 @@ void setupServer() {
     } else if (request->hasParam(VD)) {
       inputMessage = request->getParam(VD)->value();
       writeFile(LittleFS, "/VeData1.txt", inputMessage.c_str());
-      VeData = inputMessage.toInt();
+      VeData = request->getParam(VD)->value().toInt();
     } else if (request->hasParam(N0)) {
       inputMessage = request->getParam(N0)->value();
       writeFile(LittleFS, "/NMEA0183Data1.txt", inputMessage.c_str());
-      NMEA0183Data = inputMessage.toInt();
+      NMEA0183Data = request->getParam(N0)->value().toInt();
     } else if (request->hasParam(N2)) {
       inputMessage = request->getParam(N2)->value();
       writeFile(LittleFS, "/NMEA2KData1.txt", inputMessage.c_str());
-      NMEA2KData = inputMessage.toInt();
+      NMEA2KData = request->getParam(N2)->value().toInt();
     } else {
       inputMessage = "No message sent";
     }
 
-    request->send(200, "text/text", inputMessage);
+    request->send(200, "text/plain", inputMessage);
   });
 
   server.onNotFound([](AsyncWebServerRequest *request) {
@@ -983,9 +953,6 @@ void setupServer() {
     Serial.println(path);
 
     if (LittleFS.exists(path)) {
-      Serial.println("File exists, serving...");
-
-      // Determine content type based on file extension
       String contentType = "text/html";
       if (path.endsWith(".css")) contentType = "text/css";
       else if (path.endsWith(".js")) contentType = "application/javascript";
@@ -1001,13 +968,10 @@ void setupServer() {
     }
   });
 
-  // Handle Web Server Events
   events.onConnect([](AsyncEventSourceClient *client) {
     if (client->lastId()) {
       Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
     }
-    // send event with message "hello!", id current millis
-    // and set reconnect delay to 1 second
     client->send("hello!", NULL, millis(), 10000);
   });
 
@@ -1202,7 +1166,6 @@ void UpdateBatterySOC(unsigned long elapsedMillis) {
   }
 }
 
-
 void UpdateEngineRuntime(unsigned long elapsedMillis) {
   // Check if engine is running (RPM > 100)
   bool engineIsRunning = (RPM > 100 && RPM < 6000);
@@ -1247,7 +1210,6 @@ void SaveAllData() {
   writeFile(LittleFS, "/AlternatorChargedEnergy.txt", String(AlternatorChargedEnergy).c_str());
   writeFile(LittleFS, "/MaxAlternatorTemperatureF.txt", String(MaxAlternatorTemperatureF).c_str());
 }
-
 
 void ResetRuntimeCounters() {
   // Reset runtime tracking variables
