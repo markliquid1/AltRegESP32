@@ -308,251 +308,14 @@
 <body>
   <iframe name="hidden-form" style="display:none"></iframe>
 
-  <h2>Settings</h2>
+
+
+  <h2>Security</h2>
   <div class="settings-grid">
     <div class="settings-card">
-      <div class="section-title">Basic Settings</div>
-      <hr />
-      <div class="form-row">
-        <div class="form-label">Regulator Output (<span id="OnOff1_echo">%OnOff1%</span>):</div>
-        <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <span class="toggle-label">Off</span>
-            <label class="switch">
-              <input id="OnOff1_checkbox" type="checkbox"
-                onchange="document.getElementById('OnOff1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-              <span class="slider round"></span>
-            </label>
-            <span class="toggle-label">On</span>
-            <input id="OnOff1" name="OnOff1" type="number" value="%OnOff1%" style="display:none;" />
-          </form>
-        </div>
-      </div>
-      <hr />
-      <div class="form-row">
-        <div class="form-label">Charge Rate (<span id="HiLow1_echo">%HiLow1%</span>):</div>
-        <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <span class="toggle-label">Low</span>
-            <label class="switch">
-              <input id="HiLow1_checkbox" type="checkbox"
-                onchange="document.getElementById('HiLow1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-              <span class="slider round"></span>
-            </label>
-            <span class="toggle-label">High</span>
-            <input id="HiLow1" name="HiLow1" type="number" value="%HiLow1%" style="display:none;" />
-          </form>
-        </div>
-      </div>
-      <hr />
-      <div class="form-row">
-        <div class="form-label">Limp Home Mode (<span id="LimpHome1_echo">%LimpHome1%</span>):</div>
-        <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <span class="toggle-label">Off</span>
-            <label class="switch">
-              <input id="LimpHome1_checkbox" type="checkbox"
-                onchange="document.getElementById('LimpHome1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-              <span class="slider round"></span>
-            </label>
-            <span class="toggle-label">On</span>
-            <input id="LimpHome1" name="LimpHome1" type="number" value="%LimpHome1%" style="display:none;" />
-          </form>
-        </div>
-      </div>
-      <hr />
-      <div class="form-row">
-        <div class="form-label">Switch Panel Override (<span
-            id="SwitchControlOverride1_echo">%SwitchControlOverride1%</span>):</div>
-        <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <span class="toggle-label">Off</span>
-            <label class="switch">
-              <input id="SwitchControlOverride1_checkbox" type="checkbox"
-                onchange="document.getElementById('SwitchControlOverride1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-              <span class="slider round"></span>
-            </label>
-            <span class="toggle-label">On</span>
-            <input id="SwitchControlOverride1" name="SwitchControlOverride1" type="number"
-              value="%SwitchControlOverride1%" style="display:none;" />
-          </form>
-        </div>
-      </div>
-      <hr />
-      <div class="form-row">
-        <div class="form-label">Alternator Temp Limit (F) (<span
-            id="TemperatureLimitF_echo">%TemperatureLimitF%</span>):</div>
-        <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <input name="TemperatureLimitF" type="number" step="1" min="0" />
-            <input onclick="submitMessage()" type="submit" value="Set" />
-          </form>
-        </div>
-      </div>
-      <hr />
-      <div class="form-row">
-        <div class="form-label">Bulk Voltage (<span id="FullChargeVoltage_echo">%FullChargeVoltage%</span>):</div>
-        <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <input name="FullChargeVoltage" type="number" step="0.01" min="0" />
-            <input onclick="submitMessage()" type="submit" value="Set" />
-          </form>
-        </div>
-      </div>
-      <hr />
-      <div class="form-row">
-        <div class="form-label">Charge Rate (A) (<span id="TargetAmpz_echo">%TargetAmpz%</span>):</div>
-        <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <input name="TargetAmpz" type="number" step="1" min="0" />
-            <input onclick="submitMessage()" type="submit" value="Set" />
-          </form>
-        </div>
-      </div>
-      <hr />
-      <div class="form-row">
-        <div class="form-label">Float Voltage (<span id="TargetFloatVoltage1_echo">%TargetFloatVoltage1%</span>):
-        </div>
-        <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <input name="TargetFloatVoltage1" type="number" step="0.01" min="0" />
-            <input onclick="submitMessage()" type="submit" value="Set" />
-          </form>
-        </div>
-      </div>
-    </div>
-    <div class="settings-card">
-      <div class="section-title">Advanced Settings</div>
-      <div class="form-row">
-        <div class="form-label">Field Switch Freq (hz) (<span id="SwitchingFrequency_echo">%SwitchingFrequency%</span>):
-        </div>
-        <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <input name="SwitchingFrequency" type="number" step="1" min="0" />
-            <input onclick="submitMessage()" type="submit" value="Set" />
-          </form>
-        </div>
-      </div>
-      <hr />
-      <div class="form-row">
-        <div class="form-label">Field Adj Step (V) (<span id="interval1_echo">%interval1%</span>):</div>
-        <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <input name="interval1" type="number" step="0.001" min="0" />
-            <input onclick="submitMessage()" type="submit" value="Set" />
-          </form>
-        </div>
-      </div>
-      <hr />
-      <div class="form-row">
-        <div class="form-label">Field Adj. Time Interval (ms) (<span
-            id="FieldAdjustmentInterval1_echo">%FieldAdjustmentInterval1%</span>):</div>
-        <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <input name="FieldAdjustmentInterval1" type="number" step="1" min="0" />
-            <input onclick="submitMessage()" type="submit" value="Set" />
-          </form>
-        </div>
-      </div>
-      <hr />
-      <div class="form-row">
-        <div class="form-label">Manual Field Control (<span id="ManualFieldToggle1_echo">%ManualFieldToggle1%</span>):
-        </div>
-        <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <span class="toggle-label">Off</span>
-            <label class="switch">
-              <input id="ManualFieldToggle1_checkbox" type="checkbox"
-                onchange="document.getElementById('ManualFieldToggle1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-              <span class="slider round"></span>
-            </label>
-            <span class="toggle-label">On</span>
-            <input id="ManualFieldToggle1" name="ManualFieldToggle1" type="number" value="%ManualFieldToggle1%"
-              style="display:none;" />
-          </form>
-        </div>
-      </div>
-      <hr />
-      <div class="form-row">
-        <div class="form-label">Manual Field Setpoint (V) (<span id="ManualVoltage_echo">%ManualVoltage%</span>):</div>
-        <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <input name="ManualVoltage" type="number" step="0.01" min="0" />
-            <input onclick="submitMessage()" type="submit" value="Set" />
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <div class="settings-card">
-      <div class="section-title">System</div>
-      <hr />
-      <div class="form-row">
-        <div class="form-label">VE.Direct Data (<span id="VeData1_echo">%VeData1%</span>):</div>
-        <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <span class="toggle-label">Off</span>
-            <label class="switch">
-              <input id="VeData1_checkbox" type="checkbox"
-                onchange="document.getElementById('VeData1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-              <span class="slider round"></span>
-            </label>
-            <span class="toggle-label">On</span>
-            <input id="VeData1" name="VeData1" type="number" value="%VeData1%" style="display:none;" />
-          </form>
-        </div>
-      </div>
-      <hr />
-      <div class="form-row">
-        <div class="form-label">NMEA 0183 Data (<span id="NMEA0183Data1_echo">%NMEA0183Data1%</span>):</div>
-        <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <span class="toggle-label">Off</span>
-            <label class="switch">
-              <input id="NMEA0183Data1_checkbox" type="checkbox"
-                onchange="document.getElementById('NMEA0183Data1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-              <span class="slider round"></span>
-            </label>
-            <span class="toggle-label">On</span>
-            <input id="NMEA0183Data1" name="NMEA0183Data1" type="number" value="%NMEA0183Data1%"
-              style="display:none;" />
-          </form>
-        </div>
-      </div>
-      <hr />
-      <div class="form-row">
-        <div class="form-label">NMEA 2000 Data (<span id="NMEA2KData1_echo">%NMEA2KData1%</span>):</div>
-        <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <span class="toggle-label">Off</span>
-            <label class="switch">
-              <input id="NMEA2KData1_checkbox" type="checkbox"
-                onchange="document.getElementById('NMEA2KData1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-              <span class="slider round"></span>
-            </label>
-            <span class="toggle-label">On</span>
-            <input id="NMEA2KData1" name="NMEA2KData1" type="number" value="%NMEA2KData1%" style="display:none;" />
-          </form>
-        </div>
-      </div>
-
       <div class="section-title">Security</div>
+
+      <div id="lock-status" style="font-weight:bold; color:red; margin-bottom:10px;">LOCKED</div>
 
       <div class="form-row">
         <div class="form-label">Enter Password:</div>
@@ -560,15 +323,16 @@
           <form action="/get" method="GET" target="hidden-form" onsubmit="setAdminPassword(); return false;"
             style="display: flex; justify-content: flex-end; align-items: center;">
             <input type="hidden" name="dummy" value="1" />
-            <input type="text" id="admin_password" name="admin_password" style="width: 80px; margin-right: 8px;" />
+            <input type="password" id="admin_password" name="admin_password" style="width: 80px; margin-right: 8px;"
+              autocomplete="current-password" />
             <input type="submit" id="admin_password_set" value="Set" />
             <span id="admin_password_msg" style="margin-left:8px; font-size:12px; color:green;"></span>
+            <label style="margin-left: 8px; font-size: 12px;">
+              <input type="checkbox" onclick="togglePassword('admin_password')"> Show
+            </label>
           </form>
         </div>
       </div>
-
-
-
 
       <div class="form-row">
         <div class="form-label">New Password:</div>
@@ -576,22 +340,289 @@
           <form action="/setPassword" method="POST" target="hidden-form" onsubmit="return setNewPassword();"
             style="display: flex; justify-content: flex-end; align-items: center;">
             <input type="hidden" name="password" class="password_field">
-            <input type="text" id="newpassword" name="newpassword" style="width: 80px; margin-right: 8px;" />
+            <input type="password" id="newpassword" name="newpassword" style="width: 80px; margin-right: 8px;" />
             <input type="submit" id="newpassword_set" value="Set" />
             <span id="newpassword_msg" style="margin-left:8px; font-size:12px; color:green;"></span>
+            <label style="margin-left: 8px; font-size: 12px;">
+              <input type="checkbox" onclick="togglePassword('newpassword')"> Show
+            </label>
           </form>
         </div>
       </div>
-
-
-
-
-
-
-
+      <div style="text-align: center; margin-top: 10px;">
+        <input type="submit" id="lock-settings-button" onclick="lockSettingsManually(); return false;" value="Lock Settings" style="width: 120px; background-color: #ff6600;" />
+      </div>
+      
+      
     </div>
   </div>
-  </div>
+
+  <style>
+    #lock-settings-button:hover {
+      background-color: #b71c1c; /* Darker red on hover for the Lock Settings button */
+    }
+    </style>
+    
+  <script>
+    function togglePassword(id) {
+      var field = document.getElementById(id);
+      field.type = (field.type === "password") ? "text" : "password";
+    }
+  </script>
+
+
+  <h2>Settings</h2>
+
+  <fieldset id="settings-section" disabled>
+    <div class="settings-grid">
+
+      <div class="settings-card">
+        <div class="section-title">Basic Settings</div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Regulator Output (<span id="OnOff1_echo">%OnOff1%</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">Off</span>
+              <label class="switch">
+                <input id="OnOff1_checkbox" type="checkbox"
+                  onchange="document.getElementById('OnOff1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">On</span>
+              <input id="OnOff1" name="OnOff1" type="number" value="%OnOff1%" style="display:none;" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Charge Rate (<span id="HiLow1_echo">%HiLow1%</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">Low</span>
+              <label class="switch">
+                <input id="HiLow1_checkbox" type="checkbox"
+                  onchange="document.getElementById('HiLow1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">High</span>
+              <input id="HiLow1" name="HiLow1" type="number" value="%HiLow1%" style="display:none;" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Limp Home Mode (<span id="LimpHome1_echo">%LimpHome1%</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">Off</span>
+              <label class="switch">
+                <input id="LimpHome1_checkbox" type="checkbox"
+                  onchange="document.getElementById('LimpHome1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">On</span>
+              <input id="LimpHome1" name="LimpHome1" type="number" value="%LimpHome1%" style="display:none;" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Switch Panel Override (<span
+              id="SwitchControlOverride1_echo">%SwitchControlOverride1%</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">Off</span>
+              <label class="switch">
+                <input id="SwitchControlOverride1_checkbox" type="checkbox"
+                  onchange="document.getElementById('SwitchControlOverride1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">On</span>
+              <input id="SwitchControlOverride1" name="SwitchControlOverride1" type="number"
+                value="%SwitchControlOverride1%" style="display:none;" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Alternator Temp Limit (F) (<span
+              id="TemperatureLimitF_echo">%TemperatureLimitF%</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="TemperatureLimitF" type="number" step="1" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Bulk Voltage (<span id="FullChargeVoltage_echo">%FullChargeVoltage%</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="FullChargeVoltage" type="number" step="0.01" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Charge Rate (A) (<span id="TargetAmpz_echo">%TargetAmpz%</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="TargetAmpz" type="number" step="1" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Float Voltage (<span id="TargetFloatVoltage1_echo">%TargetFloatVoltage1%</span>):
+          </div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="TargetFloatVoltage1" type="number" step="0.01" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="section-title">Advanced Settings</div>
+        <div class="form-row">
+          <div class="form-label">Field Switch Freq (hz) (<span
+              id="SwitchingFrequency_echo">%SwitchingFrequency%</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="SwitchingFrequency" type="number" step="1" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Field Adj Step (V) (<span id="interval1_echo">%interval1%</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="interval1" type="number" step="0.001" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Field Adj. Time Interval (ms) (<span
+              id="FieldAdjustmentInterval1_echo">%FieldAdjustmentInterval1%</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="FieldAdjustmentInterval1" type="number" step="1" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Manual Field Control (<span id="ManualFieldToggle1_echo">%ManualFieldToggle1%</span>):
+          </div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">Off</span>
+              <label class="switch">
+                <input id="ManualFieldToggle1_checkbox" type="checkbox"
+                  onchange="document.getElementById('ManualFieldToggle1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">On</span>
+              <input id="ManualFieldToggle1" name="ManualFieldToggle1" type="number" value="%ManualFieldToggle1%"
+                style="display:none;" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Manual Field Setpoint (V) (<span id="ManualVoltage_echo">%ManualVoltage%</span>):
+          </div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="ManualVoltage" type="number" step="0.01" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="section-title">System</div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">VE.Direct Data (<span id="VeData1_echo">%VeData1%</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">Off</span>
+              <label class="switch">
+                <input id="VeData1_checkbox" type="checkbox"
+                  onchange="document.getElementById('VeData1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">On</span>
+              <input id="VeData1" name="VeData1" type="number" value="%VeData1%" style="display:none;" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">NMEA 0183 Data (<span id="NMEA0183Data1_echo">%NMEA0183Data1%</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">Off</span>
+              <label class="switch">
+                <input id="NMEA0183Data1_checkbox" type="checkbox"
+                  onchange="document.getElementById('NMEA0183Data1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">On</span>
+              <input id="NMEA0183Data1" name="NMEA0183Data1" type="number" value="%NMEA0183Data1%"
+                style="display:none;" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">NMEA 2000 Data (<span id="NMEA2KData1_echo">%NMEA2KData1%</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">Off</span>
+              <label class="switch">
+                <input id="NMEA2KData1_checkbox" type="checkbox"
+                  onchange="document.getElementById('NMEA2KData1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">On</span>
+              <input id="NMEA2KData1" name="NMEA2KData1" type="number" value="%NMEA2KData1%" style="display:none;" />
+            </form>
+          </div>
+        </div>
+      </div>
+
+    </div> <!-- End settings-grid -->
+  </fieldset>
 
 
   <h2>Live Data</h2>
@@ -1293,79 +1324,138 @@
     }
 
     function setAdminPassword() {
-      currentAdminPassword = document.getElementById("admin_password").value;
-      updatePasswordFields();
       const button = document.getElementById('admin_password_set');
       const input = document.getElementById('admin_password');
       const msg = document.getElementById('admin_password_msg');
+      const password = input.value;
+
+      if (!password) {
+        msg.textContent = "Missing Password";
+        msg.style.color = "red";
+        setTimeout(() => { msg.textContent = ""; }, 3000);
+        return false;
+      }
 
       button.disabled = true;
-      msg.textContent = "Password Set";
-      msg.classList.add('confirm-msg');
 
-      setTimeout(() => {
-        msg.classList.add('fade-out');
-      }, 50);
+      const formData = new FormData();
+      formData.append("password", password);
 
-      setTimeout(() => {
-        msg.textContent = "";
-        msg.classList.remove('confirm-msg', 'fade-out');
-        button.disabled = false;
-        input.value = ""; // Still clear for security, but we saved the value
-      }, 1000);
+      fetch("/checkPassword", {
+        method: "POST",
+        body: formData
+      })
+        .then(response => response.text())
+        .then(text => {
+          if (text.trim() === "OK") {
+            currentAdminPassword = password;
+            // Unlock settings
+            const settingsSection = document.getElementById('settings-section');
+            if (settingsSection) {
+              settingsSection.disabled = false;
+            }
+            const lockStatus = document.getElementById('lock-status');
+            if (lockStatus) {
+              lockStatus.textContent = "Settings are Open";
+              lockStatus.style.color = "green";
+            }
+
+            updatePasswordFields();
+            msg.textContent = "Password Accepted";
+            msg.style.color = "green";
+          } else {
+            msg.textContent = "Wrong Password";
+            msg.style.color = "red";
+          }
+          input.value = "";
+          setTimeout(() => { msg.textContent = ""; button.disabled = false; }, 3000);
+        })
+        .catch(err => {
+          msg.textContent = "Error";
+          msg.style.color = "red";
+          setTimeout(() => { msg.textContent = ""; button.disabled = false; }, 3000);
+        });
+
+      return false;
     }
 
+    function lockSettingsManually() {
+      const settingsSection = document.getElementById('settings-section');
+      const lockStatus = document.getElementById('lock-status');
+
+      if (settingsSection) settingsSection.disabled = true;
+      if (lockStatus) {
+        lockStatus.textContent = "Settings are Locked";
+        lockStatus.style.color = "#ff6600";  // Your house orange
+      }
+      currentAdminPassword = "";
+    }
 
     function setNewPassword() {
       const button = document.getElementById('newpassword_set');
       const input = document.getElementById('newpassword');
       const msg = document.getElementById('newpassword_msg');
+      const currentPassword = currentAdminPassword;
 
-      // Disable the button to prevent multiple submissions
+      if (!currentPassword || !input.value) {
+        msg.textContent = "Missing fields";
+        msg.style.color = "red";
+        setTimeout(() => { msg.textContent = ""; }, 3000);
+        return false;
+      }
+
       button.disabled = true;
 
-      // Make sure the password field contains the admin password for authentication
-      updatePasswordFields();
+      const formData = new FormData();
+      formData.append("password", currentPassword);
+      formData.append("newpassword", input.value);
 
-      // We need to keep the new password value during form submission
-      // So we'll wait until after submission to clear it and show feedback
+      fetch("/setPassword", {
+        method: "POST",
+        body: formData
+      })
+        .then(response => response.text())
+        .then(text => {
+          if (text.trim() === "OK") {
+            msg.textContent = "Password Changed";
+            msg.style.color = "green";
+          } else {
+            msg.textContent = "Wrong Password";
+            msg.style.color = "red";
+          }
+          input.value = "";
+          setTimeout(() => { msg.textContent = ""; button.disabled = false; }, 3000);
+        })
+        .catch(err => {
+          msg.textContent = "Error";
+          msg.style.color = "red";
+          setTimeout(() => { msg.textContent = ""; button.disabled = false; }, 3000);
+        });
 
-      // Set up a timer to show the confirmation after submission has had time to complete
-      setTimeout(() => {
-        // Now it's safe to clear the input and show feedback
-        input.value = "";
-        msg.textContent = "Password Changed";
-        msg.classList.add('confirm-msg');
-
-        setTimeout(() => {
-          msg.classList.add('fade-out');
-        }, 50);
-
-        setTimeout(() => {
-          button.disabled = false;
-          msg.textContent = "";
-          msg.classList.remove('confirm-msg', 'fade-out');
-        }, 1000);
-      }, 500); // Wait 500ms for form submission to complete
-
-      submitMessage();
-      return true;
+      return false; // prevent form submit
     }
+
 
 
 
 
 
     window.addEventListener("load", function () {
+      //gray out Settings on a reload
+      const settingsSection = document.getElementById('settings-section');
+      if (settingsSection) {
+        settingsSection.disabled = true;
+      }
+      const lockStatus = document.getElementById('lock-status');
+      if (lockStatus) {
+        lockStatus.textContent = "Settings are Locked";
+        lockStatus.style.color = "#ff6600";  // Your house orange
+      }
       initWifiPlot();
       initCurrentTempPlot();
       initVoltagePlot();
       initRPMPlot();
       initClientUpdatePlot();
-
-
-
-
       if (!!window.EventSource) {
         const fields = {
           AltTempID: "AlternatorTemperatureF",
@@ -1417,15 +1507,11 @@
           NMEA0183Data1_echo: "NMEA0183Data1",
           NMEA2KData1_echo: "NMEA2KData1"
         };
-
-
         // this is the numerical displays, with scaling done locally
         const source = new EventSource('/events');
-
         source.addEventListener('open', function () {
           updateInlineStatus(true);
         }, false);
-
         source.addEventListener('error', function () {
           updateInlineStatus(false);
           // Attempt to reconnect after error
@@ -1461,7 +1547,6 @@
             console.warn("CSV mismatch: ESP32/HTML field count diverged");
             return;
           }
-
 
           const data = {
             AlternatorTemperatureF: values[fieldIndexes.AlternatorTemperatureF],
