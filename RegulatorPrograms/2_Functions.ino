@@ -832,7 +832,6 @@ void setupAccessPoint() {
   // Set up the configuration web server
   setupWiFiConfigServer();
 }
-
 // Function to set up the configuration web server in AP mode
 void setupWiFiConfigServer() {
   server.onNotFound([](AsyncWebServerRequest *request) {
@@ -866,12 +865,19 @@ void setupWiFiConfigServer() {
 }
 void setupServer() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/index.html", "text/html", false, processor);
+    request->send(LittleFS, "/index.html", "text/html", false, [](const String &var) -> String {
+      if (var == "PASSWORD") {
+        return String("");  //
+      }
+      return processor(var);  // Keep all your normal variable replacements
+    });
   });
-
   server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (!request->hasParam("password") || strcmp(request->getParam("password")->value().c_str(), requiredPassword) != 0) {
+      request->send(403, "text/plain", "Forbidden");
+      return;
+    }
     String inputMessage;
-
     if (request->hasParam(TLimit)) {
       inputMessage = request->getParam(TLimit)->value();
       writeFile(LittleFS, "/TemperatureLimitF.txt", inputMessage.c_str());
@@ -947,6 +953,47 @@ void setupServer() {
     request->send(200, "text/plain", inputMessage);
   });
 
+  server.on("/setPassword", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (!request->hasParam("newpassword", true)) {
+      request->send(400, "text/plain", "Missing password");
+      return;
+    }
+
+    String newPassword = request->getParam("newpassword", true)->value();
+    newPassword.trim();
+
+    if (newPassword.length() == 0) {
+      request->send(400, "text/plain", "Empty password");
+      return;
+    }
+
+    // Update the plaintext password variable in memory
+    strncpy(requiredPassword, newPassword.c_str(), sizeof(requiredPassword) - 1);
+
+    // Also save plaintext to file for persistence across reboots
+    File plainFile = LittleFS.open("/password.txt", "w");
+    if (plainFile) {
+      plainFile.println(newPassword);
+      plainFile.close();
+    }
+
+    // Create and save the hash
+    char hash[65] = { 0 };
+    sha256(newPassword.c_str(), hash);
+
+    File file = LittleFS.open("/password.hash", "w");
+    if (!file) {
+      request->send(500, "text/plain", "Failed to open password file");
+      return;
+    }
+
+    file.println(hash);
+    file.close();
+    strncpy(storedPasswordHash, hash, sizeof(storedPasswordHash) - 1);
+
+    request->send(200, "text/plain", "Password updated");
+  });
+
   server.onNotFound([](AsyncWebServerRequest *request) {
     String path = request->url();
     Serial.print("Request for: ");
@@ -978,7 +1025,6 @@ void setupServer() {
   server.addHandler(&events);
   server.begin();
 }
-
 // Process DNS requests for captive portal
 void dnsHandleRequest() {
   if (currentWiFiMode == AWIFI_MODE_AP) {
@@ -1343,5 +1389,76 @@ void InitSystemSettings() {
     writeFile(LittleFS, "/MaxAlternatorTemperatureF.txt", String(MaxAlternatorTemperatureF).c_str());
   } else {
     MaxAlternatorTemperatureF = readFile(LittleFS, "/MaxAlternatorTemperatureF.txt").toInt();
+  }
+}
+
+void sha256(const char *input, char *outputBuffer) {  // for security
+  byte shaResult[32];
+  mbedtls_md_context_t ctx;
+  const mbedtls_md_info_t *info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+
+  mbedtls_md_init(&ctx);
+  mbedtls_md_setup(&ctx, info, 0);
+  mbedtls_md_starts(&ctx);
+  mbedtls_md_update(&ctx, (const unsigned char *)input, strlen(input));
+  mbedtls_md_finish(&ctx, shaResult);
+  mbedtls_md_free(&ctx);
+
+  for (int i = 0; i < 32; ++i) {
+    sprintf(outputBuffer + (i * 2), "%02x", shaResult[i]);
+  }
+}
+
+void loadPasswordHash() {
+  // First try to load plaintext password (for auth)
+  if (LittleFS.exists("/password.txt")) {
+    File plainFile = LittleFS.open("/password.txt", "r");
+    if (plainFile) {
+      String pwdStr = plainFile.readStringUntil('\n');
+      pwdStr.trim();
+      strncpy(requiredPassword, pwdStr.c_str(), sizeof(requiredPassword) - 1);
+      plainFile.close();
+      Serial.println("Plaintext password loaded from LittleFS");
+    }
+  }
+
+  // Now load the hash (for future use)
+  if (LittleFS.exists("/password.hash")) {
+    File file = LittleFS.open("/password.hash", "r");
+    if (file) {
+      size_t len = file.readBytesUntil('\n', storedPasswordHash, sizeof(storedPasswordHash) - 1);
+      storedPasswordHash[len] = '\0';  // null-terminate
+      file.close();
+      Serial.println("Password hash loaded from LittleFS");
+      return;
+    }
+  }
+
+  // If we get here, no password files exist - set defaults
+  strncpy(requiredPassword, "admin", sizeof(requiredPassword) - 1);
+  sha256("admin", storedPasswordHash);
+  Serial.println("No password file, using default admin password");
+}
+
+void savePasswordHash() {
+  File file = LittleFS.open("/password.hash", "w");
+  if (file) {
+    file.println(storedPasswordHash);
+    file.close();
+    Serial.println("Password hash saved to LittleFS");
+  } else {
+    Serial.println("Failed to open password.hash for writing");
+  }
+}
+
+
+void savePasswordPlaintext(const char *password) {
+  File file = LittleFS.open("/password.txt", "w");
+  if (file) {
+    file.println(password);
+    file.close();
+    Serial.println("Password saved to LittleFS");
+  } else {
+    Serial.println("Failed to open password.txt for writing");
   }
 }
