@@ -297,7 +297,6 @@
 <body>
   <iframe name="hidden-form" style="display:none"></iframe>
 
-
   <h2>Settings</h2>
   <div class="settings-grid">
     <div class="settings-card">
@@ -368,7 +367,7 @@
           </form>
         </div>
       </div>
-      <hr/>
+      <hr />
       <div class="form-row">
         <div class="form-label">Alternator Temp Limit (F) (<span
             id="TemperatureLimitF_echo">%TemperatureLimitF%</span>):</div>
@@ -475,9 +474,6 @@
     </div>
 
 
-
-
-
     <div class="settings-card">
       <div class="section-title">System</div>
       <hr />
@@ -533,10 +529,8 @@
   </div>
 
 
-
   <h2>Live Data</h2>
   <div class="settings-grid">
-
 
     <div class="settings-card">
       <div class="section-title">Battery</div>
@@ -634,8 +628,8 @@
           <p class="reading"><span id="EngineRunTimeID">0</span></p>
         </div>
         <div class="card">
-          <p>Engine Cycles</p>
-          <p class="reading"><span id="EngineCyclesID">0</span> rev-min</p>
+          <p>Engine Rev Counter</p>
+          <p class="reading"><span id="EngineCyclesID">0</span> Rotations</p>
         </div>
         <div class="card">
           <p>Max RPM</p>
@@ -643,58 +637,56 @@
         </div>
       </div>
     </div>
-  </div>
 
-
-  <div class="settings-card">
-    <div class="section-title">Other</div>
-    <div class="grid">
-      <div class="card">
-        <p>GPS Heading</p>
-        <p class="reading"><span id="GPSHID">0</span> °</p>
-      </div>
-      <div class="card">
-        <p>ADS Ch3 Voltage</p>
-        <p class="reading"><span id="ADS3ID">0</span> V</p>
+    <div class="settings-card">
+      <div class="section-title">Computing Debug</div>
+      <div class="grid">
+        <div class="card">
+          <p>Loop Time</p>
+          <p class="reading"><span id="LoopTimeID">0</span> μs</p>
+        </div>
+        <div class="card">
+          <p>Maximum Loop Time</p>
+          <p class="reading"><span id="MaximumLoopTimeID">0</span> μs</p>
+        </div>
+        <div class="card">
+          <p>Analog Read Time (Max)</p>
+          <p class="reading"><span id="AnalogReadTimeID">0</span> μs</p>
+        </div>
+        <div class="card">
+          <p>Wifi Send Time</p>
+          <p class="reading"><span id="SendWifiTimeID">0</span> μs</p>
+        </div>
+        <div class="card">
+          <p>VE Dir. Read Time</p>
+          <p class="reading"><span id="VeTimeID">0</span> μs</p>
+        </div>
+        <div class="card">
+          <p>Wifi Strength</p>
+          <p class="reading"><span id="WifiStrengthID">0</span> dB</p>
+        </div>
+        <div class="card">
+          <p>Wifi Heartbeat</p>
+          <p class="reading"><span id="WifiHeartBeatID">0</span> #</p>
+        </div>
+        <div class="card">
+          <p>Free Heap Memory</p>
+          <p class="reading"><span id="FreeHeapID">0</span> kb</p>
+        </div>
       </div>
     </div>
-  </div>
-  
 
-  <div class="settings-card">
-    <div class="section-title">Regulator Computing</div>
-    <div class="grid">
-      <div class="card">
-        <p>Loop Time</p>
-        <p class="reading"><span id="LoopTimeID">0</span> μs</p>
-      </div>
-      <div class="card">
-        <p>Maximum Loop Time</p>
-        <p class="reading"><span id="MaximumLoopTimeID">0</span> μs</p>
-      </div>
-      <div class="card">
-        <p>Analog Read Time (Max)</p>
-        <p class="reading"><span id="AnalogReadTimeID">0</span> μs</p>
-      </div>
-      <div class="card">
-        <p>Wifi Send Time</p>
-        <p class="reading"><span id="SendWifiTimeID">0</span> μs</p>
-      </div>
-      <div class="card">
-        <p>VE Dir. Read Time</p>
-        <p class="reading"><span id="VeTimeID">0</span> μs</p>
-      </div>
-      <div class="card">
-        <p>Wifi Strength</p>
-        <p class="reading"><span id="WifiStrengthID">0</span> dB</p>
-      </div>
-      <div class="card">
-        <p>Wifi Heartbeat</p>
-        <p class="reading"><span id="WifiHeartBeatID">0</span> #</p>
-      </div>
-      <div class="card">
-        <p>Free Heap Memory</p>
-        <p class="reading"><span id="FreeHeapID">0</span> kb</p>
+    <div class="settings-card">
+      <div class="section-title">Other</div>
+      <div class="grid">
+        <div class="card">
+          <p>GPS Heading</p>
+          <p class="reading"><span id="GPSHID">0</span> °</p>
+        </div>
+        <div class="card">
+          <p>ADS Ch3 Voltage</p>
+          <p class="reading"><span id="ADS3ID">0</span> V</p>
+        </div>
       </div>
     </div>
   </div>
@@ -1384,23 +1376,25 @@
             NMEA2KData1: values[fieldIndexes.NMEA2KData1]
           };
 
-
-
-          // The rest of the function remains the same - update display elements
           for (const [elementId, key] of Object.entries(fields)) {
             const el = document.getElementById(elementId);
             if (el && key in data) {
               if (key === "BatteryV" || key === "Channel3V" || key === "IBV" || key === "VictronVoltage" || key === "vvout") {
-                el.innerHTML = (data[key] / 100).toFixed(2);
+                el.innerHTML = (data[key] / 100).toFixed(2);  // no commas
               }
               else if (key === "MeasuredAmps" || key === "Bcur" || key === "iiout") {
-                el.innerHTML = (data[key] / 10).toFixed(2);
+                el.innerHTML = (data[key] / 10).toFixed(2);  // no commas
               }
               else {
-                el.innerHTML = data[key];
+                if (Number.isFinite(data[key])) {
+                  el.innerHTML = Math.round(data[key]).toLocaleString('en-US');
+                } else {
+                  el.innerHTML = "—";  // fallback for bad values
+                }
               }
             }
           }
+
 
           // Update echo elements
           if ('TemperatureLimitF' in data) {
