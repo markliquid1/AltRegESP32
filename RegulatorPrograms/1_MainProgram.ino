@@ -1,3 +1,24 @@
+//        X Engineering Alternator Regulator
+//     Copyright (C) 2025  Mark Nickerson
+
+//     This program is free software: you can redistribute it and/or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+
+//     This program is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//     GNU General Public License for more details.
+
+//  See <https://www.gnu.org/licenses/> for GNU General Public License
+
+// Contact me at mark@xengineering.net    
+
+// In order to minimally discourage inexperienced programmers, this code is not split up into .h and .cpp files, 
+// multiple HTML files, etc, etc, which would have greatly improved organization. The penalty to pay is loooong programs. I find it to be an ok 
+// tradeoff because it keeps the code recognizeable and editable for beginners.
+
 #include <OneWire.h>            // temp sensors //
 #include <DallasTemperature.h>  // temp sensors
 #include <SPI.h>                // display
@@ -575,7 +596,7 @@ void loop() {
     dnsHandleRequest();
   } else {
     // Only do these tasks if in normal client mode
-    // ReadAnalogInputs();
+    ReadAnalogInputs();
     //ReadVEData();  //read Data from Victron VeDirect
     // UpdateDisplay();
     SendWifiData();  // Send WiFi data to client
