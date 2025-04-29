@@ -22,5 +22,6 @@ There are 3 files involved
 ComponentDebuggingNotes ------  smaller programs that were used for debugging specific features- probably not of any use to anyone.
 
 
-
-
+Notes on Code Philosophy:
+--------------------------------------------------------------------------
+In order to minimally discourage inexperienced programmers, this code is not split up into .h and .cpp files, multiple HTML files, etc, which would have greatly improved organization.  The penalty to pay is long programs.  I find it to be an ok tradeoff because it keeps the code recognizeable to beginners. 
