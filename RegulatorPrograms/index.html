@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
- 
+
 <html>
 
 <head>
@@ -350,19 +350,21 @@
         </div>
       </div>
       <div style="text-align: center; margin-top: 10px;">
-        <input type="submit" id="lock-settings-button" onclick="lockSettingsManually(); return false;" value="Lock Settings" style="width: 120px; background-color: #ff6600;" />
+        <input type="submit" id="lock-settings-button" onclick="lockSettingsManually(); return false;"
+          value="Lock Settings" style="width: 120px; background-color: #ff6600;" />
       </div>
-      
-      
+
+
     </div>
   </div>
 
   <style>
     #lock-settings-button:hover {
-      background-color: #b71c1c; /* Darker red on hover for the Lock Settings button */
+      background-color: #b71c1c;
+      /* Darker red on hover for the Lock Settings button */
     }
-    </style>
-    
+  </style>
+
   <script>
     function togglePassword(id) {
       var field = document.getElementById(id);
@@ -652,7 +654,7 @@
           <p class="reading"><span id="SoC_percentID">0</span> %</p>
         </div>
         <div class="card">
-          <p>Charged Energy</p>
+          <p>Battery Charged Energy</p>
           <p class="reading"><span id="ChargedEnergyID">0</span> Wh</p>
         </div>
         <div class="card">
@@ -691,14 +693,14 @@
         </div>
         <div class="card">
           <p>Alternator On Time</p>
-          <p class="reading"><span id="AlternatorOnTimeID">0</span></p>
+          <p class="reading"><span id="AlternatorOnTimeID">0</span>H:M:S</p>
         </div>
         <div class="card">
           <p>Fuel Used</p>
           <p class="reading"><span id="AlternatorFuelUsedID">0</span> mL</p>
         </div>
         <div class="card">
-          <p>Charged Energy</p>
+          <p>Alternator Charged Energy</p>
           <p class="reading"><span id="AlternatorChargedEnergyID">0</span> Wh</p>
         </div>
         <div class="card">
@@ -721,11 +723,11 @@
         </div>
         <div class="card">
           <p>Engine Run Time</p>
-          <p class="reading"><span id="EngineRunTimeID">0</span></p>
+          <p class="reading"><span id="EngineRunTimeID">0</span>H:M:S</p>
         </div>
         <div class="card">
           <p>Engine Rev Counter</p>
-          <p class="reading"><span id="EngineCyclesID">0</span> Rotations</p>
+          <p class="reading"><span id="EngineCyclesID">0</span> rotations</p>
         </div>
         <div class="card">
           <p>Max RPM</p>
@@ -735,7 +737,7 @@
     </div>
 
     <div class="settings-card">
-      <div class="section-title">Computing Debug</div>
+      <div class="section-title">ESP32 Monitor</div>
       <div class="grid">
         <div class="card">
           <p>Loop Time</p>
@@ -1599,24 +1601,63 @@
             NMEA2KData1: values[fieldIndexes.NMEA2KData1]
           };
 
+
           for (const [elementId, key] of Object.entries(fields)) {
             const el = document.getElementById(elementId);
             if (el && key in data) {
-              if (key === "BatteryV" || key === "Channel3V" || key === "IBV" || key === "VictronVoltage" || key === "vvout" || key === "SoC_percent") {
-                el.innerHTML = (data[key] / 100).toFixed(2);  // no commas
+              if (key === "BatteryV" || key === "Channel3V" || key === "IBV" || key === "VictronVoltage" || key === "vvout") {
+                el.textContent = (data[key] / 100).toFixed(2);  // Using textContent instead of innerHTML
               }
               else if (key === "MeasuredAmps" || key === "Bcur" || key === "iiout") {
-                el.innerHTML = (data[key] / 10).toFixed(2);  // no commas
+                el.textContent = (data[key] / 10).toFixed(1);  // Using textContent instead of innerHTML
               }
               else {
-                if (Number.isFinite(data[key])) {
-                  el.innerHTML = Math.round(data[key]).toLocaleString('en-US');
+                // Simpler handling for all other fields
+                if (typeof data[key] === 'number') {
+                  el.textContent = Math.round(data[key]);  // No toLocaleString, just simple rounding
                 } else {
-                  el.innerHTML = "—";  // fallback for bad values
+                  el.textContent = "—";
                 }
               }
             }
           }
+
+          // // Modified display formatting:
+          // for (const [elementId, key] of Object.entries(fields)) {
+          //   const el = document.getElementById(elementId);
+          //   if (el && key in data) {
+          //     if (key === "BatteryV" || key === "Channel3V" || key === "IBV" || key === "VictronVoltage" || key === "vvout") {
+          //       el.innerHTML = (data[key] / 100).toFixed(2);  // 2 decimal places for voltages
+          //     }
+          //     else if (key === "MeasuredAmps" || key === "Bcur" || key === "iiout") {
+          //       el.innerHTML = (data[key] / 10).toFixed(1);  // 1 decimal place for currents
+          //     }
+          //     // else {
+          //     //   if (Number.isFinite(data[key])) {
+          //     //     el.innerHTML = Math.round(data[key]).toLocaleString('en-US');
+          //     //   } else {
+          //     //     el.innerHTML = "—";  // fallback for bad values
+          //     //   }
+          //     // }
+          //   }
+          // }
+
+
+          // source.addEventListener('CSVData', function (e) {
+          //   // Update timestamp when data is received
+          //   lastEventTime = Date.now();
+
+          //   // Immediately mark as connected when data arrives
+          //   updateInlineStatus(true);
+
+          //   // Parse CSV data into an array
+          //   const values = e.data.split(',').map(Number);
+
+          //   // First, just update a single field to verify the basic mechanism works
+          //   document.getElementById("BatteryVID").innerHTML = (values[fieldIndexes.BatteryV] / 100).toFixed(2);
+
+          //   // Add more fields one by one to isolate which update causes the problem
+          // });
 
 
           // Update echo elements
