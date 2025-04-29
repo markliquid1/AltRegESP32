@@ -448,8 +448,8 @@ void setup() {
     // Continue anyway since we might be able to format and use it later (?)
   }
 
-  InitPersistentVariables();   // load all persistent variables from LittleFS.  If no files exist, create them.
-  InitSystemSettings();  // load all settings from LittleFS.  If no files exist, create them.
+  InitPersistentVariables();  // load all persistent variables from LittleFS.  If no files exist, create them.
+  InitSystemSettings();       // load all settings from LittleFS.  If no files exist, create them.
 
 
   // Setup WiFi (this will either connect to a saved network or create an AP)
@@ -573,118 +573,114 @@ void loop() {
   // Handle DNS requests if in AP mode
   if (currentWiFiMode == AWIFI_MODE_AP) {
     dnsHandleRequest();
-  } 
-  else {
+  } else {
     // Only do these tasks if in normal client mode
     // ReadAnalogInputs();
     //ReadVEData();  //read Data from Victron VeDirect
     // UpdateDisplay();
-    if (millis() - prev_millis5 > webgaugesinterval) {
-      SendWifiData();  // Send WiFi data to client
-    }
-    prev_millis5 = millis();
+    SendWifiData();  // Send WiFi data to client
   }
 
-if (powersavemode == 1) {
-  /// Replace this later with control from Ignition Signal
-  //This turns wifi off every 60 seconds just to prove that it will be a power savings
-  if (millis() - previousMillisZZ >= intervalZZ) {
-    previousMillisZZ = millis();
-    if (getCpuFrequencyMhz() == 240) {
-      // try to shut downn wifi
-      setCpuFrequencyMhz(10);
-      WiFi.mode(WIFI_OFF);
-      Serial.println("wifi has been turned off");
+  if (powersavemode == 1) {
+    /// Replace this later with control from Ignition Signal
+    //This turns wifi off every 60 seconds just to prove that it will be a power savings
+    if (millis() - previousMillisZZ >= intervalZZ) {
+      previousMillisZZ = millis();
+      if (getCpuFrequencyMhz() == 240) {
+        // try to shut downn wifi
+        setCpuFrequencyMhz(10);
+        WiFi.mode(WIFI_OFF);
+        Serial.println("wifi has been turned off");
+      } else {
+        // turn it back on
+        setCpuFrequencyMhz(240);
+        setupWiFi();  // Use our new WiFi setup function
+        //Serial.println("Wifi is reinitialized");
+      }
+      Freq = getCpuFrequencyMhz();
+      Serial.print("CPU Freq = ");
+      Serial.println(Freq);
+      Serial.println();
+      Serial.println();
+    }
+  }
+
+  if (millis() - prev_millis743 > 5000) {  // every 5 seconds check CAN network (this might need adjustment)
+    if (NMEA2KData == 1) {
+      NMEA2000.ParseMessages();
+    }
+    prev_millis743 = millis();
+  }
+
+  // Check WiFi connection status if in client mode
+  if (currentWiFiMode == AWIFI_MODE_CLIENT && WiFi.status() != WL_CONNECTED) {
+    static unsigned long lastWiFiCheckTime = 0;
+
+    // Try to reconnect every 5 seconds
+    if (millis() - lastWiFiCheckTime > 5000) {
+      lastWiFiCheckTime = millis();
+
+      Serial.println("WiFi connection lost. Attempting to reconnect...");
+      String saved_ssid = readFile(LittleFS, WIFI_SSID_FILE);
+      String saved_password = readFile(LittleFS, WIFI_PASS_FILE);
+
+      if (connectToWiFi(saved_ssid.c_str(), saved_password.c_str(), 3000)) {
+        Serial.println("Reconnected to WiFi!");
+        // mDNS will be reinitialized in the connectToWiFi function
+      } else {
+        Serial.println("Failed to reconnect. Will try again in 5 seconds.");
+      }
+    }
+  }
+
+  //Blink LED on and off every X seconds
+  if (millis() - previousMillisBLINK >= intervalBLINK) {
+    // Use different blink patterns to indicate WiFi status
+    if (currentWiFiMode == AWIFI_MODE_AP) {
+      // Fast blink in AP mode (toggle twice)
+      digitalWrite(2, HIGH);
+      delay(50);
+      digitalWrite(2, LOW);
+      delay(50);
+      digitalWrite(2, HIGH);
+      delay(50);
+      digitalWrite(2, (ledState = !ledState));
+    } else if (WiFi.status() != WL_CONNECTED) {
+      // Medium blink when WiFi is disconnected
+      digitalWrite(2, HIGH);
+      delay(100);
+      digitalWrite(2, (ledState = !ledState));
     } else {
-      // turn it back on
-      setCpuFrequencyMhz(240);
-      setupWiFi();  // Use our new WiFi setup function
-      //Serial.println("Wifi is reinitialized");
+      // Normal blink when connected
+      digitalWrite(2, (ledState = !ledState));
     }
-    Freq = getCpuFrequencyMhz();
-    Serial.print("CPU Freq = ");
-    Serial.println(Freq);
-    Serial.println();
-    Serial.println();
+    previousMillisBLINK = millis();
   }
-}
 
-if (millis() - prev_millis743 > 5000) {  // every 5 seconds check CAN network (this might need adjustment)
-  if (NMEA2KData == 1) {
-    NMEA2000.ParseMessages();
+  endtime = esp_timer_get_time();  //Record a start time for demonstration
+  LoopTime = (endtime - starttime);
+
+  if (LoopTime > MaximumLoopTime) {
+    MaximumLoopTime = LoopTime;
   }
-  prev_millis743 = millis();
-}
 
-// Check WiFi connection status if in client mode
-if (currentWiFiMode == AWIFI_MODE_CLIENT && WiFi.status() != WL_CONNECTED) {
-  static unsigned long lastWiFiCheckTime = 0;
-
-  // Try to reconnect every 5 seconds
-  if (millis() - lastWiFiCheckTime > 5000) {
-    lastWiFiCheckTime = millis();
-
-    Serial.println("WiFi connection lost. Attempting to reconnect...");
-    String saved_ssid = readFile(LittleFS, WIFI_SSID_FILE);
-    String saved_password = readFile(LittleFS, WIFI_PASS_FILE);
-
-    if (connectToWiFi(saved_ssid.c_str(), saved_password.c_str(), 3000)) {
-      Serial.println("Reconnected to WiFi!");
-      // mDNS will be reinitialized in the connectToWiFi function
-    } else {
-      Serial.println("Failed to reconnect. Will try again in 5 seconds.");
-    }
+  if (millis() - prev_millis7888 > 3000) {  // every 3 seconds reset the maximum loop time
+    MaximumLoopTime = 0;
+    prev_millis7888 = millis();
   }
-}
 
-//Blink LED on and off every X seconds
-if (millis() - previousMillisBLINK >= intervalBLINK) {
-  // Use different blink patterns to indicate WiFi status
-  if (currentWiFiMode == AWIFI_MODE_AP) {
-    // Fast blink in AP mode (toggle twice)
-    digitalWrite(2, HIGH);
-    delay(50);
-    digitalWrite(2, LOW);
-    delay(50);
-    digitalWrite(2, HIGH);
-    delay(50);
-    digitalWrite(2, (ledState = !ledState));
-  } else if (WiFi.status() != WL_CONNECTED) {
-    // Medium blink when WiFi is disconnected
-    digitalWrite(2, HIGH);
-    delay(100);
-    digitalWrite(2, (ledState = !ledState));
-  } else {
-    // Normal blink when connected
-    digitalWrite(2, (ledState = !ledState));
+  endtime = esp_timer_get_time();  //Record a start time for demonstration
+  LoopTime = (endtime - starttime);
+  //Serial.println(LoopTime);
+  if (LoopTime > MaximumLoopTime) {
+    MaximumLoopTime = LoopTime;
   }
-  previousMillisBLINK = millis();
-}
 
-endtime = esp_timer_get_time();  //Record a start time for demonstration
-LoopTime = (endtime - starttime);
-
-if (LoopTime > MaximumLoopTime) {
-  MaximumLoopTime = LoopTime;
-}
-
-if (millis() - prev_millis7888 > 3000) {  // every 3 seconds reset the maximum loop time
-  MaximumLoopTime = 0;
-  prev_millis7888 = millis();
-}
-
-endtime = esp_timer_get_time();  //Record a start time for demonstration
-LoopTime = (endtime - starttime);
-//Serial.println(LoopTime);
-if (LoopTime > MaximumLoopTime) {
-  MaximumLoopTime = LoopTime;
-}
-
-if (millis() - prev_millis7888 > 3000) {  // every 2 seconds reset the maximum loop time
-  MaximumLoopTime = 0;
-  prev_millis7888 = millis();
-}
-//Serial.println(MaximumLoopTime);
+  if (millis() - prev_millis7888 > 3000) {  // every 2 seconds reset the maximum loop time
+    MaximumLoopTime = 0;
+    prev_millis7888 = millis();
+  }
+  //Serial.println(MaximumLoopTime);
 }
 
 
