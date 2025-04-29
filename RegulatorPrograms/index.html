@@ -315,7 +315,7 @@
     <div class="settings-card">
       <div class="section-title">Security</div>
 
-      <div id="lock-status" style="font-weight:bold; color:red; margin-bottom:10px;">LOCKED</div>
+      <div id="lock-status" style="font-weight:bold; color:#ff6600; margin-bottom:10px;">LOCKED</div>
 
       <div class="form-row">
         <div class="form-label">Enter Password:</div>
@@ -1331,8 +1331,8 @@
 
       if (!password) {
         msg.textContent = "Missing Password";
-        msg.style.color = "red";
-        setTimeout(() => { msg.textContent = ""; }, 3000);
+        msg.style.color = "#ff6600";
+        setTimeout(() => { msg.textContent = ""; }, 2000);
         return false;
       }
 
@@ -1365,15 +1365,15 @@
             msg.style.color = "green";
           } else {
             msg.textContent = "Wrong Password";
-            msg.style.color = "red";
+            msg.style.color = "#ff6600";
           }
           input.value = "";
-          setTimeout(() => { msg.textContent = ""; button.disabled = false; }, 3000);
+          setTimeout(() => { msg.textContent = ""; button.disabled = false; }, 2000);
         })
         .catch(err => {
           msg.textContent = "Error";
-          msg.style.color = "red";
-          setTimeout(() => { msg.textContent = ""; button.disabled = false; }, 3000);
+          msg.style.color = "#ff6600";
+          setTimeout(() => { msg.textContent = ""; button.disabled = false; }, 2000);
         });
 
       return false;
@@ -1399,8 +1399,8 @@
 
       if (!currentPassword || !input.value) {
         msg.textContent = "Missing fields";
-        msg.style.color = "red";
-        setTimeout(() => { msg.textContent = ""; }, 3000);
+        msg.style.color = "#ff6600";
+        setTimeout(() => { msg.textContent = ""; }, 2000);
         return false;
       }
 
@@ -1421,15 +1421,15 @@
             msg.style.color = "green";
           } else {
             msg.textContent = "Wrong Password";
-            msg.style.color = "red";
+            msg.style.color = "#ff6600";
           }
           input.value = "";
-          setTimeout(() => { msg.textContent = ""; button.disabled = false; }, 3000);
+          setTimeout(() => { msg.textContent = ""; button.disabled = false; }, 2000);
         })
         .catch(err => {
           msg.textContent = "Error";
-          msg.style.color = "red";
-          setTimeout(() => { msg.textContent = ""; button.disabled = false; }, 3000);
+          msg.style.color = "#ff6600";
+          setTimeout(() => { msg.textContent = ""; button.disabled = false; }, 2000);
         });
 
       return false; // prevent form submit
@@ -1449,7 +1449,7 @@
       const lockStatus = document.getElementById('lock-status');
       if (lockStatus) {
         lockStatus.textContent = "Settings are Locked";
-        lockStatus.style.color = "#ff6600";  // Your house orange
+        lockStatus.style.color = "#ff6600";  //  My house orange
       }
       initWifiPlot();
       initCurrentTempPlot();
