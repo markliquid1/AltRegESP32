@@ -1,4 +1,19 @@
+// X Engineering Alternator Regulator
+//     Copyright (C) 2025  Mark Nickerson
 
+//     This program is free software: you can redistribute it and/or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+
+//     This program is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//     GNU General Public License for more details.
+
+//  See <https://www.gnu.org/licenses/> for GNU General Public License
+
+// Contact me at mark@xengineering.net
 
 void AdjustField() {
   if (Ignition == 1 && OnOff == 1) {
@@ -590,47 +605,6 @@ String processor(const String &var) {
   } else if (var == "NMEA2KData1") {
     return readFile(LittleFS, "/NMEA2KData1.txt");
   }
-
-  // //Then, the live sensor readings
-  // else if (var == "ALTERNATORTEMPERATUREF") {
-  //   return String(AlternatorTemperatureF);
-  // } else if (var == "DUTYCYCLE") {
-  //   return String(DutyCycle);
-  // } else if (var == "BATTERYV") {
-  //   return String(BatteryV);
-  // } else if (var == "MEASA") {
-  //   return String(MeasuredAmps);
-  // } else if (var == "RPMM") {
-  //   return String(RPM);
-  // } else if (var == "ADSCH3VLTS") {
-  //   return String(Channel3V);
-  // } else if (var == "IBVV") {
-  //   return String(IBV);
-  // } else if (var == "BCURR") {
-  //   return String(Bcur);
-  // } else if (var == "VVOLT") {
-  //   return String(VictronVoltage);
-  // } else if (var == "GPSH") {
-  //   return String(HeadingNMEA);
-  // } else if (var == "FIELDVOLTS") {
-  //   return String(vvout);
-  // } else if (var == "LOOPTIME") {
-  //   return String(LoopTime);
-  // } else if (var == "MAXIMUMLOOPTIME") {
-  //   return String(MaximumLoopTime);
-  // } else if (var == "FIELDAMPS") {
-  //   return String(iiout);
-  // } else if (var == "WIFISTRENGTH") {
-  //   return String(WifiStrength);
-  // } else if (var == "WIFIHEARTBEAT") {
-  //   return String(WifiHeartBeat);
-  // } else if (var == "SENDWIFITIME") {
-  //   return String(SendWifiTime);
-  // } else if (var == "ANALOGREADTIME") {
-  //   return String(AnalogReadTime);
-  // } else if (var == "VETIME") {
-  //   return String(VeTime);
-  //}
   return String();
 }
 int SafeInt(float f, int scale = 1) {
@@ -706,11 +680,11 @@ void SendWifiData() {
                SafeInt(NMEA2KData));
 
       events.send(payload, "CSVData");    // Changed event name to reflect new format
-     // Serial.print("Payload: ");          //For debug
-     // Serial.println(payload);            // for debug
+      Serial.print("Payload: ");          //For debug
+      Serial.println(payload);            // for debug
       SendWifiTime = micros() - start66;  // Calculate WiFi Send Time
     }
-      prev_millis5 = millis();
+    prev_millis5 = millis();
   }
 }
 void checkAndRestart() {
@@ -1072,8 +1046,8 @@ void printBasicTaskStackInfo() {
 
   tasksCaptured = uxTaskGetSystemState(taskArray, numTasks, NULL);
 
-  Serial.println(F("\n===== TASK STACK REMAINING (BYTES) ====="));
-  Serial.println(F("Task Name        | Core | Stack Remaining | Alert"));
+  // Serial.println(F("\n===== TASK STACK REMAINING (BYTES) ====="));
+  // Serial.println(F("Task Name        | Core | Stack Remaining | Alert"));
 
   char coreIdBuffer[8];  // Buffer for core ID display
 
@@ -1104,14 +1078,14 @@ void printBasicTaskStackInfo() {
     }
 
 
-    Serial.printf("%-16s |  %-3s  |     %5d B     | %s\n",
-                  taskName,
-                  coreIdBuffer,
-                  stackBytes,
-                  alert);
+    // Serial.printf("%-16s |  %-3s  |     %5d B     | %s\n",
+    //               taskName,
+    //               coreIdBuffer,
+    //               stackBytes,
+    //               alert);
   }
 
-  Serial.println(F("==========================================\n"));
+  // Serial.println(F("==========================================\n"));
 }
 
 void printHeapStats() {
@@ -1126,12 +1100,12 @@ void printHeapStats() {
     Heapfrag = 100 - ((heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) * 100) / rawFreeHeap);
   }
 
-  Serial.println(F("========== HEAP STATS =========="));
-  Serial.printf("Free Heap:               %5u KB\n", FreeHeap);
-  Serial.printf("Minimum Ever Free Heap:  %5u KB\n", MinFreeHeap);
-  Serial.printf("Free Internal RAM:       %5u KB\n", FreeInternalRam);
-  Serial.printf("Heap Fragmentation:      %5u %%\n", Heapfrag);
-  Serial.println(F("================================"));
+  // Serial.println(F("========== HEAP STATS =========="));
+  // Serial.printf("Free Heap:               %5u KB\n", FreeHeap);
+  // Serial.printf("Minimum Ever Free Heap:  %5u KB\n", MinFreeHeap);
+  // Serial.printf("Free Internal RAM:       %5u KB\n", FreeInternalRam);
+  // Serial.printf("Heap Fragmentation:      %5u %%\n", Heapfrag);
+  // Serial.println(F("================================"));
 }
 
 void updateCpuLoad() {
@@ -1170,7 +1144,7 @@ void updateCpuLoad() {
   lastIdle1Time = idle1Time;
   lastCheckTime = now;
   // Print CPU load directly
-  Serial.printf("CPU Load: Core 0 = %3d%%, Core 1 = %3d%%\n", cpuLoadCore0, cpuLoadCore1);
+  // Serial.printf("CPU Load: Core 0 = %3d%%, Core 1 = %3d%%\n", cpuLoadCore0, cpuLoadCore1);
 }
 
 void testTaskStats() {
@@ -1178,9 +1152,9 @@ void testTaskStats() {
 
   vTaskGetRunTimeStats(statsBuffer);
 
-  Serial.println(F("========== TASK CPU USAGE =========="));
-  Serial.println(statsBuffer);
-  Serial.println(F("====================================\n"));
+  // Serial.println(F("========== TASK CPU USAGE =========="));
+  // Serial.println(statsBuffer);
+  // Serial.println(F("====================================\n"));
 }
 
 void UpdateBatterySOC(unsigned long elapsedMillis) {
