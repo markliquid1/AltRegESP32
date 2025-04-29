@@ -638,79 +638,80 @@ int SafeInt(float f, int scale = 1) {
   return isnan(f) || isinf(f) ? -1 : (int)(f * scale);
 }
 void SendWifiData() {
-  WifiStrength = WiFi.RSSI();
-  WifiHeartBeat++;
-  if (WifiStrength >= -70) {
-    int start66 = micros();     // Start timing the wifi section
-    printHeapStats();           //   Should be ~25–65 µs with no serial prints
-    printBasicTaskStackInfo();  //Should be ~70–170 µs µs for 10 tasks (conservative estimate with no serial prints)
-    updateCpuLoad();            //~200–250 for 10 tasks
-    testTaskStats();            // 👈 Add this line to test
-    // Build CSV string with all data as integers
-    // Format: multiply floats by 10, 100 or 1000 to preserve decimal precision as needed
-    // CSV field order: see index.html -> fields[] mapping
-    char payload[1024];  // >1400 the wifi transmission won't fit in 1 packet
-    snprintf(payload, sizeof(payload),
-             "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
-             // Readings
-             SafeInt(AlternatorTemperatureF),
-             SafeInt(DutyCycle),
-             SafeInt(BatteryV, 100),
-             SafeInt(MeasuredAmps, 100),
-             SafeInt(RPM),
-             SafeInt(Channel3V, 100),
-             SafeInt(IBV, 100),
-             SafeInt(Bcur, 100),
-             SafeInt(VictronVoltage, 100),
-             SafeInt(LoopTime),
-             SafeInt(WifiStrength),
-             SafeInt(WifiHeartBeat),
-             SafeInt(SendWifiTime),
-             SafeInt(AnalogReadTime),
-             SafeInt(VeTime),
-             SafeInt(MaximumLoopTime),
-             SafeInt(HeadingNMEA),
-             SafeInt(vvout, 100),
-             SafeInt(iiout, 10),
-             SafeInt(FreeHeap),
-             SafeInt(IBVMax, 100),
-             SafeInt(MeasuredAmpsMax, 100),
-             SafeInt(RPMMax),
-             SafeInt(SoC_percent, 100),
-             SafeInt(EngineRunTime),
-             SafeInt(EngineCycles),
-             SafeInt(AlternatorOnTime),
-             SafeInt(AlternatorFuelUsed),
-             SafeInt(ChargedEnergy),
-             SafeInt(DischargedEnergy),
-             SafeInt(AlternatorChargedEnergy),
-             SafeInt(MaxAlternatorTemperatureF),
+  if (millis() - prev_millis5 > webgaugesinterval) {
+    WifiStrength = WiFi.RSSI();
+    WifiHeartBeat++;
+    if (WifiStrength >= -70) {
+      int start66 = micros();     // Start timing the wifi section
+      printHeapStats();           //   Should be ~25–65 µs with no serial prints
+      printBasicTaskStackInfo();  //Should be ~70–170 µs µs for 10 tasks (conservative estimate with no serial prints)
+      updateCpuLoad();            //~200–250 for 10 tasks
+      testTaskStats();            // 👈 Add this line to test
+      // Build CSV string with all data as integers
+      // Format: multiply floats by 10, 100 or 1000 to preserve decimal precision as needed
+      // CSV field order: see index.html -> fields[] mapping
+      char payload[1024];  // >1400 the wifi transmission won't fit in 1 packet
+      snprintf(payload, sizeof(payload),
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+               // Readings
+               SafeInt(AlternatorTemperatureF),
+               SafeInt(DutyCycle),
+               SafeInt(BatteryV, 100),
+               SafeInt(MeasuredAmps, 100),
+               SafeInt(RPM),
+               SafeInt(Channel3V, 100),
+               SafeInt(IBV, 100),
+               SafeInt(Bcur, 100),
+               SafeInt(VictronVoltage, 100),
+               SafeInt(LoopTime),
+               SafeInt(WifiStrength),
+               SafeInt(WifiHeartBeat),
+               SafeInt(SendWifiTime),
+               SafeInt(AnalogReadTime),
+               SafeInt(VeTime),
+               SafeInt(MaximumLoopTime),
+               SafeInt(HeadingNMEA),
+               SafeInt(vvout, 100),
+               SafeInt(iiout, 10),
+               SafeInt(FreeHeap),
+               SafeInt(IBVMax, 100),
+               SafeInt(MeasuredAmpsMax, 100),
+               SafeInt(RPMMax),
+               SafeInt(SoC_percent, 100),
+               SafeInt(EngineRunTime),
+               SafeInt(EngineCycles),
+               SafeInt(AlternatorOnTime),
+               SafeInt(AlternatorFuelUsed),
+               SafeInt(ChargedEnergy),
+               SafeInt(DischargedEnergy),
+               SafeInt(AlternatorChargedEnergy),
+               SafeInt(MaxAlternatorTemperatureF),
 
-             // Settings    (for the echoes)
-             SafeInt(AlternatorTemperatureLimitF),
-             SafeInt(ChargingVoltageTarget, 100),
-             SafeInt(TargetAmps),
-             SafeInt(TargetFloatVoltage, 100),
-             SafeInt(fffr),
-             SafeInt(interval, 100),
-             SafeInt(FieldAdjustmentInterval),
-             SafeInt(ManualVoltageTarget, 100),
-             SafeInt(SwitchControlOverride),
-             SafeInt(OnOff),
-             SafeInt(ManualFieldToggle),
-             SafeInt(HiLow),
-             SafeInt(LimpHome),
-             SafeInt(VeData),
-             SafeInt(NMEA0183Data),
-             SafeInt(NMEA2KData));
+               // Settings    (for the echoes)
+               SafeInt(AlternatorTemperatureLimitF),
+               SafeInt(ChargingVoltageTarget, 100),
+               SafeInt(TargetAmps),
+               SafeInt(TargetFloatVoltage, 100),
+               SafeInt(fffr),
+               SafeInt(interval, 100),
+               SafeInt(FieldAdjustmentInterval),
+               SafeInt(ManualVoltageTarget, 100),
+               SafeInt(SwitchControlOverride),
+               SafeInt(OnOff),
+               SafeInt(ManualFieldToggle),
+               SafeInt(HiLow),
+               SafeInt(LimpHome),
+               SafeInt(VeData),
+               SafeInt(NMEA0183Data),
+               SafeInt(NMEA2KData));
 
-    events.send(payload, "CSVData"),millis();    // Changed event name to reflect new format
-    Serial.print("Payload: ");          //For debug
-    Serial.println(payload);            // for debug
-    SendWifiTime = micros() - start66;  // Calculate WiFi Send Time
+      events.send(payload, "CSVData");    // Changed event name to reflect new format
+      Serial.print("Payload: ");          //For debug
+      Serial.println(payload);            // for debug
+      SendWifiTime = micros() - start66;  // Calculate WiFi Send Time
+    }
+      prev_millis5 = millis();
   }
-  Serial.print("Free heap: ");
-  Serial.println(ESP.getFreeHeap());
 }
 void checkAndRestart() {
   //Restart the ESP32 every hour just for maintenance because we can eventaually want to use littleFS to store Battery Monitor Stuff first
