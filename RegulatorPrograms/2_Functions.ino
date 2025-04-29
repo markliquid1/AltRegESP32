@@ -677,7 +677,7 @@ void SendWifiData() {
                SafeInt(IBVMax, 100),
                SafeInt(MeasuredAmpsMax, 100),
                SafeInt(RPMMax),
-               SafeInt(SoC_percent, 100),
+               SafeInt(SoC_percent),
                SafeInt(EngineRunTime),
                SafeInt(EngineCycles),
                SafeInt(AlternatorOnTime),
@@ -706,8 +706,8 @@ void SendWifiData() {
                SafeInt(NMEA2KData));
 
       events.send(payload, "CSVData");    // Changed event name to reflect new format
-      Serial.print("Payload: ");          //For debug
-      Serial.println(payload);            // for debug
+     // Serial.print("Payload: ");          //For debug
+     // Serial.println(payload);            // for debug
       SendWifiTime = micros() - start66;  // Calculate WiFi Send Time
     }
       prev_millis5 = millis();
