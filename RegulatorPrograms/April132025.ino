@@ -30,14 +30,14 @@ INA228 INA(0x40);
 
 
 // Settings - these will be moved to LittleFS
-const char *default_ssid = "MN2G";   // Default SSID if no saved credentials
+const char *default_ssid = "MN2G";            // Default SSID if no saved credentials
 const char *default_password = "5FENYC8ABC";  // Default password if no saved credentials // 5FENYC8ABC
 // WiFi connection timeout when trying to avoid Access Point Mode (and connect to ship's wifi on reboot)
 const unsigned long WIFI_TIMEOUT = 20000;  // 20 seconds
 
 //Security
 char requiredPassword[32] = "admin";  // Max password length = 31 chars     Password for access to change settings from browser
-char storedPasswordHash[65] = {0};
+char storedPasswordHash[65] = { 0 };
 
 
 // ===== HEAP MONITORING =====
@@ -242,6 +242,19 @@ AsyncWebServer server(80);               // Create AsyncWebServer object on port
 AsyncEventSource events("/events");      // Create an Event Source on /events
 unsigned long webgaugesinterval = 1000;  // delay in ms between sensor updates on webpage
 
+
+
+// These string constants serve as identifiers for your form parameters in the web interface. They're defined as constants to avoid typos and make maintenance easier.
+// When your web form sends data to the ESP32, it uses form fields with specific names. This code creates constants that match those form field names so they can
+//be consistently referenced throughout your code.
+//This approach has several benefits:
+//If you need to rename a form field, you only change it in one place
+//It prevents typos that would be hard to debug (like checking for "TempratureLimitF" with the 'e' missing)
+//It makes the code more readable by using shorter variable names in the logic
+//It centralizes all your form field names in one place
+//These constants specifically relate to the "Settings" section where users can change configuration values,
+//not the "Live Data" display section that shows real-time values.
+
 const char *TLimit = "TemperatureLimitF";  //TLimit is a pointer to an immutable String "TemperatureLimitF"
 const char *ManualV = "ManualVoltage";
 const char *FullChargeV = "FullChargeVoltage";
@@ -429,16 +442,15 @@ void setup() {
   pinMode(4, OUTPUT);  // This pin is used to provide a high signal to Field Enable pin      PROBABLY OBSOLETE
   pinMode(2, OUTPUT);  // This pin is used to provide a heartbeat (pin 2 of ESP32 is the LED)
 
-
-
-
-  // Initialize LittleFS first
+  // Initialize LittleFS first.
   if (!LittleFS.begin(true)) {
     Serial.println("An Error has occurred while mounting LittleFS");
-    // Continue anyway since we might be able to format and use it later
+    // Continue anyway since we might be able to format and use it later (?)
   }
 
-  InitSystemSettings();  // load all persistent settings from LittleFS.  If no files exist, create them.
+  InitPersistentVariables();   // load all persistent variables from LittleFS.  If no files exist, create them.
+  InitSystemSettings();  // load all settings from LittleFS.  If no files exist, create them.
+
 
   // Setup WiFi (this will either connect to a saved network or create an AP)
   setupWiFi();
@@ -528,115 +540,6 @@ void setup() {
     sensors.setWaitForConversion(false);  // this is critical!
   }
 
-
-  // If there are not settings in Flash memoery (files don't exist yet), populate them with the hardcoded values
-  bool TempLimitfileexists = LittleFS.exists("/TemperatureLimitF.txt");
-  if (!TempLimitfileexists) {
-    //String stringOne = String(13);                        // Convert an Integer to a String
-    //String stringOne = String(5.69, 2);                      // Convert a float to a string with 2 decimal places
-    String stringAlternatorTemperatureLimitF = String(AlternatorTemperatureLimitF);
-    writeFile(LittleFS, "/TemperatureLimitF.txt", stringAlternatorTemperatureLimitF.c_str());
-  }
-  bool ManualVfileexists = LittleFS.exists("/ManualVoltage.txt");
-  if (!ManualVfileexists) {
-    String stringManualVV = String(ManualVoltageTarget, 2);
-    writeFile(LittleFS, "/ManualVoltage.txt", stringManualVV.c_str());
-  }
-  bool FCVfileexists = LittleFS.exists("/FullChargeVoltage.txt");
-  if (!FCVfileexists) {
-    String stringFCV = String(ChargingVoltageTarget, 2);
-    writeFile(LittleFS, "/FullChargeVoltage.txt", stringFCV.c_str());
-  }
-  bool TAfileexists = LittleFS.exists("/TargetAmpz.txt");
-  if (!TAfileexists) {
-    String stringTA = String(TargetAmps);
-    writeFile(LittleFS, "/TargetAmpz.txt", stringTA.c_str());
-  }
-  bool Freqfileexists = LittleFS.exists("/SwitchingFrequency.txt");
-  if (!Freqfileexists) {
-    String stringFreq = String(fffr);
-    writeFile(LittleFS, "/SwitchingFrequency.txt", stringFreq.c_str());
-  }
-  bool TFVfileexists = LittleFS.exists("/TargetFloatVoltage1.txt");
-  if (!TFVfileexists) {
-    String stringTFV = String(TargetFloatVoltage);
-    writeFile(LittleFS, "/TargetFloatVoltage1.txt", stringTFV.c_str());
-  }
-  bool intervalfileexists = LittleFS.exists("/interval1.txt");
-  if (!intervalfileexists) {
-    String stringInterval = String(interval);
-    writeFile(LittleFS, "/interval1.txt", stringInterval.c_str());
-  }
-  bool Fintervalfileexists = LittleFS.exists("/FieldAdjustmentInterval1.txt");
-  if (!Fintervalfileexists) {
-    String stringFAI = String(FieldAdjustmentInterval);
-    writeFile(LittleFS, "/FieldAdjustmentInterval1.txt", stringFAI.c_str());
-  }
-  bool MFTexists = LittleFS.exists("/ManualFieldToggle1.txt");
-  if (!MFTexists) {
-    String stringMFT = String(ManualFieldToggle);
-    writeFile(LittleFS, "/ManualFieldToggle1.txt", stringMFT.c_str());
-  }
-  bool SCOexists = LittleFS.exists("/SwitchControlOverride1.txt");
-  if (!SCOexists) {
-    String stringSCO = String(SwitchControlOverride);
-    writeFile(LittleFS, "/SwitchControlOverride1.txt", stringSCO.c_str());
-  }
-  bool FFexists = LittleFS.exists("/ForceFloat1.txt");
-  if (!FFexists) {
-    String stringFF = String(ForceFloat);
-    writeFile(LittleFS, "/ForceFloat1.txt", stringFF.c_str());
-  }
-  bool OOexists = LittleFS.exists("/OnOff1.txt");
-  if (!OOexists) {
-    String stringOO = String(OnOff);
-    writeFile(LittleFS, "/OnOff1.txt", stringOO.c_str());
-  }
-  bool HLexists = LittleFS.exists("/HiLow1.txt");
-  if (!HLexists) {
-    String stringHL = String(HiLow);
-    writeFile(LittleFS, "/HiLow1.txt", stringHL.c_str());
-  }
-  bool LHexists = LittleFS.exists("/LimpHome1.txt");
-  if (!LHexists) {
-    String stringLH = String(LimpHome);
-    writeFile(LittleFS, "/LimpHome1.txt", stringLH.c_str());
-  }
-  bool VDexists = LittleFS.exists("/VeData1.txt");
-  if (!VDexists) {
-    String stringVD = String(VeData);
-    writeFile(LittleFS, "/VeData1.txt", stringVD.c_str());
-  }
-  bool N0exists = LittleFS.exists("/NMEA0183Data1.txt");
-  if (!N0exists) {
-    String stringN0 = String(NMEA0183Data);
-    writeFile(LittleFS, "/NMEA0183Data1.txt", stringN0.c_str());
-  }
-  bool N2exists = LittleFS.exists("/NMEA2KData1.txt");
-  if (!N2exists) {
-    String stringN2 = String(NMEA2KData);
-    writeFile(LittleFS, "/NMEA2KData1.txt", stringN2.c_str());
-  }
-
-  //Update some variables with values from ESP32 Flash memory
-  AlternatorTemperatureLimitF = readFile(LittleFS, "/TemperatureLimitF.txt").toInt();
-  ManualVoltageTarget = readFile(LittleFS, "/ManualVoltage.txt").toFloat();
-  ChargingVoltageTarget = readFile(LittleFS, "/FullChargeVoltage.txt").toFloat();
-  TargetAmps = readFile(LittleFS, "/TargetAmpz.txt").toInt();
-  fffr = readFile(LittleFS, "/SwitchingFrequency.txt").toInt();
-  TargetFloatVoltage = readFile(LittleFS, "/TargetFloatVoltage1.txt").toFloat();
-  interval = readFile(LittleFS, "/interval1.txt").toFloat();
-  FieldAdjustmentInterval = readFile(LittleFS, "/FieldAdjustmentInterval1.txt").toFloat();
-  ManualFieldToggle = readFile(LittleFS, "/ManualFieldToggle1.txt").toInt();
-  SwitchControlOverride = readFile(LittleFS, "/SwitchControlOverride1.txt").toInt();
-  ForceFloat = readFile(LittleFS, "/ForceFloat1.txt").toInt();
-  OnOff = readFile(LittleFS, "/OnOff1.txt").toInt();
-  HiLow = readFile(LittleFS, "/HiLow1.txt").toInt();
-  LimpHome = readFile(LittleFS, "/LimpHome1.txt").toInt();
-  VeData = readFile(LittleFS, "/VeData1.txt").toInt();
-  NMEA0183Data = readFile(LittleFS, "/NMEA0183Data1.txt").toInt();
-  NMEA2KData = readFile(LittleFS, "/NMEA2KData1.txt").toInt();
-
   xTaskCreatePinnedToCore(
     TempTask,
     "TempTask",
@@ -670,124 +573,118 @@ void loop() {
   // Handle DNS requests if in AP mode
   if (currentWiFiMode == AWIFI_MODE_AP) {
     dnsHandleRequest();
-  } else {
-    //MDNS.update();// Update mDNS to maintain hostname visibility    Turns out thsi was already being done on its own
+  } 
+  else {
     // Only do these tasks if in normal client mode
     // ReadAnalogInputs();
     //ReadVEData();  //read Data from Victron VeDirect
     // UpdateDisplay();
-
-    // Send WiFi data to client
-    SendWifiData();
-  }
-
-  if (powersavemode == 1) {
-    /// Replace this later with control from Ignition Signal
-    //This turns wifi off every 60 seconds just to prove that it will be a power savings
-    if (millis() - previousMillisZZ >= intervalZZ) {
-      previousMillisZZ = millis();
-      if (getCpuFrequencyMhz() == 240) {
-        // try to shut downn wifi
-        setCpuFrequencyMhz(10);
-        WiFi.mode(WIFI_OFF);
-        Serial.println("wifi has been turned off");
-      } else {
-        // turn it back on
-        setCpuFrequencyMhz(240);
-        setupWiFi();  // Use our new WiFi setup function
-        //Serial.println("Wifi is reinitialized");
-      }
-      Freq = getCpuFrequencyMhz();
-      Serial.print("CPU Freq = ");
-      Serial.println(Freq);
-      Serial.println();
-      Serial.println();
+    if (millis() - prev_millis5 > webgaugesinterval) {
+      SendWifiData();  // Send WiFi data to client
     }
+    prev_millis5 = millis();
   }
 
-  if (millis() - prev_millis743 > 5000) {  // every 5 seconds check CAN network (this might need adjustment)
-    if (NMEA2KData == 1) {
-      NMEA2000.ParseMessages();
-    }
-    prev_millis743 = millis();
-  }
-
-  // Check WiFi connection status if in client mode
-  if (currentWiFiMode == AWIFI_MODE_CLIENT && WiFi.status() != WL_CONNECTED) {
-    static unsigned long lastWiFiCheckTime = 0;
-
-    // Try to reconnect every 5 seconds
-    if (millis() - lastWiFiCheckTime > 5000) {
-      lastWiFiCheckTime = millis();
-
-      Serial.println("WiFi connection lost. Attempting to reconnect...");
-      String saved_ssid = readFile(LittleFS, WIFI_SSID_FILE);
-      String saved_password = readFile(LittleFS, WIFI_PASS_FILE);
-
-      if (connectToWiFi(saved_ssid.c_str(), saved_password.c_str(), 3000)) {
-        Serial.println("Reconnected to WiFi!");
-        // mDNS will be reinitialized in the connectToWiFi function
-      } else {
-        Serial.println("Failed to reconnect. Will try again in 5 seconds.");
-      }
-    }
-  }
-
-  if (millis() - prev_millis743 > 5000) {  // every 5 seconds check CAN network (this might need adjustment)
-    if (NMEA2KData == 1) {
-      NMEA2000.ParseMessages();
-    }
-    prev_millis743 = millis();
-  }
-
-  //Blink LED on and off every X seconds
-  if (millis() - previousMillisBLINK >= intervalBLINK) {
-    // Use different blink patterns to indicate WiFi status
-    if (currentWiFiMode == AWIFI_MODE_AP) {
-      // Fast blink in AP mode (toggle twice)
-      digitalWrite(2, HIGH);
-      delay(50);
-      digitalWrite(2, LOW);
-      delay(50);
-      digitalWrite(2, HIGH);
-      delay(50);
-      digitalWrite(2, (ledState = !ledState));
-    } else if (WiFi.status() != WL_CONNECTED) {
-      // Medium blink when WiFi is disconnected
-      digitalWrite(2, HIGH);
-      delay(100);
-      digitalWrite(2, (ledState = !ledState));
+if (powersavemode == 1) {
+  /// Replace this later with control from Ignition Signal
+  //This turns wifi off every 60 seconds just to prove that it will be a power savings
+  if (millis() - previousMillisZZ >= intervalZZ) {
+    previousMillisZZ = millis();
+    if (getCpuFrequencyMhz() == 240) {
+      // try to shut downn wifi
+      setCpuFrequencyMhz(10);
+      WiFi.mode(WIFI_OFF);
+      Serial.println("wifi has been turned off");
     } else {
-      // Normal blink when connected
-      digitalWrite(2, (ledState = !ledState));
+      // turn it back on
+      setCpuFrequencyMhz(240);
+      setupWiFi();  // Use our new WiFi setup function
+      //Serial.println("Wifi is reinitialized");
     }
-    previousMillisBLINK = millis();
+    Freq = getCpuFrequencyMhz();
+    Serial.print("CPU Freq = ");
+    Serial.println(Freq);
+    Serial.println();
+    Serial.println();
   }
+}
 
-  endtime = esp_timer_get_time();  //Record a start time for demonstration
-  LoopTime = (endtime - starttime);
-
-  if (LoopTime > MaximumLoopTime) {
-    MaximumLoopTime = LoopTime;
+if (millis() - prev_millis743 > 5000) {  // every 5 seconds check CAN network (this might need adjustment)
+  if (NMEA2KData == 1) {
+    NMEA2000.ParseMessages();
   }
+  prev_millis743 = millis();
+}
 
-  if (millis() - prev_millis7888 > 3000) {  // every 3 seconds reset the maximum loop time
-    MaximumLoopTime = 0;
-    prev_millis7888 = millis();
-  }
+// Check WiFi connection status if in client mode
+if (currentWiFiMode == AWIFI_MODE_CLIENT && WiFi.status() != WL_CONNECTED) {
+  static unsigned long lastWiFiCheckTime = 0;
 
-  endtime = esp_timer_get_time();  //Record a start time for demonstration
-  LoopTime = (endtime - starttime);
-  //Serial.println(LoopTime);
-  if (LoopTime > MaximumLoopTime) {
-    MaximumLoopTime = LoopTime;
-  }
+  // Try to reconnect every 5 seconds
+  if (millis() - lastWiFiCheckTime > 5000) {
+    lastWiFiCheckTime = millis();
 
-  if (millis() - prev_millis7888 > 3000) {  // every 2 seconds reset the maximum loop time
-    MaximumLoopTime = 0;
-    prev_millis7888 = millis();
+    Serial.println("WiFi connection lost. Attempting to reconnect...");
+    String saved_ssid = readFile(LittleFS, WIFI_SSID_FILE);
+    String saved_password = readFile(LittleFS, WIFI_PASS_FILE);
+
+    if (connectToWiFi(saved_ssid.c_str(), saved_password.c_str(), 3000)) {
+      Serial.println("Reconnected to WiFi!");
+      // mDNS will be reinitialized in the connectToWiFi function
+    } else {
+      Serial.println("Failed to reconnect. Will try again in 5 seconds.");
+    }
   }
-  //Serial.println(MaximumLoopTime);
+}
+
+//Blink LED on and off every X seconds
+if (millis() - previousMillisBLINK >= intervalBLINK) {
+  // Use different blink patterns to indicate WiFi status
+  if (currentWiFiMode == AWIFI_MODE_AP) {
+    // Fast blink in AP mode (toggle twice)
+    digitalWrite(2, HIGH);
+    delay(50);
+    digitalWrite(2, LOW);
+    delay(50);
+    digitalWrite(2, HIGH);
+    delay(50);
+    digitalWrite(2, (ledState = !ledState));
+  } else if (WiFi.status() != WL_CONNECTED) {
+    // Medium blink when WiFi is disconnected
+    digitalWrite(2, HIGH);
+    delay(100);
+    digitalWrite(2, (ledState = !ledState));
+  } else {
+    // Normal blink when connected
+    digitalWrite(2, (ledState = !ledState));
+  }
+  previousMillisBLINK = millis();
+}
+
+endtime = esp_timer_get_time();  //Record a start time for demonstration
+LoopTime = (endtime - starttime);
+
+if (LoopTime > MaximumLoopTime) {
+  MaximumLoopTime = LoopTime;
+}
+
+if (millis() - prev_millis7888 > 3000) {  // every 3 seconds reset the maximum loop time
+  MaximumLoopTime = 0;
+  prev_millis7888 = millis();
+}
+
+endtime = esp_timer_get_time();  //Record a start time for demonstration
+LoopTime = (endtime - starttime);
+//Serial.println(LoopTime);
+if (LoopTime > MaximumLoopTime) {
+  MaximumLoopTime = LoopTime;
+}
+
+if (millis() - prev_millis7888 > 3000) {  // every 2 seconds reset the maximum loop time
+  MaximumLoopTime = 0;
+  prev_millis7888 = millis();
+}
+//Serial.println(MaximumLoopTime);
 }
 
 
