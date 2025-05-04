@@ -152,7 +152,7 @@ TaskHandle_t tempTaskHandle = NULL;     // make a separate cpu task for temp rea
 float VictronVoltage = 0;               // battery reading from VeDirect
 float HeadingNMEA = 0;                  // Just here to test NMEA functionality
 
-// ADS1115
+// ADS1115 
 int16_t Raw = 0;
 float Channel0V, Channel1V, Channel2V, Channel3V;
 float BatteryV, MeasuredAmps, RPM;
@@ -570,6 +570,40 @@ void setup() {
     &tempTaskHandle,
     0  // Run on Core 0, which is the one doing Wifi and system tasks, and theoretically has more idle points than Core 1 and "loop()"
   );
+
+
+
+
+
+
+
+// File f = LittleFS.open("/index.html", "r");
+// if (!f) {
+//   Serial.println("ERROR: Failed to open /index.html");
+// } else {
+//   Serial.printf("Opened /index.html, size = %u bytes\n", f.size());
+
+//   const size_t N = 256;
+//   char buf[N + 1] = {0};  // buffer for 256 bytes + null
+//   int totalRead = 0;
+
+//   while (f.available()) {
+//     size_t len = f.readBytes(buf, N);
+//     buf[len] = '\0';
+//     Serial.write(buf);  // dump raw
+//     totalRead += len;
+//     if (totalRead > 65536) break;  // prevent overload
+//   }
+
+//   Serial.printf("\n[EOF] Read total: %d bytes\n", totalRead);
+//   f.close();
+// }
+
+
+
+
+
+
 }
 
 void loop() {
