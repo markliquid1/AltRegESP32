@@ -1,19 +1,4 @@
-// X Engineering Alternator Regulator
-//     Copyright (C) 2025  Mark Nickerson
 
-//     This program is free software: you can redistribute it and/or modify
-//     it under the terms of the GNU General Public License as published by
-//     the Free Software Foundation, either version 3 of the License, or
-//     (at your option) any later version.
-
-//     This program is distributed in the hope that it will be useful,
-//     but WITHOUT ANY WARRANTY; without even the implied warranty of
-//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//     GNU General Public License for more details.
-
-//  See <https://www.gnu.org/licenses/> for GNU General Public License
-
-// Contact me at mark@xengineering.net
 
 void AdjustField() {
   if (Ignition == 1 && OnOff == 1) {
@@ -91,7 +76,7 @@ void ReadAnalogInputs() {
       }
       adc.triggerConversion();
       adsStartTime = now;
-      adsState = ADS_WAITING_FOR_CONVERSION;
+      adsState = ADS_WAITING_FOR_CONVERSION;  
       break;
 
     case ADS_WAITING_FOR_CONVERSION:
@@ -565,48 +550,11 @@ void writeFile(fs::FS &fs, const char *path, const char *message) {
   delay(2);  // Make sure the CREATE and LASTWRITE times are different Delte later?
   file.close();
 }
-String processor(const String &var) {
-  //The processor() is responsible for searching for placeholders in the HTML text and replacing them with actual values saved on LittleFS.
-  //Serial.println(var);
-  //First, the "settings"
-
-  if (var == "TemperatureLimitF") {
-    return readFile(LittleFS, "/TemperatureLimitF.txt");
-  } else if (var == "ManualVoltage") {
-    return readFile(LittleFS, "/ManualVoltage.txt");
-  } else if (var == "FullChargeVoltage") {
-    return readFile(LittleFS, "/FullChargeVoltage.txt");
-  } else if (var == "TargetAmpz") {
-    return readFile(LittleFS, "/TargetAmpz.txt");
-  } else if (var == "SwitchingFrequency") {
-    return readFile(LittleFS, "/SwitchingFrequency.txt");
-  } else if (var == "TargetFloatVoltage1") {
-    return readFile(LittleFS, "/TargetFloatVoltage1.txt");
-  } else if (var == "interval1") {
-    return readFile(LittleFS, "/interval1.txt");
-  } else if (var == "FieldAdjustmentInterval1") {
-    return readFile(LittleFS, "/FieldAdjustmentInterval1.txt");
-  } else if (var == "ManualFieldToggle1") {
-    return readFile(LittleFS, "/ManualFieldToggle1.txt");
-  } else if (var == "SwitchControlOverride1") {
-    return readFile(LittleFS, "/SwitchControlOverride1.txt");
-  } else if (var == "ForceFloat1") {
-    return readFile(LittleFS, "/ForceFloat1.txt");
-  } else if (var == "OnOff1") {
-    return readFile(LittleFS, "/OnOff1.txt");
-  } else if (var == "HiLow1") {
-    return readFile(LittleFS, "/HiLow1.txt");
-  } else if (var == "LimpHome1") {
-    return readFile(LittleFS, "/LimpHome1.txt");
-  } else if (var == "VeData1") {
-    return readFile(LittleFS, "/VeData1.txt");
-  } else if (var == "NMEA0183Data1") {
-    return readFile(LittleFS, "/NMEA0183Data1.txt");
-  } else if (var == "NMEA2KData1") {
-    return readFile(LittleFS, "/NMEA2KData1.txt");
-  }
-  return String();
+String processor(const String& var) {
+  if (var == "PASSWORD") return "";
+  return String();  // Return blank for all others
 }
+
 int SafeInt(float f, int scale = 1) {
   // where this is matters!!   Put utility functions like SafeInt() above setup() and loop() , according to ChatGPT.  And I proved it matters.
   return isnan(f) || isinf(f) ? -1 : (int)(f * scale);
@@ -628,60 +576,60 @@ void SendWifiData() {
       snprintf(payload, sizeof(payload),
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                // Readings
-               SafeInt(AlternatorTemperatureF),
-               SafeInt(DutyCycle),
-               SafeInt(BatteryV, 100),
-               SafeInt(MeasuredAmps, 100),
-               SafeInt(RPM),
-               SafeInt(Channel3V, 100),
-               SafeInt(IBV, 100),
-               SafeInt(Bcur, 100),
-               SafeInt(VictronVoltage, 100),
-               SafeInt(LoopTime),
-               SafeInt(WifiStrength),
+               SafeInt(AlternatorTemperatureF),  //0
+               SafeInt(DutyCycle),               //1
+               SafeInt(BatteryV, 100),           //2
+               SafeInt(MeasuredAmps, 100),       //3
+               SafeInt(RPM),                     //
+               SafeInt(Channel3V, 100),          //5
+               SafeInt(IBV, 100),                //
+               SafeInt(Bcur, 100),               //
+               SafeInt(VictronVoltage, 100),     //8
+               SafeInt(LoopTime),                //
+               SafeInt(WifiStrength),            //10
                SafeInt(WifiHeartBeat),
-               SafeInt(SendWifiTime),
+               SafeInt(SendWifiTime),  //12
                SafeInt(AnalogReadTime),
-               SafeInt(VeTime),
+               SafeInt(VeTime),  //14
                SafeInt(MaximumLoopTime),
-               SafeInt(HeadingNMEA),
+               SafeInt(HeadingNMEA),  //16
                SafeInt(vvout, 100),
-               SafeInt(iiout, 10),
+               SafeInt(iiout, 10),  //18
                SafeInt(FreeHeap),
-               SafeInt(IBVMax, 100),
+               SafeInt(IBVMax, 100),  //20
                SafeInt(MeasuredAmpsMax, 100),
-               SafeInt(RPMMax),
+               SafeInt(RPMMax),  //22
                SafeInt(SoC_percent),
-               SafeInt(EngineRunTime),
+               SafeInt(EngineRunTime),  //24
                SafeInt(EngineCycles),
-               SafeInt(AlternatorOnTime),
+               SafeInt(AlternatorOnTime),  //26
                SafeInt(AlternatorFuelUsed),
-               SafeInt(ChargedEnergy),
+               SafeInt(ChargedEnergy),  //28
                SafeInt(DischargedEnergy),
-               SafeInt(AlternatorChargedEnergy),
+               SafeInt(AlternatorChargedEnergy),  //30
                SafeInt(MaxAlternatorTemperatureF),
 
                // Settings    (for the echoes)
-               SafeInt(AlternatorTemperatureLimitF),
+               SafeInt(AlternatorTemperatureLimitF),  //32
                SafeInt(ChargingVoltageTarget, 100),
-               SafeInt(TargetAmps),
+               SafeInt(TargetAmps),  //34
                SafeInt(TargetFloatVoltage, 100),
-               SafeInt(fffr),
+               SafeInt(fffr),  //36
                SafeInt(interval, 100),
-               SafeInt(FieldAdjustmentInterval),
+               SafeInt(FieldAdjustmentInterval),  //38
                SafeInt(ManualVoltageTarget, 100),
-               SafeInt(SwitchControlOverride),
+               SafeInt(SwitchControlOverride),  //40
                SafeInt(OnOff),
-               SafeInt(ManualFieldToggle),
+               SafeInt(ManualFieldToggle),  //42
                SafeInt(HiLow),
-               SafeInt(LimpHome),
+               SafeInt(LimpHome),  //44
                SafeInt(VeData),
-               SafeInt(NMEA0183Data),
+               SafeInt(NMEA0183Data),  //46
                SafeInt(NMEA2KData));
 
       events.send(payload, "CSVData");    // Changed event name to reflect new format
-      Serial.print("Payload: ");          //For debug
-      Serial.println(payload);            // for debug
+                                          //   Serial.print("Payload: ");          //For debug
+                                          // Serial.println(payload);            // for debug
       SendWifiTime = micros() - start66;  // Calculate WiFi Send Time
     }
     prev_millis5 = millis();
@@ -810,9 +758,8 @@ void setupWiFiConfigServer() {
   server.onNotFound([](AsyncWebServerRequest *request) {
     request->redirect("http://" + WiFi.softAPIP().toString());
   });
-
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/html", WIFI_CONFIG_HTML);
+    request->send(LittleFS, "/index.html", "text/html");
   });
 
   server.on("/wifi", HTTP_POST, [](AsyncWebServerRequest *request) {
@@ -833,6 +780,7 @@ void setupWiFiConfigServer() {
 
     request->send(200, "text/html", response);
   });
+  Serial.println("Serving ONLY index.html");
 
   server.begin();
 }
@@ -847,14 +795,16 @@ void setupServer() {
   //Finally, it sends back a confirmation message to the web browser with the value that was set.
   //This is essentially how the system handles all the setting changes from the web interface - validating the request,
   //identifying which setting to change, saving it permanently, updating it in memory, and confirming the action to the user.
+
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(LittleFS, "/index.html", "text/html", false, [](const String &var) -> String {
       if (var == "PASSWORD") {
-        return String("");  //
+        return String("");  // still needed for password injection
       }
-      return processor(var);  // Keep all your normal variable replacements
+      return String();  // disable all other %...% replacements
     });
   });
+
   server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request) {
     if (!request->hasParam("password") || strcmp(request->getParam("password")->value().c_str(), requiredPassword) != 0) {
       request->send(403, "text/plain", "Forbidden");
@@ -1078,11 +1028,11 @@ void printBasicTaskStackInfo() {
     }
 
 
-    // Serial.printf("%-16s |  %-3s  |     %5d B     | %s\n",
-    //               taskName,
-    //               coreIdBuffer,
-    //               stackBytes,
-    //               alert);
+    //   Serial.printf("%-16s |  %-3s  |     %5d B     | %s\n",
+    //                 taskName,
+    //                 coreIdBuffer,
+    //                 stackBytes,
+    //                 alert);
   }
 
   // Serial.println(F("==========================================\n"));
