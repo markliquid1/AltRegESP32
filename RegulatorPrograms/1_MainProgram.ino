@@ -3,7 +3,7 @@
 #include <SPI.h>                // display
 #include <Wire.h>               // unknown if needed, but probably
 #include <Adafruit_GFX.h>       // display
-#include <Adafruit_SSD1306.h>   // display
+#include <Adafruit_SSD1306.h>   // display 
 #include <ADS1115_lite.h>       // measuring 4 analog inputs
 ADS1115_lite adc(ADS1115_DEFAULT_ADDRESS);
 #include "VeDirectFrameHandler.h"  // for victron communication
