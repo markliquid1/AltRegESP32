@@ -1,21 +1,3 @@
-<!-- X Engineering Alternator Regulator
-    Copyright (C) 2025  Mark Nickerson
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
- See <https://www.gnu.org/licenses/> for GNU General Public License
-
-Contact me at mark@xengineering.net       -->
-
-
 <!DOCTYPE HTML>
 
 <html>
@@ -174,17 +156,6 @@ Contact me at mark@xengineering.net       -->
       margin: 8px 0;
     }
 
-
-    .confirm-msg {
-      transition: opacity 1s ease;
-      opacity: 1;
-    }
-
-    .confirm-msg.fade-out {
-      opacity: 0;
-    }
-
-
     .form-row {
       display: flex;
       justify-content: space-between;
@@ -326,321 +297,237 @@ Contact me at mark@xengineering.net       -->
 <body>
   <iframe name="hidden-form" style="display:none"></iframe>
 
-
-
-  <h2>Security</h2>
+  <h2>Settings</h2>
   <div class="settings-grid">
     <div class="settings-card">
-      <div class="section-title">Security</div>
-
-      <div id="lock-status" style="font-weight:bold; color:#ff6600; margin-bottom:10px;">LOCKED</div>
-
+      <div class="section-title">Basic Settings</div>
+      <hr />
       <div class="form-row">
-        <div class="form-label">Enter Password:</div>
+        <div class="form-label">Regulator Output (<span id="OnOff1_echo">%OnOff1%</span>):</div>
         <div class="form-input">
-          <form action="/get" method="GET" target="hidden-form" onsubmit="setAdminPassword(); return false;"
-            style="display: flex; justify-content: flex-end; align-items: center;">
-            <input type="hidden" name="dummy" value="1" />
-            <input type="password" id="admin_password" name="admin_password" style="width: 80px; margin-right: 8px;"
-              autocomplete="current-password" />
-            <input type="submit" id="admin_password_set" value="Set" />
-            <span id="admin_password_msg" style="margin-left:8px; font-size:12px; color:green;"></span>
-            <label style="margin-left: 8px; font-size: 12px;">
-              <input type="checkbox" onclick="togglePassword('admin_password')"> Show
+          <form action="/get" target="hidden-form">
+            <span class="toggle-label">Off</span>
+            <label class="switch">
+              <input id="OnOff1_checkbox" type="checkbox"
+                onchange="document.getElementById('OnOff1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
             </label>
+            <span class="toggle-label">On</span>
+            <input id="OnOff1" name="OnOff1" type="number" value="%OnOff1%" style="display:none;" />
           </form>
         </div>
       </div>
-
+      <hr />
       <div class="form-row">
-        <div class="form-label">New Password:</div>
+        <div class="form-label">Charge Rate (<span id="HiLow1_echo">%HiLow1%</span>):</div>
         <div class="form-input">
-          <form action="/setPassword" method="POST" target="hidden-form" onsubmit="return setNewPassword();"
-            style="display: flex; justify-content: flex-end; align-items: center;">
-            <input type="hidden" name="password" class="password_field">
-            <input type="password" id="newpassword" name="newpassword" style="width: 80px; margin-right: 8px;" />
-            <input type="submit" id="newpassword_set" value="Set" />
-            <span id="newpassword_msg" style="margin-left:8px; font-size:12px; color:green;"></span>
-            <label style="margin-left: 8px; font-size: 12px;">
-              <input type="checkbox" onclick="togglePassword('newpassword')"> Show
+          <form action="/get" target="hidden-form">
+            <span class="toggle-label">Low</span>
+            <label class="switch">
+              <input id="HiLow1_checkbox" type="checkbox"
+                onchange="document.getElementById('HiLow1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
             </label>
+            <span class="toggle-label">High</span>
+            <input id="HiLow1" name="HiLow1" type="number" value="%HiLow1%" style="display:none;" />
           </form>
         </div>
       </div>
-      <div style="text-align: center; margin-top: 10px;">
-        <input type="submit" id="lock-settings-button" onclick="lockSettingsManually(); return false;"
-          value="Lock Settings" style="width: 120px; background-color: #ff6600;" />
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Limp Home Mode (<span id="LimpHome1_echo">%LimpHome1%</span>):</div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <span class="toggle-label">Off</span>
+            <label class="switch">
+              <input id="LimpHome1_checkbox" type="checkbox"
+                onchange="document.getElementById('LimpHome1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">On</span>
+            <input id="LimpHome1" name="LimpHome1" type="number" value="%LimpHome1%" style="display:none;" />
+          </form>
+        </div>
       </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Switch Panel Override (<span
+            id="SwitchControlOverride1_echo">%SwitchControlOverride1%</span>):</div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <span class="toggle-label">Off</span>
+            <label class="switch">
+              <input id="SwitchControlOverride1_checkbox" type="checkbox"
+                onchange="document.getElementById('SwitchControlOverride1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">On</span>
+            <input id="SwitchControlOverride1" name="SwitchControlOverride1" type="number"
+              value="%SwitchControlOverride1%" style="display:none;" />
+          </form>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Alternator Temp Limit (F) (<span
+            id="TemperatureLimitF_echo">%TemperatureLimitF%</span>):</div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <input name="TemperatureLimitF" type="number" step="1" min="0" />
+            <input onclick="submitMessage()" type="submit" value="Set" />
+          </form>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Bulk Voltage (<span id="FullChargeVoltage_echo">%FullChargeVoltage%</span>):</div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <input name="FullChargeVoltage" type="number" step="0.01" min="0" />
+            <input onclick="submitMessage()" type="submit" value="Set" />
+          </form>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Charge Rate (A) (<span id="TargetAmpz_echo">%TargetAmpz%</span>):</div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <input name="TargetAmpz" type="number" step="1" min="0" />
+            <input onclick="submitMessage()" type="submit" value="Set" />
+          </form>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Float Voltage (<span id="TargetFloatVoltage1_echo">%TargetFloatVoltage1%</span>):
+        </div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <input name="TargetFloatVoltage1" type="number" step="0.01" min="0" />
+            <input onclick="submitMessage()" type="submit" value="Set" />
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="settings-card">
+      <div class="section-title">Advanced Settings</div>
+      <div class="form-row">
+        <div class="form-label">Field Switch Freq (hz) (<span id="SwitchingFrequency_echo">%SwitchingFrequency%</span>):
+        </div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <input name="SwitchingFrequency" type="number" step="1" min="0" />
+            <input onclick="submitMessage()" type="submit" value="Set" />
+          </form>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Field Adj Step (V) (<span id="interval1_echo">%interval1%</span>):</div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <input name="interval1" type="number" step="0.001" min="0" />
+            <input onclick="submitMessage()" type="submit" value="Set" />
+          </form>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Field Adj. Time Interval (ms) (<span
+            id="FieldAdjustmentInterval1_echo">%FieldAdjustmentInterval1%</span>):</div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <input name="FieldAdjustmentInterval1" type="number" step="1" min="0" />
+            <input onclick="submitMessage()" type="submit" value="Set" />
+          </form>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Manual Field Control (<span id="ManualFieldToggle1_echo">%ManualFieldToggle1%</span>):
+        </div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <span class="toggle-label">Off</span>
+            <label class="switch">
+              <input id="ManualFieldToggle1_checkbox" type="checkbox"
+                onchange="document.getElementById('ManualFieldToggle1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">On</span>
+            <input id="ManualFieldToggle1" name="ManualFieldToggle1" type="number" value="%ManualFieldToggle1%"
+              style="display:none;" />
+          </form>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">Manual Field Setpoint (V) (<span id="ManualVoltage_echo">%ManualVoltage%</span>):</div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <input name="ManualVoltage" type="number" step="0.01" min="0" />
+            <input onclick="submitMessage()" type="submit" value="Set" />
+          </form>
+        </div>
+      </div>
+    </div>
 
 
+    <div class="settings-card">
+      <div class="section-title">System</div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">VE.Direct Data (<span id="VeData1_echo">%VeData1%</span>):</div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <span class="toggle-label">Off</span>
+            <label class="switch">
+              <input id="VeData1_checkbox" type="checkbox"
+                onchange="document.getElementById('VeData1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">On</span>
+            <input id="VeData1" name="VeData1" type="number" value="%VeData1%" style="display:none;" />
+          </form>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">NMEA 0183 Data (<span id="NMEA0183Data1_echo">%NMEA0183Data1%</span>):</div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <span class="toggle-label">Off</span>
+            <label class="switch">
+              <input id="NMEA0183Data1_checkbox" type="checkbox"
+                onchange="document.getElementById('NMEA0183Data1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">On</span>
+            <input id="NMEA0183Data1" name="NMEA0183Data1" type="number" value="%NMEA0183Data1%"
+              style="display:none;" />
+          </form>
+        </div>
+      </div>
+      <hr />
+      <div class="form-row">
+        <div class="form-label">NMEA 2000 Data (<span id="NMEA2KData1_echo">%NMEA2KData1%</span>):</div>
+        <div class="form-input">
+          <form action="/get" target="hidden-form">
+            <span class="toggle-label">Off</span>
+            <label class="switch">
+              <input id="NMEA2KData1_checkbox" type="checkbox"
+                onchange="document.getElementById('NMEA2KData1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+              <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">On</span>
+            <input id="NMEA2KData1" name="NMEA2KData1" type="number" value="%NMEA2KData1%" style="display:none;" />
+          </form>
+        </div>
+      </div>
     </div>
   </div>
 
-  <style>
-    #lock-settings-button:hover {
-      background-color: #b71c1c;
-      /* Darker red on hover for the Lock Settings button */
-    }
-  </style>
-
-  <script>
-    function togglePassword(id) {
-      var field = document.getElementById(id);
-      field.type = (field.type === "password") ? "text" : "password";
-    }
-  </script>
-
-
-  <h2>Settings</h2>
-
-  <fieldset id="settings-section" disabled>
-    <div class="settings-grid">
-
-      <div class="settings-card">
-        <div class="section-title">Basic Settings</div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Regulator Output (<span id="OnOff1_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="OnOff1_checkbox" type="checkbox"
-                  onchange="document.getElementById('OnOff1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="OnOff1" name="OnOff1" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Charge Rate (<span id="HiLow1_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Low</span>
-              <label class="switch">
-                <input id="HiLow1_checkbox" type="checkbox"
-                  onchange="document.getElementById('HiLow1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">High</span>
-              <input id="HiLow1" name="HiLow1" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Limp Home Mode (<span id="LimpHome1_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="LimpHome1_checkbox" type="checkbox"
-                  onchange="document.getElementById('LimpHome1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="LimpHome1" name="LimpHome1" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Switch Panel Override (<span id="0">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="SwitchControlOverride1_checkbox" type="checkbox"
-                  onchange="document.getElementById('SwitchControlOverride1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="SwitchControlOverride1" name="SwitchControlOverride1" type="number"
-                value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Alternator Temp Limit (F) (<span id="TemperatureLimitF_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="TemperatureLimitF" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Bulk Voltage (<span id="FullChargeVoltage_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="FullChargeVoltage" type="number" step="0.01" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Charge Rate (A) (<span id="TargetAmpz_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="TargetAmpz" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Float Voltage (<span id="TargetFloatVoltage1_echo">0</span>):
-          </div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="TargetFloatVoltage1" type="number" step="0.01" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-      </div>
-
-      <div class="settings-card">
-        <div class="section-title">Advanced Settings</div>
-        <div class="form-row">
-          <div class="form-label">Field Switch Freq (hz) (<span
-              id="SwitchingFrequency_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="SwitchingFrequency" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Field Adj Step (V) (<span id="interval1_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="interval1" type="number" step="0.001" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Field Adj. Time Interval (ms) (<span
-              id="FieldAdjustmentInterval1_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="FieldAdjustmentInterval1" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Manual Field Control (<span id="ManualFieldToggle1_echo"></span>):
-          </div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="ManualFieldToggle1_checkbox" type="checkbox"
-                  onchange="document.getElementById('ManualFieldToggle1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="ManualFieldToggle1" name="ManualFieldToggle1" type="number" value=""
-                style="display:none;" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Manual Field Setpoint (V) (<span id="ManualVoltage_echo">0</span>):
-          </div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="ManualVoltage" type="number" step="0.01" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-      </div>
-
-      <div class="settings-card">
-        <div class="section-title">System</div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">VE.Direct Data (<span id="VeData1_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="VeData1_checkbox" type="checkbox"
-                  onchange="document.getElementById('VeData1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="VeData1" name="VeData1" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">NMEA 0183 Data (<span id="NMEA0183Data1_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="NMEA0183Data1_checkbox" type="checkbox"
-                  onchange="document.getElementById('NMEA0183Data1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="NMEA0183Data1" name="NMEA0183Data1" type="number" value=""
-                style="display:none;" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">NMEA 2000 Data (<span id="NMEA2KData1_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="NMEA2KData1_checkbox" type="checkbox"
-                  onchange="document.getElementById('NMEA2KData1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="NMEA2KData1" name="NMEA2KData1" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </fieldset>
 
   <h2>Live Data</h2>
   <div class="settings-grid">
@@ -669,7 +556,7 @@ Contact me at mark@xengineering.net       -->
           <p class="reading"><span id="SoC_percentID">0</span> %</p>
         </div>
         <div class="card">
-          <p>Battery Charged Energy</p>
+          <p>Charged Energy</p>
           <p class="reading"><span id="ChargedEnergyID">0</span> Wh</p>
         </div>
         <div class="card">
@@ -708,14 +595,14 @@ Contact me at mark@xengineering.net       -->
         </div>
         <div class="card">
           <p>Alternator On Time</p>
-          <p class="reading"><span id="AlternatorOnTimeID">0</span> H:M:S</p>
+          <p class="reading"><span id="AlternatorOnTimeID">0</span></p>
         </div>
         <div class="card">
           <p>Fuel Used</p>
           <p class="reading"><span id="AlternatorFuelUsedID">0</span> mL</p>
         </div>
         <div class="card">
-          <p>Alternator Charged Energy</p>
+          <p>Charged Energy</p>
           <p class="reading"><span id="AlternatorChargedEnergyID">0</span> Wh</p>
         </div>
         <div class="card">
@@ -738,11 +625,11 @@ Contact me at mark@xengineering.net       -->
         </div>
         <div class="card">
           <p>Engine Run Time</p>
-          <p class="reading"><span id="EngineRunTimeID">0</span> H:M:S</p>
+          <p class="reading"><span id="EngineRunTimeID">0</span></p>
         </div>
         <div class="card">
           <p>Engine Rev Counter</p>
-          <p class="reading"><span id="EngineCyclesID">0</span> rotations</p>
+          <p class="reading"><span id="EngineCyclesID">0</span> Rotations</p>
         </div>
         <div class="card">
           <p>Max RPM</p>
@@ -752,7 +639,7 @@ Contact me at mark@xengineering.net       -->
     </div>
 
     <div class="settings-card">
-      <div class="section-title">ESP32 Monitor</div>
+      <div class="section-title">Computing Debug</div>
       <div class="grid">
         <div class="card">
           <p>Loop Time</p>
@@ -800,9 +687,9 @@ Contact me at mark@xengineering.net       -->
           <p>ADS Ch3 Voltage</p>
           <p class="reading"><span id="ADS3ID">0</span> V</p>
         </div>
-      </div> <!-- Closes .grid -->
-    </div> <!-- Closes settings-card (Other) -->
-  </div> <!-- CLOSE settings-grid for Live Data -->
+      </div>
+    </div>
+  </div>
 
 
 
@@ -842,18 +729,6 @@ Contact me at mark@xengineering.net       -->
         timer = setTimeout(() => fn.apply(this, args), delay);
       };
     }
-
-    let currentAdminPassword = "";
-
-    function updatePasswordFields() {
-      const password = currentAdminPassword || document.getElementById("admin_password").value;
-      const passwordFields = document.querySelectorAll('.password_field');
-      passwordFields.forEach(field => {
-        field.value = password;
-      });
-    }
-
-
 
     const fieldIndexes = {
       AlternatorTemperatureF: 0,
@@ -1340,200 +1215,79 @@ Contact me at mark@xengineering.net       -->
       rpmPlot.setData(rpmData);
     }
 
-    function setAdminPassword() {
-      const button = document.getElementById('admin_password_set');
-      const input = document.getElementById('admin_password');
-      const msg = document.getElementById('admin_password_msg');
-      const password = input.value;
-
-      if (!password) {
-        msg.textContent = "Missing Password";
-        msg.style.color = "#ff6600";
-        setTimeout(() => { msg.textContent = ""; }, 2000);
-        return false;
-      }
-
-      button.disabled = true;
-
-      const formData = new FormData();
-      formData.append("password", password);
-
-      fetch("/checkPassword", {
-        method: "POST",
-        body: formData
-      })
-        .then(response => response.text())
-        .then(text => {
-          if (text.trim() === "OK") {
-            currentAdminPassword = password;
-            // Unlock settings
-            const settingsSection = document.getElementById('settings-section');
-            if (settingsSection) {
-              settingsSection.disabled = false;
-            }
-            const lockStatus = document.getElementById('lock-status');
-            if (lockStatus) {
-              lockStatus.textContent = "Settings are Open";
-              lockStatus.style.color = "green";
-            }
-
-            updatePasswordFields();
-            msg.textContent = "Password Accepted";
-            msg.style.color = "green";
-          } else {
-            msg.textContent = "Wrong Password";
-            msg.style.color = "#ff6600";
-          }
-          input.value = "";
-          setTimeout(() => { msg.textContent = ""; button.disabled = false; }, 2000);
-        })
-        .catch(err => {
-          msg.textContent = "Error";
-          msg.style.color = "#ff6600";
-          setTimeout(() => { msg.textContent = ""; button.disabled = false; }, 2000);
-        });
-
-      return false;
-    }
-
-    function lockSettingsManually() {
-      const settingsSection = document.getElementById('settings-section');
-      const lockStatus = document.getElementById('lock-status');
-
-      if (settingsSection) settingsSection.disabled = true;
-      if (lockStatus) {
-        lockStatus.textContent = "Settings are Locked";
-        lockStatus.style.color = "#ff6600";  // Your house orange
-      }
-      currentAdminPassword = "";
-    }
-
-    function setNewPassword() {
-      const button = document.getElementById('newpassword_set');
-      const input = document.getElementById('newpassword');
-      const msg = document.getElementById('newpassword_msg');
-      const currentPassword = currentAdminPassword;
-
-      if (!currentPassword || !input.value) {
-        msg.textContent = "Missing fields";
-        msg.style.color = "#ff6600";
-        setTimeout(() => { msg.textContent = ""; }, 2000);
-        return false;
-      }
-
-      button.disabled = true;
-
-      const formData = new FormData();
-      formData.append("password", currentPassword);
-      formData.append("newpassword", input.value);
-
-      fetch("/setPassword", {
-        method: "POST",
-        body: formData
-      })
-        .then(response => response.text())
-        .then(text => {
-          if (text.trim() === "OK") {
-            msg.textContent = "Password Changed";
-            msg.style.color = "green";
-          } else {
-            msg.textContent = "Wrong Password";
-            msg.style.color = "#ff6600";
-          }
-          input.value = "";
-          setTimeout(() => { msg.textContent = ""; button.disabled = false; }, 2000);
-        })
-        .catch(err => {
-          msg.textContent = "Error";
-          msg.style.color = "#ff6600";
-          setTimeout(() => { msg.textContent = ""; button.disabled = false; }, 2000);
-        });
-
-      return false; // prevent form submit
-    }
-
-
-
 
 
 
     window.addEventListener("load", function () {
-      //gray out Settings on a reload
-      const settingsSection = document.getElementById('settings-section');
-      if (settingsSection) {
-        settingsSection.disabled = true;
-      }
-      const lockStatus = document.getElementById('lock-status');
-      if (lockStatus) {
-        lockStatus.textContent = "Settings are Locked";
-        lockStatus.style.color = "#ff6600";  //  My house orange
-      }
       initWifiPlot();
       initCurrentTempPlot();
       initVoltagePlot();
       initRPMPlot();
       initClientUpdatePlot();
-      if (!!window.EventSource) {
-        const telemetryFields = [
-          ["AltTempID", "AlternatorTemperatureF"],
-          ["DutyCycleID", "DutyCycle"],
-          ["BatteryVID", "BatteryV"],
-          ["MeasAmpsID", "MeasuredAmps"],
-          ["RPMID", "RPM"],
-          ["ADS3ID", "Channel3V"],
-          ["IBVID", "IBV"],
-          ["BCurrID", "Bcur"],
-          ["VictronVoltageID", "VictronVoltage"],
-          ["LoopTimeID", "LoopTime"],
-          ["WifiStrengthID", "WifiStrength"],
-          ["WifiHeartBeatID", "WifiHeartBeat"],
-          ["SendWifiTimeID", "SendWifiTime"],
-          ["AnalogReadTimeID", "AnalogReadTime"],
-          ["VeTimeID", "VeTime"],
-          ["MaximumLoopTimeID", "MaximumLoopTime"],
-          ["GPSHID", "HeadingNMEA"],
-          ["FieldVoltsID", "vvout"],
-          ["FieldAmpsID", "iiout"],
-          ["FreeHeapID", "FreeHeap"],
-          ["IBVMaxID", "IBVMax"],
-          ["MeasuredAmpsMaxID", "MeasuredAmpsMax"],
-          ["RPMMaxID", "RPMMax"],
-          ["SoC_percentID", "SoC_percent"],
-          ["EngineRunTimeID", "EngineRunTime"],
-          ["EngineCyclesID", "EngineCycles"],
-          ["AlternatorOnTimeID", "AlternatorOnTime"],
-          ["AlternatorFuelUsedID", "AlternatorFuelUsed"],
-          ["ChargedEnergyID", "ChargedEnergy"],
-          ["DischargedEnergyID", "DischargedEnergy"],
-          ["AlternatorChargedEnergyID", "AlternatorChargedEnergy"],
-          ["MaxAlternatorTemperatureF_ID", "MaxAlternatorTemperatureF"]
-        ];
 
-        const controlEchoFields = [
-          ["TemperatureLimitF_echo", "TemperatureLimitF"],
-          ["FullChargeVoltage_echo", "FullChargeVoltage"],
-          ["TargetAmpz_echo", "TargetAmpz"],
-          ["TargetFloatVoltage1_echo", "TargetFloatVoltage1"],
-          ["SwitchingFrequency_echo", "SwitchingFrequency"],
-          ["interval1_echo", "interval1"],
-          ["FieldAdjustmentInterval1_echo", "FieldAdjustmentInterval1"],
-          ["ManualVoltage_echo", "ManualVoltage"],
-          ["SwitchControlOverride1_echo", "SwitchControlOverride1"],
-          ["OnOff1_echo", "OnOff1"],
-          ["ManualFieldToggle1_echo", "ManualFieldToggle1"],
-          ["HiLow1_echo", "HiLow1"],
-          ["LimpHome1_echo", "LimpHome1"],
-          ["VeData1_echo", "VeData1"],
-          ["NMEA0183Data1_echo", "NMEA0183Data1"],
-          ["NMEA2KData1_echo", "NMEA2KData1"]
-        ];
+
+
+
+      if (!!window.EventSource) {
+        const fields = {
+          AltTempID: "AlternatorTemperatureF",
+          DutyCycleID: "DutyCycle",
+          BatteryVID: "BatteryV",
+          MeasAmpsID: "MeasuredAmps",
+          RPMID: "RPM",
+          ADS3ID: "Channel3V",
+          IBVID: "IBV",
+          BCurrID: "Bcur",
+          VictronVoltageID: "VictronVoltage",
+          LoopTimeID: "LoopTime",
+          WifiStrengthID: "WifiStrength",
+          WifiHeartBeatID: "WifiHeartBeat",
+          SendWifiTimeID: "SendWifiTime",
+          AnalogReadTimeID: "AnalogReadTime",
+          VeTimeID: "VeTime",
+          MaximumLoopTimeID: "MaximumLoopTime",
+          GPSHID: "HeadingNMEA",
+          FieldVoltsID: "vvout",
+          FieldAmpsID: "iiout",
+          FreeHeapID: "FreeHeap",
+          IBVMaxID: "IBVMax",
+          MeasuredAmpsMaxID: "MeasuredAmpsMax",
+          RPMMaxID: "RPMMax",
+          SoC_percentID: "SoC_percent",
+          EngineRunTimeID: "EngineRunTime",
+          EngineCyclesID: "EngineCycles",
+          AlternatorOnTimeID: "AlternatorOnTime",
+          AlternatorFuelUsedID: "AlternatorFuelUsed",
+          ChargedEnergyID: "ChargedEnergy",
+          DischargedEnergyID: "DischargedEnergy",
+          AlternatorChargedEnergyID: "AlternatorChargedEnergy",
+          MaxAlternatorTemperatureF_ID: "MaxAlternatorTemperatureF",
+          TemperatureLimitF_echo: "TemperatureLimitF",
+          FullChargeVoltage_echo: "FullChargeVoltage",
+          TargetAmpz_echo: "TargetAmpz",
+          TargetFloatVoltage1_echo: "TargetFloatVoltage1",
+          SwitchingFrequency_echo: "SwitchingFrequency",
+          interval1_echo: "interval1",
+          FieldAdjustmentInterval1_echo: "FieldAdjustmentInterval1",
+          ManualVoltage_echo: "ManualVoltage",
+          SwitchControlOverride1_echo: "SwitchControlOverride1",
+          OnOff1_echo: "OnOff1",
+          ManualFieldToggle1_echo: "ManualFieldToggle1",
+          HiLow1_echo: "HiLow1",
+          LimpHome1_echo: "LimpHome1",
+          VeData1_echo: "VeData1",
+          NMEA0183Data1_echo: "NMEA0183Data1",
+          NMEA2KData1_echo: "NMEA2KData1"
+        };
 
 
         // this is the numerical displays, with scaling done locally
         const source = new EventSource('/events');
+
         source.addEventListener('open', function () {
           updateInlineStatus(true);
         }, false);
+
         source.addEventListener('error', function () {
           updateInlineStatus(false);
           // Attempt to reconnect after error
@@ -1570,30 +1324,31 @@ Contact me at mark@xengineering.net       -->
             return;
           }
 
+
           const data = {
-            AlternatorTemperatureF: values[fieldIndexes.AlternatorTemperatureF], // 0
+            AlternatorTemperatureF: values[fieldIndexes.AlternatorTemperatureF],
             DutyCycle: values[fieldIndexes.DutyCycle],
-            BatteryV: values[fieldIndexes.BatteryV], //2
+            BatteryV: values[fieldIndexes.BatteryV],
             MeasuredAmps: values[fieldIndexes.MeasuredAmps],
-            RPM: values[fieldIndexes.RPM],//4
+            RPM: values[fieldIndexes.RPM],
             Channel3V: values[fieldIndexes.Channel3V],
-            IBV: values[fieldIndexes.IBV],//6
+            IBV: values[fieldIndexes.IBV],
             Bcur: values[fieldIndexes.Bcur],
-            VictronVoltage: values[fieldIndexes.VictronVoltage],//8
+            VictronVoltage: values[fieldIndexes.VictronVoltage],
             LoopTime: values[fieldIndexes.LoopTime],
-            WifiStrength: values[fieldIndexes.WifiStrength],//10
+            WifiStrength: values[fieldIndexes.WifiStrength],
             WifiHeartBeat: values[fieldIndexes.WifiHeartBeat],
-            SendWifiTime: values[fieldIndexes.SendWifiTime],//12
+            SendWifiTime: values[fieldIndexes.SendWifiTime],
             AnalogReadTime: values[fieldIndexes.AnalogReadTime],
-            VeTime: values[fieldIndexes.VeTime],//14
+            VeTime: values[fieldIndexes.VeTime],
             MaximumLoopTime: values[fieldIndexes.MaximumLoopTime],
-            HeadingNMEA: values[fieldIndexes.HeadingNMEA],//16
+            HeadingNMEA: values[fieldIndexes.HeadingNMEA],
             vvout: values[fieldIndexes.vvout],
-            iiout: values[fieldIndexes.iiout],//18
+            iiout: values[fieldIndexes.iiout],
             FreeHeap: values[fieldIndexes.FreeHeap],
-            IBVMax: values[fieldIndexes.IBVMax], //20
+            IBVMax: values[fieldIndexes.IBVMax],
             MeasuredAmpsMax: values[fieldIndexes.MeasuredAmpsMax],
-            RPMMax: values[fieldIndexes.RPMMax], //22
+            RPMMax: values[fieldIndexes.RPMMax],
             SoC_percent: values[fieldIndexes.SoC_percent],
             EngineRunTime: values[fieldIndexes.EngineRunTime],
             EngineCycles: values[fieldIndexes.EngineCycles],
@@ -1621,29 +1376,24 @@ Contact me at mark@xengineering.net       -->
             NMEA2KData1: values[fieldIndexes.NMEA2KData1]
           };
 
-          window._debugData = data;
-
-
-          const updateFields = (fieldArray) => {
-            for (const [elementId, key] of fieldArray) {
-              const el = document.getElementById(elementId);
-              if (!el) continue;
-              const value = data[key];
-              if (value === undefined || isNaN(value)) {
-                el.textContent = "—";
-                continue;
+          for (const [elementId, key] of Object.entries(fields)) {
+            const el = document.getElementById(elementId);
+            if (el && key in data) {
+              if (key === "BatteryV" || key === "Channel3V" || key === "IBV" || key === "VictronVoltage" || key === "vvout") {
+                el.innerHTML = (data[key] / 100).toFixed(2);  // no commas
               }
-              if (["BatteryV", "Channel3V", "IBV", "VictronVoltage", "vvout", "FullChargeVoltage", "TargetFloatVoltage1", "ManualVoltage"].includes(key)) {
-                el.textContent = (value / 100).toFixed(2);
-              } else if (["MeasuredAmps", "Bcur", "iiout", "TargetAmpz"].includes(key)) {
-                el.textContent = (value / 10).toFixed(1);
-              } else {
-                el.textContent = Math.round(value);
+              else if (key === "MeasuredAmps" || key === "Bcur" || key === "iiout") {
+                el.innerHTML = (data[key] / 10).toFixed(2);  // no commas
+              }
+              else {
+                if (Number.isFinite(data[key])) {
+                  el.innerHTML = Math.round(data[key]).toLocaleString('en-US');
+                } else {
+                  el.innerHTML = "—";  // fallback for bad values
+                }
               }
             }
-          };
-
-          updateFields(telemetryFields);  // only visible span updates
+          }
 
 
           // Update echo elements
@@ -1808,63 +1558,10 @@ Contact me at mark@xengineering.net       -->
       document.getElementById("VeData1_checkbox").checked = (document.getElementById("VeData1").value === "1");
       document.getElementById("NMEA0183Data1_checkbox").checked = (document.getElementById("NMEA0183Data1").value === "1");
       document.getElementById("NMEA2KData1_checkbox").checked = (document.getElementById("NMEA2KData1").value === "1");
-
-      document.getElementById("admin_password").addEventListener("change", updatePasswordFields);
     });
   </script>
 
   <div id="corner-status" class="corner-status corner-status-connected">CONNECTED</div>
-
-<!-- Hidden fallback elements to satisfy JavaScript field lookups DELETE THIS HACK JOB -->
-<div style="display:none;">
-  <span id="RPMMaxID" style="display:none;">0</span>
-  <span id="SoC_percentID" style="display:none;">0</span>
-  <span id="EngineRunTimeID" style="display:none;">0</span>
-  <span id="EngineCyclesID" style="display:none;">0</span>
-  <span id="AlternatorOnTimeID" style="display:none;">0</span>
-  <span id="AlternatorFuelUsedID" style="display:none;">0</span>
-  <span id="ChargedEnergyID" style="display:none;">0</span>
-  <span id="DischargedEnergyID" style="display:none;">0</span>
-  <span id="AlternatorChargedEnergyID" style="display:none;">0</span>
-  <span id="MaxAlternatorTemperatureF_ID" style="display:none;">0</span>
-  <span id="TemperatureLimitF_echo" style="display:none;">0</span>
-  <span id="FullChargeVoltage_echo" style="display:none;">0</span>
-  <span id="TargetAmpz_echo" style="display:none;">0</span>
-  <span id="TargetFloatVoltage1_echo" style="display:none;">0</span>
-  <span id="SwitchingFrequency_echo" style="display:none;">0</span>
-  <span id="interval1_echo" style="display:none;">0</span>
-  <span id="FieldAdjustmentInterval1_echo" style="display:none;">0</span>
-  <span id="ManualVoltage_echo" style="display:none;">0</span>
-  <span id="SwitchControlOverride1_echo" style="display:none;">0</span>
-  <span id="OnOff1_echo" style="display:none;">0</span>
-  <span id="ManualFieldToggle1_echo" style="display:none;">0</span>
-  <span id="HiLow1_echo" style="display:none;">0</span>
-  <span id="LimpHome1_echo" style="display:none;">0</span>
-  <span id="VeData1_echo" style="display:none;">0</span>
-  <span id="NMEA0183Data1_echo" style="display:none;">0</span>
-  <span id="NMEA2KData1_echo" style="display:none;">0</span>
-  <input id="TemperatureLimitF" style="display:none;" value="0" />
-  <input id="FullChargeVoltage" style="display:none;" value="0" />
-  <input id="TargetAmpz" style="display:none;" value="0" />
-  <input id="TargetFloatVoltage1" style="display:none;" value="0" />
-  <input id="SwitchingFrequency" style="display:none;" value="0" />
-  <input id="interval1" style="display:none;" value="0" />
-  <input id="FieldAdjustmentInterval1" style="display:none;" value="0" />
-  <input id="ManualVoltage" style="display:none;" value="0" />
-  <input id="SwitchControlOverride1" style="display:none;" value="0" />
-  <input id="OnOff1" style="display:none;" value="0" />
-  <input id="ManualFieldToggle1" style="display:none;" value="0" />
-  <input id="HiLow1" style="display:none;" value="0" />
-  <input id="LimpHome1" style="display:none;" value="0" />
-  <input id="VeData1" style="display:none;" value="0" />
-  <input id="NMEA0183Data1" style="display:none;" value="0" />
-  <input id="NMEA2KData1" style="display:none;" value="0" />
-  </div>
-  
-
-  
-
-
 
 </body>
 
