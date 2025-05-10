@@ -1,25 +1,4 @@
-//        X Engineering Alternator Regulator
-//     Copyright (C) 2025  Mark Nickerson
-
-//     This program is free software: you can redistribute it and/or modify
-//     it under the terms of the GNU General Public License as published by
-//     the Free Software Foundation, either version 3 of the License, or
-//     (at your option) any later version.
-
-//     This program is distributed in the hope that it will be useful,
-//     but WITHOUT ANY WARRANTY; without even the implied warranty of
-//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//     GNU General Public License for more details.
-
-//  See <https://www.gnu.org/licenses/> for GNU General Public License
-
-// Contact me at mark@xengineering.net    
-
-// In order to minimally discourage inexperienced programmers, this code is not split up into .h and .cpp files, 
-// multiple HTML files, etc, etc, which would have greatly improved organization. The penalty to pay is loooong programs. I find it to be an ok 
-// tradeoff because it keeps the code recognizeable and editable for beginners.
-
-#include <OneWire.h>            // temp sensors //
+#include <OneWire.h>            // temp sensors
 #include <DallasTemperature.h>  // temp sensors
 #include <SPI.h>                // display
 #include <Wire.h>               // unknown if needed, but probably
@@ -47,7 +26,8 @@ INA228 INA(0x40);
 #include "freertos/FreeRTOS.h"           // for stack usage
 #include "freertos/task.h"               // for stack usage
 #define configGENERATE_RUN_TIME_STATS 1  // for CPU use tracking
-#include <mbedtls/md.h>                  // security
+
+float interval = 0;
 
 
 // Settings - these will be moved to LittleFS
@@ -55,11 +35,6 @@ const char *default_ssid = "MN2G";            // Default SSID if no saved creden
 const char *default_password = "5FENYC8ABC";  // Default password if no saved credentials // 5FENYC8ABC
 // WiFi connection timeout when trying to avoid Access Point Mode (and connect to ship's wifi on reboot)
 const unsigned long WIFI_TIMEOUT = 20000;  // 20 seconds
-
-//Security
-char requiredPassword[32] = "admin";  // Max password length = 31 chars     Password for access to change settings from browser
-char storedPasswordHash[65] = { 0 };
-
 
 // ===== HEAP MONITORING =====
 int rawFreeHeap = 0;      // in bytes
@@ -111,8 +86,15 @@ int AnalogReadTime2 = 0;  // this is the maximum ever
 int TargetAmps = 55;  //Normal alternator output, for best performance, set ot something that just barely won't overheat
 float TargetFloatVoltage = 13.9;
 float TargetBulkVoltage = 14.5;
-float ChargingVoltageTarget = 0;          // This is what the code really uses. It gets set to TargetFloatVoltage or TargetBulkVoltage later on
-float interval = 0.1;                     // voltage step to adjust field target by, each time the loop runs.  Larger numbers = faster response, less stability
+float ChargingVoltageTarget = 0;          // This is what the code really uses. It gets set to TargetFloatVoltage or TargetBulkVoltage later on                   
+
+float dutyCycle = 5;
+float dutyStep = 0.8;    // duty step to adjust field target by, each time the loop runs.  Larger numbers = faster response, less stability
+const float MaxDuty = 99.0;
+const float MinDuty = 0.0;
+const int ManualDutyTarget = 50;  // example manual override value
+
+
 float FieldAdjustmentInterval = 500;      // The regulator field output is updated once every this many milliseconds
 float MinimumFieldVoltage = 1;            // A min value here ensures that engine speed can be measured even with no alternator output commanded.  (This is only enforced when Ignition input is high)
 float AlternatorTemperatureLimitF = 150;  // the offset appears to be +40 to +50 to get true max alternator external metal temp, depending on temp sensor installation, so 150 here will produce a metal temp ~200F
@@ -124,12 +106,15 @@ int OnOff = 1;                            // 0 is charger off, 1 is charger On
 int Ignition = 1;                         // This will eventually be an over-rideable digital input
 int HiLow = 1;                            // 0 will be a low setting, 1 a high setting
 int LimpHome = 0;                         // 1 will set to limp home mode, whatever that gets set up to be
-float vout = 1;                           // default field output voltage
 int resolution = 12;                      // for OneWire temp sensor measurement
-float fffr = 1200;                        // this is the switching frequency in Hz
 int VeData = 0;                           // Set to 1 if VE serial data exists
 int NMEA0183Data = 0;                     // Set to 1 if NMEA serial data exists doesn't do anything yet
 int NMEA2KData = 1;                       // doesn't do anything yet
+//Field PWM stuff
+const int pwmPin = 32;         // field PWM
+const int pwmChannel = 0;      //0–7 available for high-speed PWM  (ESP32)
+const int pwmResolution = 16;  // 16-bit resolution (0–65535)
+float fffr = 500;              // this is the switching frequency in Hz, uses Float for wifi reasons
 
 int previousMillisZZ = 0;  // Temporary, for getting power consumption down
 int intervalZZ = 60000;    // Turn WiFi on and off every 60 seconds (until there's an Ignition signal controlling it)
@@ -144,7 +129,7 @@ float Bcur;                             // battery shunt current from INA228
 float IBV;                              // Ina 228 battery voltage
 float IBVMax = NAN;                     // used to track maximum battery voltage
 float DutyCycle;                        // Field outout %
-float vvout;                            // Field output volts
+float vvout;                            // Used to be field output in volts, now it's duty cycle
 float iiout;                            // Field output current
 float AlternatorTemperatureF = NAN;     // alternator temperature
 float MaxAlternatorTemperatureF = NAN;  // maximum alternator temperature
@@ -152,13 +137,15 @@ TaskHandle_t tempTaskHandle = NULL;     // make a separate cpu task for temp rea
 float VictronVoltage = 0;               // battery reading from VeDirect
 float HeadingNMEA = 0;                  // Just here to test NMEA functionality
 
-// ADS1115 
+// ADS1115
 int16_t Raw = 0;
 float Channel0V, Channel1V, Channel2V, Channel3V;
 float BatteryV, MeasuredAmps, RPM;
 float MeasuredAmpsMax;  // used to track maximum alternator output
 float RPMMax;           // used to track maximum RPM
 int ADS1115Disconnected = 0;
+
+
 
 // Battery SOC Monitoring Variables
 int BatteryCapacity_Ah = 300;         // Battery capacity in Amp-hours
@@ -262,19 +249,6 @@ VeDirectFrameHandler myve;
 AsyncWebServer server(80);               // Create AsyncWebServer object on port 80
 AsyncEventSource events("/events");      // Create an Event Source on /events
 unsigned long webgaugesinterval = 1000;  // delay in ms between sensor updates on webpage
-
-
-
-// These string constants serve as identifiers for your form parameters in the web interface. They're defined as constants to avoid typos and make maintenance easier.
-// When your web form sends data to the ESP32, it uses form fields with specific names. This code creates constants that match those form field names so they can
-//be consistently referenced throughout your code.
-//This approach has several benefits:
-//If you need to rename a form field, you only change it in one place
-//It prevents typos that would be hard to debug (like checking for "TempratureLimitF" with the 'e' missing)
-//It makes the code more readable by using shorter variable names in the logic
-//It centralizes all your form field names in one place
-//These constants specifically relate to the "Settings" section where users can change configuration values,
-//not the "Live Data" display section that shows real-time values.
 
 const char *TLimit = "TemperatureLimitF";  //TLimit is a pointer to an immutable String "TemperatureLimitF"
 const char *ManualV = "ManualVoltage";
@@ -459,24 +433,44 @@ const char WIFI_CONFIG_HTML[] PROGMEM = R"rawliteral(
 void setup() {
   setCpuFrequencyMhz(240);
   Serial.begin(115200);
-  delay(500);          // not sure if this is needed
+  // Wait for serial to initialize
+  while (!Serial) {
+    ;  // wait for serial port to connect
+  }
   pinMode(4, OUTPUT);  // This pin is used to provide a high signal to Field Enable pin      PROBABLY OBSOLETE
   pinMode(2, OUTPUT);  // This pin is used to provide a heartbeat (pin 2 of ESP32 is the LED)
 
-  // Initialize LittleFS first.
+
+
+
+  // Initialize LittleFS first
   if (!LittleFS.begin(true)) {
     Serial.println("An Error has occurred while mounting LittleFS");
-    // Continue anyway since we might be able to format and use it later (?)
+    // Continue anyway since we might be able to format and use it later
   }
 
-  InitPersistentVariables();  // load all persistent variables from LittleFS.  If no files exist, create them.
-  InitSystemSettings();       // load all settings from LittleFS.  If no files exist, create them.
+  InitSystemSettings();  // load all persistent settings from LittleFS.  If no files exist, create them.
 
+  // PWM via LEDC peripheral — Arduino Core 3.0+
+  // - Uses dedicated LEDC hardware peripheral (not software PWM)
+  // - No interrupts or timers used for PWM generation
+  // - No CPU load after calling setDuty()
+  // - 8 high-speed and 8 low-speed PWM channels available
+  // - Max PWM frequency decreases exponentially with resolution:
+  //     • Max_Freq = 80 MHz / (2^resolution)
+  //     • 8-bit:   ~312.5 kHz
+  //     • 12-bit:  ~19.5 kHz
+  //     • 16-bit:  ~1.22 kHz
+
+  if (!ledcAttach(pwmPin, fffr, pwmResolution)) {
+    Serial.println("Failed to attach LEDC to GPIO32 for the Field Output");
+    while (1)
+      ;  // Halt if attachment fails
+  }
 
   // Setup WiFi (this will either connect to a saved network or create an AP)
   setupWiFi();
   setupServer();
-  loadPasswordHash();
 
   //NMEA2K
   OutputStream = &Serial;
@@ -561,6 +555,115 @@ void setup() {
     sensors.setWaitForConversion(false);  // this is critical!
   }
 
+
+  // If there are not settings in Flash memoery (files don't exist yet), populate them with the hardcoded values
+  bool TempLimitfileexists = LittleFS.exists("/TemperatureLimitF.txt");
+  if (!TempLimitfileexists) {
+    //String stringOne = String(13);                        // Convert an Integer to a String
+    //String stringOne = String(5.69, 2);                      // Convert a float to a string with 2 decimal places
+    String stringAlternatorTemperatureLimitF = String(AlternatorTemperatureLimitF);
+    writeFile(LittleFS, "/TemperatureLimitF.txt", stringAlternatorTemperatureLimitF.c_str());
+  }
+  bool ManualVfileexists = LittleFS.exists("/ManualVoltage.txt");
+  if (!ManualVfileexists) {
+    String stringManualVV = String(ManualVoltageTarget, 2);
+    writeFile(LittleFS, "/ManualVoltage.txt", stringManualVV.c_str());
+  }
+  bool FCVfileexists = LittleFS.exists("/FullChargeVoltage.txt");
+  if (!FCVfileexists) {
+    String stringFCV = String(ChargingVoltageTarget, 2);
+    writeFile(LittleFS, "/FullChargeVoltage.txt", stringFCV.c_str());
+  }
+  bool TAfileexists = LittleFS.exists("/TargetAmpz.txt");
+  if (!TAfileexists) {
+    String stringTA = String(TargetAmps);
+    writeFile(LittleFS, "/TargetAmpz.txt", stringTA.c_str());
+  }
+  bool Freqfileexists = LittleFS.exists("/SwitchingFrequency.txt");
+  if (!Freqfileexists) {
+    String stringFreq = String(fffr);
+    writeFile(LittleFS, "/SwitchingFrequency.txt", stringFreq.c_str());
+  }
+  bool TFVfileexists = LittleFS.exists("/TargetFloatVoltage1.txt");
+  if (!TFVfileexists) {
+    String stringTFV = String(TargetFloatVoltage);
+    writeFile(LittleFS, "/TargetFloatVoltage1.txt", stringTFV.c_str());
+  }
+  bool intervalfileexists = LittleFS.exists("/interval1.txt");
+  if (!intervalfileexists) {
+    String stringInterval = String(interval);
+    writeFile(LittleFS, "/interval1.txt", stringInterval.c_str());
+  }
+  bool Fintervalfileexists = LittleFS.exists("/FieldAdjustmentInterval1.txt");
+  if (!Fintervalfileexists) {
+    String stringFAI = String(FieldAdjustmentInterval);
+    writeFile(LittleFS, "/FieldAdjustmentInterval1.txt", stringFAI.c_str());
+  }
+  bool MFTexists = LittleFS.exists("/ManualFieldToggle1.txt");
+  if (!MFTexists) {
+    String stringMFT = String(ManualFieldToggle);
+    writeFile(LittleFS, "/ManualFieldToggle1.txt", stringMFT.c_str());
+  }
+  bool SCOexists = LittleFS.exists("/SwitchControlOverride1.txt");
+  if (!SCOexists) {
+    String stringSCO = String(SwitchControlOverride);
+    writeFile(LittleFS, "/SwitchControlOverride1.txt", stringSCO.c_str());
+  }
+  bool FFexists = LittleFS.exists("/ForceFloat1.txt");
+  if (!FFexists) {
+    String stringFF = String(ForceFloat);
+    writeFile(LittleFS, "/ForceFloat1.txt", stringFF.c_str());
+  }
+  bool OOexists = LittleFS.exists("/OnOff1.txt");
+  if (!OOexists) {
+    String stringOO = String(OnOff);
+    writeFile(LittleFS, "/OnOff1.txt", stringOO.c_str());
+  }
+  bool HLexists = LittleFS.exists("/HiLow1.txt");
+  if (!HLexists) {
+    String stringHL = String(HiLow);
+    writeFile(LittleFS, "/HiLow1.txt", stringHL.c_str());
+  }
+  bool LHexists = LittleFS.exists("/LimpHome1.txt");
+  if (!LHexists) {
+    String stringLH = String(LimpHome);
+    writeFile(LittleFS, "/LimpHome1.txt", stringLH.c_str());
+  }
+  bool VDexists = LittleFS.exists("/VeData1.txt");
+  if (!VDexists) {
+    String stringVD = String(VeData);
+    writeFile(LittleFS, "/VeData1.txt", stringVD.c_str());
+  }
+  bool N0exists = LittleFS.exists("/NMEA0183Data1.txt");
+  if (!N0exists) {
+    String stringN0 = String(NMEA0183Data);
+    writeFile(LittleFS, "/NMEA0183Data1.txt", stringN0.c_str());
+  }
+  bool N2exists = LittleFS.exists("/NMEA2KData1.txt");
+  if (!N2exists) {
+    String stringN2 = String(NMEA2KData);
+    writeFile(LittleFS, "/NMEA2KData1.txt", stringN2.c_str());
+  }
+
+  //Update some variables with values from ESP32 Flash memory
+  AlternatorTemperatureLimitF = readFile(LittleFS, "/TemperatureLimitF.txt").toInt();
+  ManualVoltageTarget = readFile(LittleFS, "/ManualVoltage.txt").toFloat();
+  ChargingVoltageTarget = readFile(LittleFS, "/FullChargeVoltage.txt").toFloat();
+  TargetAmps = readFile(LittleFS, "/TargetAmpz.txt").toInt();
+  fffr = readFile(LittleFS, "/SwitchingFrequency.txt").toInt();
+  TargetFloatVoltage = readFile(LittleFS, "/TargetFloatVoltage1.txt").toFloat();
+  interval = readFile(LittleFS, "/interval1.txt").toFloat();
+  FieldAdjustmentInterval = readFile(LittleFS, "/FieldAdjustmentInterval1.txt").toFloat();
+  ManualFieldToggle = readFile(LittleFS, "/ManualFieldToggle1.txt").toInt();
+  SwitchControlOverride = readFile(LittleFS, "/SwitchControlOverride1.txt").toInt();
+  ForceFloat = readFile(LittleFS, "/ForceFloat1.txt").toInt();
+  OnOff = readFile(LittleFS, "/OnOff1.txt").toInt();
+  HiLow = readFile(LittleFS, "/HiLow1.txt").toInt();
+  LimpHome = readFile(LittleFS, "/LimpHome1.txt").toInt();
+  VeData = readFile(LittleFS, "/VeData1.txt").toInt();
+  NMEA0183Data = readFile(LittleFS, "/NMEA0183Data1.txt").toInt();
+  NMEA2KData = readFile(LittleFS, "/NMEA2KData1.txt").toInt();
+
   xTaskCreatePinnedToCore(
     TempTask,
     "TempTask",
@@ -570,40 +673,6 @@ void setup() {
     &tempTaskHandle,
     0  // Run on Core 0, which is the one doing Wifi and system tasks, and theoretically has more idle points than Core 1 and "loop()"
   );
-
-
-
-
-
-
-
-// File f = LittleFS.open("/index.html", "r");
-// if (!f) {
-//   Serial.println("ERROR: Failed to open /index.html");
-// } else {
-//   Serial.printf("Opened /index.html, size = %u bytes\n", f.size());
-
-//   const size_t N = 256;
-//   char buf[N + 1] = {0};  // buffer for 256 bytes + null
-//   int totalRead = 0;
-
-//   while (f.available()) {
-//     size_t len = f.readBytes(buf, N);
-//     buf[len] = '\0';
-//     Serial.write(buf);  // dump raw
-//     totalRead += len;
-//     if (totalRead > 65536) break;  // prevent overload
-//   }
-
-//   Serial.printf("\n[EOF] Read total: %d bytes\n", totalRead);
-//   f.close();
-// }
-
-
-
-
-
-
 }
 
 void loop() {
@@ -629,11 +698,16 @@ void loop() {
   if (currentWiFiMode == AWIFI_MODE_AP) {
     dnsHandleRequest();
   } else {
+    //MDNS.update();// Update mDNS to maintain hostname visibility    Turns out thsi was already being done on its own
     // Only do these tasks if in normal client mode
-    ReadAnalogInputs();
+    // ReadAnalogInputs();
     //ReadVEData();  //read Data from Victron VeDirect
     // UpdateDisplay();
-    SendWifiData();  // Send WiFi data to client
+    AdjustField();
+
+
+    // Send WiFi data to client
+    SendWifiData();
   }
 
   if (powersavemode == 1) {
@@ -686,6 +760,13 @@ void loop() {
         Serial.println("Failed to reconnect. Will try again in 5 seconds.");
       }
     }
+  }
+
+  if (millis() - prev_millis743 > 5000) {  // every 5 seconds check CAN network (this might need adjustment)
+    if (NMEA2KData == 1) {
+      NMEA2000.ParseMessages();
+    }
+    prev_millis743 = millis();
   }
 
   //Blink LED on and off every X seconds
