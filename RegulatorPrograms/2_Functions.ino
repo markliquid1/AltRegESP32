@@ -1,61 +1,69 @@
-// Function to set PWM duty cycle by percentage
-void setDutyPercent(int percent) {
+// X Engineering Alternator Regulator
+//     Copyright (C) 2025  Mark Nickerson
+
+//     This program is free software: you can redistribute it and/or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+
+//     This program is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//     GNU General Public License for more details.
+
+//  See <https://www.gnu.org/licenses/> for GNU General Public License
+
+// Contact me at mark@xengineering.net
+
+void setDutyPercent(int percent) {  // Function to set PWM duty cycle by percentage
   percent = constrain(percent, 0, 100);
   uint32_t duty = (65535UL * percent) / 100;
-    ledcWrite(32, duty);
+  ledcWrite(32, duty);
 }
-
 void AdjustField() {
   if (Ignition == 1 && OnOff == 1) {
 
-if (millis() - prev_millis22 > FieldAdjustmentInterval) {  // adjust field every half second
-  digitalWrite(4, FieldEnabler);  // Enable the Field
+    if (millis() - prev_millis22 > FieldAdjustmentInterval) {  // adjust field every half second
+      digitalWrite(4, FieldEnabler);                           // Enable the Field
 
-  if (ManualFieldToggle == 0) {
-    // Auto-adjust mode
-    if (MeasuredAmps < TargetAmps && dutyCycle < (MaxDuty - dutyStep)) {
-      dutyCycle += dutyStep;
+      if (ManualFieldToggle == 0) {
+        // Auto-adjust mode
+        if (MeasuredAmps < TargetAmps && dutyCycle < (MaxDuty - dutyStep)) {
+          dutyCycle += dutyStep;
+        }
+
+        if (MeasuredAmps > TargetAmps && dutyCycle > (MinDuty + dutyStep)) {
+          dutyCycle -= dutyStep;
+        }
+
+        if (AlternatorTemperatureF > AlternatorTemperatureLimitF && dutyCycle > (MinDuty + 2 * dutyStep)) {
+          dutyCycle -= 2 * dutyStep;
+        }
+
+        if (BatteryV > ChargingVoltageTarget && dutyCycle > (MinDuty + 3 * dutyStep)) {
+          dutyCycle -= 3 * dutyStep;
+        }
+
+        dutyCycle = constrain(dutyCycle, MinDuty, MaxDuty);
+        setDutyPercent((int)dutyCycle);
+        prev_millis22 = millis();
+
+      } else {
+        // Manual override
+        dutyCycle = ManualDutyTarget;
+        setDutyPercent(ManualDutyTarget);
+        prev_millis22 = millis();
+      }
+    } else {
+      // Field is disabled — reset duty cycle
+      dutyCycle = MinDuty;
+      setDutyPercent((int)dutyCycle);
     }
-
-    if (MeasuredAmps > TargetAmps && dutyCycle > (MinDuty + dutyStep)) {
-      dutyCycle -= dutyStep;
-    }
-
-    if (AlternatorTemperatureF > AlternatorTemperatureLimitF && dutyCycle > (MinDuty + 2 * dutyStep)) {
-      dutyCycle -= 2 * dutyStep;
-    }
-
-    if (BatteryV > ChargingVoltageTarget && dutyCycle > (MinDuty + 3 * dutyStep)) {
-      dutyCycle -= 3 * dutyStep;
-    }
-
-    dutyCycle = constrain(dutyCycle, MinDuty, MaxDuty);
-    setDutyPercent((int)dutyCycle);
-    prev_millis22 = millis();
-
-  } else {
-    // Manual override
-    dutyCycle = ManualDutyTarget;
-    setDutyPercent(ManualDutyTarget);
-    prev_millis22 = millis();
-  }
-} else {
-  // Field is disabled — reset duty cycle
-  dutyCycle = MinDuty;
-  setDutyPercent((int)dutyCycle);
-}
   } else {
     dutyCycle = MinDuty;  // start over from a low field voltage when it comes time to turn back on
   }
 }
-
-
-
-
-
 void ReadAnalogInputs() {
-
-
   if (millis() - lastINARead >= 900) {  // could go down to 600 here, but this logic belongs in Loop anyway
     if (INADisconnected == 0) {
       //Serial.println();
@@ -82,8 +90,11 @@ void ReadAnalogInputs() {
   }
 
   //ADS1115 reading is based on trigger→wait→read   so as to not waste time.  That is way the below is so complicated
-  if (ADS1115Disconnected != 0) return;
+if (ADS1115Disconnected != 0) {
   Serial.println("theADS1115 was not connected and triggered a return");
+  return;
+}
+
 
   unsigned long now = millis();
 
@@ -571,88 +582,8 @@ void writeFile(fs::FS &fs, const char *path, const char *message) {
   delay(2);  // Make sure the CREATE and LASTWRITE times are different Delte later?
   file.close();
 }
-String processor(const String &var) {
-  //The processor() is responsible for searching for placeholders in the HTML text and replacing them with actual values saved on LittleFS.
-  //Serial.println(var);
-  //First, the "settings"
-  if (var == "TemperatureLimitF") {
-    return readFile(LittleFS, "/TemperatureLimitF.txt");
-  } else if (var == "ManualVoltage") {
-    return readFile(LittleFS, "/ManualVoltage.txt");
-  } else if (var == "FullChargeVoltage") {
-    return readFile(LittleFS, "/FullChargeVoltage.txt");
-  } else if (var == "TargetAmpz") {
-    return readFile(LittleFS, "/TargetAmpz.txt");
-  } else if (var == "SwitchingFrequency") {
-    return readFile(LittleFS, "/SwitchingFrequency.txt");
-  } else if (var == "TargetFloatVoltage1") {
-    return readFile(LittleFS, "/TargetFloatVoltage1.txt");
-  } else if (var == "interval1") {
-    return readFile(LittleFS, "/interval1.txt");
-  } else if (var == "FieldAdjustmentInterval1") {
-    return readFile(LittleFS, "/FieldAdjustmentInterval1.txt");
-  } else if (var == "ManualFieldToggle1") {
-    return readFile(LittleFS, "/ManualFieldToggle1.txt");
-  } else if (var == "SwitchControlOverride1") {
-    return readFile(LittleFS, "/SwitchControlOverride1.txt");
-  } else if (var == "ForceFloat1") {
-    return readFile(LittleFS, "/ForceFloat1.txt");
-  } else if (var == "OnOff1") {
-    return readFile(LittleFS, "/OnOff1.txt");
-  } else if (var == "HiLow1") {
-    return readFile(LittleFS, "/HiLow1.txt");
-  } else if (var == "LimpHome1") {
-    return readFile(LittleFS, "/LimpHome1.txt");
-  } else if (var == "VeData1") {
-    return readFile(LittleFS, "/VeData1.txt");
-  } else if (var == "NMEA0183Data1") {
-    return readFile(LittleFS, "/NMEA0183Data1.txt");
-  } else if (var == "NMEA2KData1") {
-    return readFile(LittleFS, "/NMEA2KData1.txt");
-  }
 
-  //Then, the live sensor readings
-  else if (var == "ALTERNATORTEMPERATUREF") {
-    return String(AlternatorTemperatureF);
-  } else if (var == "DUTYCYCLE") {
-    return String(DutyCycle);
-  } else if (var == "BATTERYV") {
-    return String(BatteryV);
-  } else if (var == "MEASA") {
-    return String(MeasuredAmps);
-  } else if (var == "RPMM") {
-    return String(RPM);
-  } else if (var == "ADSCH3VLTS") {
-    return String(Channel3V);
-  } else if (var == "IBVV") {
-    return String(IBV);
-  } else if (var == "BCURR") {
-    return String(Bcur);
-  } else if (var == "VVOLT") {
-    return String(VictronVoltage);
-  } else if (var == "GPSH") {
-    return String(HeadingNMEA);
-  } else if (var == "FIELDVOLTS") {
-    return String(vvout);
-  } else if (var == "LOOPTIME") {
-    return String(LoopTime);
-  } else if (var == "MAXIMUMLOOPTIME") {
-    return String(MaximumLoopTime);
-  } else if (var == "FIELDAMPS") {
-    return String(iiout);
-  } else if (var == "WIFISTRENGTH") {
-    return String(WifiStrength);
-  } else if (var == "WIFIHEARTBEAT") {
-    return String(WifiHeartBeat);
-  } else if (var == "SENDWIFITIME") {
-    return String(SendWifiTime);
-  } else if (var == "ANALOGREADTIME") {
-    return String(AnalogReadTime);
-  } else if (var == "VETIME") {
-    return String(VeTime);
-  }
-  return String();
-}
+
 int SafeInt(float f, int scale = 1) {
   // where this is matters!!   Put utility functions like SafeInt() above setup() and loop() , according to ChatGPT.  And I proved it matters.
   return isnan(f) || isinf(f) ? -1 : (int)(f * scale);
@@ -662,74 +593,72 @@ void SendWifiData() {
     WifiStrength = WiFi.RSSI();
     WifiHeartBeat++;
     if (WifiStrength >= -70) {
-      int start66 = micros();  // Start timing the wifi section
-
+      int start66 = micros();     // Start timing the wifi section
       printHeapStats();           //   Should be ~25–65 µs with no serial prints
       printBasicTaskStackInfo();  //Should be ~70–170 µs µs for 10 tasks (conservative estimate with no serial prints)
       updateCpuLoad();            //~200–250 for 10 tasks
       testTaskStats();            // 👈 Add this line to test
-
-
       // Build CSV string with all data as integers
       // Format: multiply floats by 10, 100 or 1000 to preserve decimal precision as needed
       // CSV field order: see index.html -> fields[] mapping
-      char payload[512];  // Smaller buffer size since CSV is more compact
+      char payload[1024];  // >1400 the wifi transmission won't fit in 1 packet
       snprintf(payload, sizeof(payload),
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                // Readings
-               SafeInt(AlternatorTemperatureF),
-               SafeInt(DutyCycle),
-               SafeInt(BatteryV, 100),
-               SafeInt(MeasuredAmps, 100),
-               SafeInt(RPM),
-               SafeInt(Channel3V, 100),
-               SafeInt(IBV, 100),
-               SafeInt(Bcur, 100),
-               SafeInt(VictronVoltage, 100),
-               SafeInt(LoopTime),
-               SafeInt(WifiStrength),
+               SafeInt(AlternatorTemperatureF),  //0
+               SafeInt(DutyCycle),               //1
+               SafeInt(BatteryV, 100),           //2
+               SafeInt(MeasuredAmps, 100),       //3
+               SafeInt(RPM),                     //
+               SafeInt(Channel3V, 100),          //5
+               SafeInt(IBV, 100),                //
+               SafeInt(Bcur, 100),               //
+               SafeInt(VictronVoltage, 100),     //8
+               SafeInt(LoopTime),                //
+               SafeInt(WifiStrength),            //10
                SafeInt(WifiHeartBeat),
-               SafeInt(SendWifiTime),
+               SafeInt(SendWifiTime),  //12
                SafeInt(AnalogReadTime),
-               SafeInt(VeTime),
+               SafeInt(VeTime),  //14
                SafeInt(MaximumLoopTime),
-               SafeInt(HeadingNMEA),
+               SafeInt(HeadingNMEA),  //16
                SafeInt(vvout, 100),
-               SafeInt(iiout, 10),
+               SafeInt(iiout, 10),  //18
                SafeInt(FreeHeap),
-               SafeInt(IBVMax, 100),
+               SafeInt(IBVMax, 100),  //20
                SafeInt(MeasuredAmpsMax, 100),
-               SafeInt(RPMMax),
-               SafeInt(SoC_percent, 100),
-               SafeInt(EngineRunTime),
+               SafeInt(RPMMax),  //22
+               SafeInt(SoC_percent),
+               SafeInt(EngineRunTime),  //24
                SafeInt(EngineCycles),
-               SafeInt(AlternatorOnTime),
+               SafeInt(AlternatorOnTime),  //26
                SafeInt(AlternatorFuelUsed),
-               SafeInt(ChargedEnergy),
+               SafeInt(ChargedEnergy),  //28
                SafeInt(DischargedEnergy),
-               SafeInt(AlternatorChargedEnergy),
+               SafeInt(AlternatorChargedEnergy),  //30
                SafeInt(MaxAlternatorTemperatureF),
 
-               // Settings
-               SafeInt(AlternatorTemperatureLimitF),
+               // Settings    (for the echoes)
+               SafeInt(AlternatorTemperatureLimitF),  //32
                SafeInt(ChargingVoltageTarget, 100),
-               SafeInt(TargetAmps),
+               SafeInt(TargetAmps),  //34
                SafeInt(TargetFloatVoltage, 100),
-               SafeInt(fffr),
+               SafeInt(fffr),  //36
                SafeInt(interval, 100),
-               SafeInt(FieldAdjustmentInterval),
+               SafeInt(FieldAdjustmentInterval),  //38
                SafeInt(ManualVoltageTarget, 100),
-               SafeInt(SwitchControlOverride),
+               SafeInt(SwitchControlOverride),  //40
                SafeInt(OnOff),
-               SafeInt(ManualFieldToggle),
+               SafeInt(ManualFieldToggle),  //42
                SafeInt(HiLow),
-               SafeInt(LimpHome),
+               SafeInt(LimpHome),  //44
                SafeInt(VeData),
-               SafeInt(NMEA0183Data),
+               SafeInt(NMEA0183Data),  //46
                SafeInt(NMEA2KData));
-      //Serial.print("Payload: "); //For debug
-      //Serial.println(payload); // for debug
+
       events.send(payload, "CSVData");    // Changed event name to reflect new format
+                                          //   Serial.print("Payload: ");          //For debug
+                                          // Serial.println(payload);            // for debug
       SendWifiTime = micros() - start66;  // Calculate WiFi Send Time
     }
     prev_millis5 = millis();
@@ -853,15 +782,13 @@ void setupAccessPoint() {
   // Set up the configuration web server
   setupWiFiConfigServer();
 }
-
 // Function to set up the configuration web server in AP mode
 void setupWiFiConfigServer() {
   server.onNotFound([](AsyncWebServerRequest *request) {
     request->redirect("http://" + WiFi.softAPIP().toString());
   });
-
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/html", WIFI_CONFIG_HTML);
+    request->send(LittleFS, "/index.html", "text/html");
   });
 
   server.on("/wifi", HTTP_POST, [](AsyncWebServerRequest *request) {
@@ -882,17 +809,33 @@ void setupWiFiConfigServer() {
 
     request->send(200, "text/html", response);
   });
+  Serial.println("Serving ONLY index.html");
 
   server.begin();
 }
 void setupServer() {
+  //This code handles web requests when a user changes settings on the web interface. In plain English:
+  //First, it checks if the request includes a valid password. If not, it rejects the request with a "Forbidden" message.
+  //If the password is correct, it looks at which setting the user is trying to change by checking which form field was submitted.
+  //When it finds the matching parameter (like temperature limit, manual voltage, etc.), it:
+  //Gets the new value the user entered
+  //Saves that value to a file in the ESP32's storage system
+  //Updates the corresponding variable in the program's memory
+  //Finally, it sends back a confirmation message to the web browser with the value that was set.
+  //This is essentially how the system handles all the setting changes from the web interface - validating the request,
+  //identifying which setting to change, saving it permanently, updating it in memory, and confirming the action to the user.
+
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/index.html", "text/html", false, processor);
+    request->send(LittleFS, "/index.html", "text/html");
   });
 
-  server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request) {
-    String inputMessage;
 
+  server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (!request->hasParam("password") || strcmp(request->getParam("password")->value().c_str(), requiredPassword) != 0) {
+      request->send(403, "text/plain", "Forbidden");
+      return;
+    }
+    String inputMessage;
     if (request->hasParam(TLimit)) {
       inputMessage = request->getParam(TLimit)->value();
       writeFile(LittleFS, "/TemperatureLimitF.txt", inputMessage.c_str());
@@ -968,6 +911,72 @@ void setupServer() {
     request->send(200, "text/plain", inputMessage);
   });
 
+  server.on("/setPassword", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (!request->hasParam("password", true) || !request->hasParam("newpassword", true)) {
+      request->send(400, "text/plain", "Missing fields");
+      return;
+    }
+
+    String password = request->getParam("password", true)->value();
+    String newPassword = request->getParam("newpassword", true)->value();
+
+    password.trim();
+    newPassword.trim();
+
+    if (newPassword.length() == 0) {
+      request->send(400, "text/plain", "Empty new password");
+      return;
+    }
+
+    // Validate the existing admin password first
+    if (!validatePassword(password.c_str())) {
+      request->send(403, "text/plain", "FAIL");  // Wrong password
+      return;
+    }
+
+    // Save the plaintext password for recovery
+    File plainFile = LittleFS.open("/password.txt", "w");
+    if (plainFile) {
+      plainFile.println(newPassword);
+      plainFile.close();
+    }
+
+    // Create and save the hash
+    char hash[65] = { 0 };
+    sha256(newPassword.c_str(), hash);
+
+    File file = LittleFS.open("/password.hash", "w");
+    if (!file) {
+      request->send(500, "text/plain", "Failed to open password file");
+      return;
+    }
+
+    file.println(hash);
+    file.close();
+
+    // Update RAM copy
+    strncpy(requiredPassword, newPassword.c_str(), sizeof(requiredPassword) - 1);
+    strncpy(storedPasswordHash, hash, sizeof(storedPasswordHash) - 1);
+
+    request->send(200, "text/plain", "OK");
+  });
+
+  server.on("/checkPassword", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (!request->hasParam("password", true)) {
+      request->send(400, "text/plain", "Missing password");
+      return;
+    }
+    String password = request->getParam("password", true)->value();
+    password.trim();
+
+    if (validatePassword(password.c_str())) {
+      request->send(200, "text/plain", "OK");
+    } else {
+      request->send(403, "text/plain", "FAIL");
+    }
+  });
+
+
   server.onNotFound([](AsyncWebServerRequest *request) {
     String path = request->url();
     Serial.print("Request for: ");
@@ -999,7 +1008,6 @@ void setupServer() {
   server.addHandler(&events);
   server.begin();
 }
-
 // Process DNS requests for captive portal
 void dnsHandleRequest() {
   if (currentWiFiMode == AWIFI_MODE_AP) {
@@ -1013,8 +1021,8 @@ void printBasicTaskStackInfo() {
 
   tasksCaptured = uxTaskGetSystemState(taskArray, numTasks, NULL);
 
-  Serial.println(F("\n===== TASK STACK REMAINING (BYTES) ====="));
-  Serial.println(F("Task Name        | Core | Stack Remaining | Alert"));
+  // Serial.println(F("\n===== TASK STACK REMAINING (BYTES) ====="));
+  // Serial.println(F("Task Name        | Core | Stack Remaining | Alert"));
 
   char coreIdBuffer[8];  // Buffer for core ID display
 
@@ -1045,14 +1053,14 @@ void printBasicTaskStackInfo() {
     }
 
 
-    Serial.printf("%-16s |  %-3s  |     %5d B     | %s\n",
-                  taskName,
-                  coreIdBuffer,
-                  stackBytes,
-                  alert);
+    //   Serial.printf("%-16s |  %-3s  |     %5d B     | %s\n",
+    //                 taskName,
+    //                 coreIdBuffer,
+    //                 stackBytes,
+    //                 alert);
   }
 
-  Serial.println(F("==========================================\n"));
+  // Serial.println(F("==========================================\n"));
 }
 
 void printHeapStats() {
@@ -1067,12 +1075,12 @@ void printHeapStats() {
     Heapfrag = 100 - ((heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) * 100) / rawFreeHeap);
   }
 
-  Serial.println(F("========== HEAP STATS =========="));
-  Serial.printf("Free Heap:               %5u KB\n", FreeHeap);
-  Serial.printf("Minimum Ever Free Heap:  %5u KB\n", MinFreeHeap);
-  Serial.printf("Free Internal RAM:       %5u KB\n", FreeInternalRam);
-  Serial.printf("Heap Fragmentation:      %5u %%\n", Heapfrag);
-  Serial.println(F("================================"));
+  // Serial.println(F("========== HEAP STATS =========="));
+  // Serial.printf("Free Heap:               %5u KB\n", FreeHeap);
+  // Serial.printf("Minimum Ever Free Heap:  %5u KB\n", MinFreeHeap);
+  // Serial.printf("Free Internal RAM:       %5u KB\n", FreeInternalRam);
+  // Serial.printf("Heap Fragmentation:      %5u %%\n", Heapfrag);
+  // Serial.println(F("================================"));
 }
 
 void updateCpuLoad() {
@@ -1111,7 +1119,7 @@ void updateCpuLoad() {
   lastIdle1Time = idle1Time;
   lastCheckTime = now;
   // Print CPU load directly
-  Serial.printf("CPU Load: Core 0 = %3d%%, Core 1 = %3d%%\n", cpuLoadCore0, cpuLoadCore1);
+  // Serial.printf("CPU Load: Core 0 = %3d%%, Core 1 = %3d%%\n", cpuLoadCore0, cpuLoadCore1);
 }
 
 void testTaskStats() {
@@ -1119,9 +1127,9 @@ void testTaskStats() {
 
   vTaskGetRunTimeStats(statsBuffer);
 
-  Serial.println(F("========== TASK CPU USAGE =========="));
-  Serial.println(statsBuffer);
-  Serial.println(F("====================================\n"));
+  // Serial.println(F("========== TASK CPU USAGE =========="));
+  // Serial.println(statsBuffer);
+  // Serial.println(F("====================================\n"));
 }
 
 void UpdateBatterySOC(unsigned long elapsedMillis) {
@@ -1255,14 +1263,93 @@ void ResetEnergyCounters() {
   SaveAllData();
 }
 
-void InitSystemSettings() {
+void sha256(const char *input, char *outputBuffer) {  // for security
+  byte shaResult[32];
+  mbedtls_md_context_t ctx;
+  const mbedtls_md_info_t *info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
 
-  // Unified initializer for all persistent config and runtime variables
+  mbedtls_md_init(&ctx);
+  mbedtls_md_setup(&ctx, info, 0);
+  mbedtls_md_starts(&ctx);
+  mbedtls_md_update(&ctx, (const unsigned char *)input, strlen(input));
+  mbedtls_md_finish(&ctx, shaResult);
+  mbedtls_md_free(&ctx);
+
+  for (int i = 0; i < 32; ++i) {
+    sprintf(outputBuffer + (i * 2), "%02x", shaResult[i]);
+  }
+}
+
+void loadPasswordHash() {
+  // First try to load plaintext password (for auth)
+  if (LittleFS.exists("/password.txt")) {
+    File plainFile = LittleFS.open("/password.txt", "r");
+    if (plainFile) {
+      String pwdStr = plainFile.readStringUntil('\n');
+      pwdStr.trim();
+      strncpy(requiredPassword, pwdStr.c_str(), sizeof(requiredPassword) - 1);
+      plainFile.close();
+      Serial.println("Plaintext password loaded from LittleFS");
+    }
+  }
+
+  // Now load the hash (for future use)
+  if (LittleFS.exists("/password.hash")) {
+    File file = LittleFS.open("/password.hash", "r");
+    if (file) {
+      size_t len = file.readBytesUntil('\n', storedPasswordHash, sizeof(storedPasswordHash) - 1);
+      storedPasswordHash[len] = '\0';  // null-terminate
+      file.close();
+      Serial.println("Password hash loaded from LittleFS");
+      return;
+    }
+  }
+
+  // If we get here, no password files exist - set defaults
+  strncpy(requiredPassword, "admin", sizeof(requiredPassword) - 1);
+  sha256("admin", storedPasswordHash);
+  Serial.println("No password file, using default admin password");
+}
+
+void savePasswordHash() {
+  File file = LittleFS.open("/password.hash", "w");
+  if (file) {
+    file.println(storedPasswordHash);
+    file.close();
+    Serial.println("Password hash saved to LittleFS");
+  } else {
+    Serial.println("Failed to open password.hash for writing");
+  }
+}
+
+void savePasswordPlaintext(const char *password) {
+  File file = LittleFS.open("/password.txt", "w");
+  if (file) {
+    file.println(password);
+    file.close();
+    Serial.println("Password saved to LittleFS");
+  } else {
+    Serial.println("Failed to open password.txt for writing");
+  }
+}
+
+bool validatePassword(const char *password) {
+  if (!password) return false;
+
+  char hash[65] = { 0 };
+  sha256(password, hash);
+
+  return (strcmp(hash, storedPasswordHash) == 0);
+}
+
+void InitSystemSettings() {  // load all settings from LittleFS.  If no files exist, create them and populate with the hardcoded values
+
   if (!LittleFS.exists("/BatteryCapacity.txt")) {
     writeFile(LittleFS, "/BatteryCapacity.txt", String(BatteryCapacity_Ah).c_str());
   } else {
     BatteryCapacity_Ah = readFile(LittleFS, "/BatteryCapacity.txt").toInt();
   }
+
   if (!LittleFS.exists("/PeukertExponent.txt")) {
     writeFile(LittleFS, "/PeukertExponent.txt", String(PeukertExponent_scaled).c_str());
   } else {
@@ -1292,78 +1379,156 @@ void InitSystemSettings() {
   } else {
     FuelEfficiency_scaled = readFile(LittleFS, "/FuelEfficiency.txt").toInt();
   }
-
-  if (!LittleFS.exists("/IBVMax.txt")) {
-    writeFile(LittleFS, "/IBVMax.txt", String(IBVMax, 3).c_str());
+  //////////////////////////////////
+  if (!LittleFS.exists("/TemperatureLimitF.txt")) {
+    writeFile(LittleFS, "/TemperatureLimitF.txt", String(AlternatorTemperatureLimitF).c_str());
   } else {
-    IBVMax = readFile(LittleFS, "/IBVMax.txt").toFloat();
+    AlternatorTemperatureLimitF = readFile(LittleFS, "/TemperatureLimitF.txt").toInt();
   }
+  if (!LittleFS.exists("/ManualVoltage.txt")) {
+    writeFile(LittleFS, "/ManualVoltage.txt", String(ManualVoltageTarget).c_str());
+  } else {
+    ManualVoltageTarget = readFile(LittleFS, "/ManualVoltage.txt").toFloat();  // these float values might become problematic for payload size?
+  }
+  if (!LittleFS.exists("/FullChargeVoltage.txt")) {
+    writeFile(LittleFS, "/FullChargeVoltage.txt", String(ChargingVoltageTarget).c_str());
+  } else {
+    ChargingVoltageTarget = readFile(LittleFS, "/FullChargeVoltage.txt").toFloat();
+  }
+  if (!LittleFS.exists("/TargetAmpz.txt")) {
+    writeFile(LittleFS, "/TargetAmpz.txt", String(TargetAmps).c_str());
+  } else {
+    TargetAmps = readFile(LittleFS, "/TargetAmpz.txt").toInt();
+  }
+  if (!LittleFS.exists("/SwitchingFrequency.txt")) {
+    writeFile(LittleFS, "/SwitchingFrequency.txt", String(fffr).c_str());
+  } else {
+    fffr = readFile(LittleFS, "/SwitchingFrequency.txt").toInt();
+  }
+  if (!LittleFS.exists("/TargetFloatVoltage1.txt")) {
+    writeFile(LittleFS, "/TargetFloatVoltage1.txt", String(TargetFloatVoltage).c_str());
+  } else {
+    TargetFloatVoltage = readFile(LittleFS, "/TargetFloatVoltage1.txt").toFloat();
+  }
+  if (!LittleFS.exists("/interval1.txt")) {
+    writeFile(LittleFS, "/interval1.txt", String(interval).c_str());
+  } else {
+    interval = readFile(LittleFS, "/interval1.txt").toFloat();
+  }
+  if (!LittleFS.exists("/FieldAdjustmentInterval1.txt")) {
+    writeFile(LittleFS, "/FieldAdjustmentInterval1.txt", String(FieldAdjustmentInterval).c_str());
+  } else {
+    FieldAdjustmentInterval = readFile(LittleFS, "/FieldAdjustmentInterval1.txt").toFloat();
+  }
+  if (!LittleFS.exists("/ManualFieldToggle1.txt")) {
+    writeFile(LittleFS, "/ManualFieldToggle1.txt", String(ManualFieldToggle).c_str());
+  } else {
+    ManualFieldToggle = readFile(LittleFS, "/ManualFieldToggle1.txt").toInt();
+  }
+  if (!LittleFS.exists("/SwitchControlOverride1.txt")) {
+    writeFile(LittleFS, "/SwitchControlOverride1.txt", String(SwitchControlOverride).c_str());
+  } else {
+    SwitchControlOverride = readFile(LittleFS, "/SwitchControlOverride1.txt").toInt();
+  }
+  if (!LittleFS.exists("/ForceFloat1.txt")) {
+    writeFile(LittleFS, "/ForceFloat1.txt", String(ForceFloat).c_str());
+  } else {
+    ForceFloat = readFile(LittleFS, "/ForceFloat1.txt").toInt();
+  }
+  if (!LittleFS.exists("/OnOff1.txt")) {
+    writeFile(LittleFS, "/OnOff1.txt", String(OnOff).c_str());
+  } else {
+    OnOff = readFile(LittleFS, "/OnOff1.txt").toInt();
+  }
+  if (!LittleFS.exists("/HiLow1.txt")) {
+    writeFile(LittleFS, "/HiLow1.txt", String(HiLow).c_str());
+  } else {
+    HiLow = readFile(LittleFS, "/HiLow1.txt").toInt();
+  }
+  if (!LittleFS.exists("/LimpHome1.txt")) {
+    writeFile(LittleFS, "/LimpHome1.txt", String(LimpHome).c_str());
+  } else {
+    LimpHome = readFile(LittleFS, "/LimpHome1.txt").toInt();
+  }
+  if (!LittleFS.exists("/VeData1.txt")) {
+    writeFile(LittleFS, "/VeData1.txt", String(VeData).c_str());
+  } else {
+    VeData = readFile(LittleFS, "/VeData1.txt").toInt();
+  }
+  if (!LittleFS.exists("/NMEA0183Data1.txt")) {
+    writeFile(LittleFS, "/NMEA0183Data1.txt", String(NMEA0183Data).c_str());
+  } else {
+    NMEA0183Data = readFile(LittleFS, "/NMEA0183Data1.txt").toInt();
+  }
+  if (!LittleFS.exists("/NMEA2KData1.txt")) {
+    writeFile(LittleFS, "/NMEA2KData1.txt", String(NMEA2KData).c_str());
+  } else {
+    NMEA2KData = readFile(LittleFS, "/NMEA2KData1.txt").toInt();
+  }
+}
 
+void InitPersistentVariables() {
+
+  // Initializer for all Persistent variables  involving littleFS
+
+  if (!LittleFS.exists("/IBVMax.txt")) {                            // if the Flash storage file does not exist
+    writeFile(LittleFS, "/IBVMax.txt", String(IBVMax, 3).c_str());  // create the file, and save the current RAM variable value
+  } else {                                                          // otherwise
+    IBVMax = readFile(LittleFS, "/IBVMax.txt").toFloat();           // update the variable value in RAM from the Flash storage
+  }
   if (!LittleFS.exists("/MeasuredAmpsMax.txt")) {
     writeFile(LittleFS, "/MeasuredAmpsMax.txt", String(MeasuredAmpsMax, 3).c_str());
   } else {
     MeasuredAmpsMax = readFile(LittleFS, "/MeasuredAmpsMax.txt").toFloat();
   }
-
   if (!LittleFS.exists("/RPMMax.txt")) {
     writeFile(LittleFS, "/RPMMax.txt", String(RPMMax).c_str());
   } else {
     RPMMax = readFile(LittleFS, "/RPMMax.txt").toInt();
   }
-
-
-  if (!LittleFS.exists("/SoC_percent.txt")) {
+  if (!LittleFS.exists("/SoC_percent.txt")) {  // Does this really belong here?
     writeFile(LittleFS, "/SoC_percent.txt", String(SoC_percent).c_str());
   } else {
     SoC_percent = readFile(LittleFS, "/SoC_percent.txt").toInt();
   }
-
   if (!LittleFS.exists("/EngineRunTime.txt")) {
     writeFile(LittleFS, "/EngineRunTime.txt", String(EngineRunTime).c_str());
   } else {
     EngineRunTime = readFile(LittleFS, "/EngineRunTime.txt").toInt();
   }
-
   if (!LittleFS.exists("/EngineCycles.txt")) {
     writeFile(LittleFS, "/EngineCycles.txt", String(EngineCycles).c_str());
   } else {
     EngineCycles = readFile(LittleFS, "/EngineCycles.txt").toInt();
   }
-
   if (!LittleFS.exists("/AlternatorOnTime.txt")) {
     writeFile(LittleFS, "/AlternatorOnTime.txt", String(AlternatorOnTime).c_str());
   } else {
     AlternatorOnTime = readFile(LittleFS, "/AlternatorOnTime.txt").toInt();
   }
-
   if (!LittleFS.exists("/AlternatorFuelUsed.txt")) {
     writeFile(LittleFS, "/AlternatorFuelUsed.txt", String(AlternatorFuelUsed).c_str());
   } else {
     AlternatorFuelUsed = readFile(LittleFS, "/AlternatorFuelUsed.txt").toInt();
   }
-
   if (!LittleFS.exists("/ChargedEnergy.txt")) {
     writeFile(LittleFS, "/ChargedEnergy.txt", String(ChargedEnergy).c_str());
   } else {
     ChargedEnergy = readFile(LittleFS, "/ChargedEnergy.txt").toInt();
   }
-
   if (!LittleFS.exists("/DischargedEnergy.txt")) {
     writeFile(LittleFS, "/DischargedEnergy.txt", String(DischargedEnergy).c_str());
   } else {
     DischargedEnergy = readFile(LittleFS, "/DischargedEnergy.txt").toInt();
   }
-
   if (!LittleFS.exists("/AlternatorChargedEnergy.txt")) {
     writeFile(LittleFS, "/AlternatorChargedEnergy.txt", String(AlternatorChargedEnergy).c_str());
   } else {
     AlternatorChargedEnergy = readFile(LittleFS, "/AlternatorChargedEnergy.txt").toInt();
   }
-
   if (!LittleFS.exists("/MaxAlternatorTemperatureF.txt")) {
     writeFile(LittleFS, "/MaxAlternatorTemperatureF.txt", String(MaxAlternatorTemperatureF).c_str());
   } else {
     MaxAlternatorTemperatureF = readFile(LittleFS, "/MaxAlternatorTemperatureF.txt").toInt();
   }
 }
-
