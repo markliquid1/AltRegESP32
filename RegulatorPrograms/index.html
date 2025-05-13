@@ -204,6 +204,20 @@ Contact me at mark@xengineering.net       -->
       align-items: center;
     }
 
+    /* Locking Settings Capability */
+    .locked input,
+    .locked select,
+    .locked button {
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    .locked label.switch {
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+
     /* Responsive adjustments */
     @media (max-width: 992px) {
       .settings-grid {
@@ -307,6 +321,55 @@ Contact me at mark@xengineering.net       -->
     .corner-status-disconnected {
       background-color: #F44336;
     }
+
+    /* Dark Mode */
+    .dark-mode {
+      --primary: #888888;
+      --accent: #00a19a;
+      --bg-light: #121212;
+      --text-dark: #888888;
+      --text-light: #888888;
+      --card-light: #1e1e1e;
+      --border: #444444;
+      --reading: #888888;
+    }
+
+    .dark-mode input[type="text"],
+    .dark-mode input[type="number"],
+    .dark-mode input[type="password"] {
+      background-color: #1e1e1e;
+      color: #cccccc;
+      border-color: #444444;
+    }
+
+    .dark-mode .section-title {
+      background-color: #222222;
+      color: #cccccc;
+    }
+
+    .dark-mode input[type="submit"] {
+      background-color: #2a2a2a;
+      color: #aaaaaa;
+    }
+
+    .dark-mode input[type="submit"]:hover {
+      background-color: #444444;
+    }
+
+    .dark-mode .slider {
+      background-color: #333333;
+    }
+
+    .slider:before {
+      background-color: #888888;
+    }
+
+
+    .dark-mode input[type="checkbox"] {
+      filter: brightness(0.6);
+      background-color: #444444;
+      border: 1px solid #666666;
+    }
   </style>
 
 
@@ -331,8 +394,6 @@ Contact me at mark@xengineering.net       -->
   <h2>Security</h2>
   <div class="settings-grid">
     <div class="settings-card">
-      <div class="section-title">Security</div>
-
       <div id="lock-status" style="font-weight:bold; color:#00a19a; margin-bottom:10px;">LOCKED</div>
 
       <div class="form-row">
@@ -393,14 +454,14 @@ Contact me at mark@xengineering.net       -->
 
   <h2>Settings</h2>
 
-  <fieldset id="settings-section" disabled>
+  <div id="settings-section" class="locked">
     <div class="settings-grid">
 
       <div class="settings-card">
-        <div class="section-title">Basic Settings</div>
+        <div class="section-title">Basic</div>
         <hr />
         <div class="form-row">
-          <div class="form-label">Regulator Output (<span id="OnOff1_echo">0</span>):</div>
+          <div class="form-label">Alternator Charging (<span id="OnOff1_echo">0</span>):</div>
           <div class="form-input">
             <form action="/get" method="GET" target="hidden-form">
               <input type="hidden" name="password" class="password_field">
@@ -415,6 +476,31 @@ Contact me at mark@xengineering.net       -->
             </form>
           </div>
         </div>
+
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Charge Rate Nominal (A) (<span id="TargetAmpz_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="TargetAmpz" type="number" step="1" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Charge Rate Low (A) (<span id="TargetAmpL_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="TargetAmpL" type="number" step="1" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+
         <hr />
         <div class="form-row">
           <div class="form-label">Charge Rate (<span id="HiLow1_echo">0</span>):</div>
@@ -427,11 +513,12 @@ Contact me at mark@xengineering.net       -->
                   onchange="document.getElementById('HiLow1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
                 <span class="slider round"></span>
               </label>
-              <span class="toggle-label">High</span>
+              <span class="toggle-label">Normal</span>
               <input id="HiLow1" name="HiLow1" type="number" value="" style="display:none;" />
             </form>
           </div>
         </div>
+
         <hr />
         <div class="form-row">
           <div class="form-label">Limp Home Mode (<span id="LimpHome1_echo">0</span>):</div>
@@ -449,24 +536,7 @@ Contact me at mark@xengineering.net       -->
             </form>
           </div>
         </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Switch Panel Override (<span id="SwitchControlOverride1_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="SwitchControlOverride1_checkbox" type="checkbox"
-                  onchange="document.getElementById('SwitchControlOverride1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="SwitchControlOverride1" name="SwitchControlOverride1" type="number" value=""
-                style="display:none;" />
-            </form>
-          </div>
-        </div>
+
         <hr />
         <div class="form-row">
           <div class="form-label">Alternator Temp Limit (F) (<span id="TemperatureLimitF_echo">0</span>):</div>
@@ -489,17 +559,7 @@ Contact me at mark@xengineering.net       -->
             </form>
           </div>
         </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Charge Rate (A) (<span id="TargetAmpz_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="TargetAmpz" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
+
         <hr />
         <div class="form-row">
           <div class="form-label">Float Voltage (<span id="TargetFloatVoltage1_echo">0</span>):
@@ -512,10 +572,30 @@ Contact me at mark@xengineering.net       -->
             </form>
           </div>
         </div>
+
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Switch Panel Override (<span id="SwitchControlOverride1_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">Off</span>
+              <label class="switch">
+                <input id="SwitchControlOverride1_checkbox" type="checkbox"
+                  onchange="document.getElementById('SwitchControlOverride1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">On</span>
+              <input id="SwitchControlOverride1" name="SwitchControlOverride1" type="number" value=""
+                style="display:none;" />
+            </form>
+          </div>
+        </div>
+
       </div>
 
       <div class="settings-card">
-        <div class="section-title">Advanced Settings</div>
+        <div class="section-title">Advanced</div>
         <div class="form-row">
           <div class="form-label">Field Switch Freq (hz) (<span id="SwitchingFrequency_echo">0</span>):</div>
           <div class="form-input">
@@ -569,12 +649,12 @@ Contact me at mark@xengineering.net       -->
         </div>
         <hr />
         <div class="form-row">
-          <div class="form-label">Manual Field Setpoint (V) (<span id="ManualVoltage_echo">0</span>):
+          <div class="form-label">Manual Field Setpoint (%) (<span id="ManualDuty_echo">0</span>):
           </div>
           <div class="form-input">
             <form action="/get" method="GET" target="hidden-form">
               <input type="hidden" name="password" class="password_field">
-              <input name="ManualVoltage" type="number" step="0.01" min="0" />
+              <input name="ManualDuty" type="number" step="1" min="0" />
               <input onclick="submitMessage()" type="submit" value="Set" />
             </form>
           </div>
@@ -583,6 +663,22 @@ Contact me at mark@xengineering.net       -->
 
       <div class="settings-card">
         <div class="section-title">System</div>
+
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Dark Mode:</div>
+          <div class="form-input">
+            <span class="toggle-label">Off</span>
+            <label class="switch">
+              <input id="DarkMode_checkbox" type="checkbox"
+                onchange="document.body.classList.toggle('dark-mode'); localStorage.setItem('darkMode', this.checked ? '1' : '0'); updateUplotTheme(uplot); updateUplotTheme(currentTempPlot); updateUplotTheme(voltagePlot); updateUplotTheme(rpmPlot); updateUplotTheme(clientUpdatePlot);" />
+              <span class="slider round"></span>
+            </label>
+
+            <span class="toggle-label">On</span>
+          </div>
+        </div>
+
         <hr />
         <div class="form-row">
           <div class="form-label">VE.Direct Data (<span id="VeData1_echo">0</span>):</div>
@@ -637,7 +733,7 @@ Contact me at mark@xengineering.net       -->
       </div>
 
     </div>
-  </fieldset>
+  </div>
 
   <h2>Live Data</h2>
   <div class="settings-grid">
@@ -749,7 +845,7 @@ Contact me at mark@xengineering.net       -->
     </div>
 
     <div class="settings-card">
-      <div class="section-title">ESP32 Monitor</div>
+      <div class="section-title">ESP32</div>
       <div class="grid">
         <div class="card">
           <p>Loop Time</p>
@@ -806,27 +902,22 @@ Contact me at mark@xengineering.net       -->
   <h2>Plots</h2>
 
   <div class="settings-card">
-    <div class="section-title">Current and Temperature History</div>
     <div class="plot-container" id="current-temp-plot"></div>
   </div>
   <div class="settings-card">
-    <div class="section-title">Battery Voltage History</div>
     <div class="plot-container" id="voltage-plot"></div>
   </div>
 
 
   <div class="settings-card">
-    <div class="section-title">RPM History</div>
     <div class="plot-container" id="rpm-plot"></div>
   </div>
 
   <div class="settings-card">
-    <div class="section-title">Client Update Time History</div>
     <div class="plot-container" id="client-update-plot"></div>
   </div>
 
   <div class="settings-card">
-    <div class="section-title">WiFi Signal Strength History</div>
     <div class="plot-container" id="wifi-plot"></div>
   </div>
 
@@ -892,7 +983,7 @@ Contact me at mark@xengineering.net       -->
       SwitchingFrequency: 36,
       interval1: 37,
       FieldAdjustmentInterval1: 38,
-      ManualVoltage: 39,
+      ManualDuty: 39,
       SwitchControlOverride1: 40,
       OnOff1: 41,
       ManualFieldToggle1: 42,
@@ -900,10 +991,10 @@ Contact me at mark@xengineering.net       -->
       LimpHome1: 44,
       VeData1: 45,
       NMEA0183Data1: 46,
-      NMEA2KData1: 47
+      NMEA2KData1: 47,
+      TargetAmpL: 48
+
     };
-
-
 
     function updateInlineStatus(isConnected) {
       const cornerStatus = document.getElementById('corner-status');
@@ -911,10 +1002,10 @@ Contact me at mark@xengineering.net       -->
       if (cornerStatus) {
         if (isConnected) {
           cornerStatus.className = 'corner-status corner-status-connected';
-          cornerStatus.textContent = 'CONNECTED';
+          cornerStatus.textContent = 'WIFI CONNECTED';
         } else {
           cornerStatus.className = 'corner-status corner-status-disconnected';
-          cornerStatus.textContent = 'DISCONNECTED';
+          cornerStatus.textContent = 'WIFI DISCONNECTED';
         }
       }
     }
@@ -1362,22 +1453,26 @@ Contact me at mark@xengineering.net       -->
         .then(response => response.text())
         .then(text => {
           if (text.trim() === "OK") {
+
+
             currentAdminPassword = password;
             // Unlock settings
-            const settingsSection = document.getElementById('settings-section');
-            if (settingsSection) {
-              settingsSection.disabled = false;
-            }
+            const section = document.getElementById('settings-section');
+            if (section) section.classList.remove("locked");
+
+
             const lockStatus = document.getElementById('lock-status');
             if (lockStatus) {
-              lockStatus.textContent = "Settings are Unlocked --- Edit them below";
+              lockStatus.textContent = "Settings are Unlocked";
               lockStatus.style.color = "#00a19a";
             }
 
             updatePasswordFields();
             msg.textContent = "Password Accepted";
             msg.style.color = "#00a19a";
-          } else {
+          }
+
+          else {
             msg.textContent = "Wrong Password";
             msg.style.color = "#00a19a";
           }
@@ -1394,16 +1489,18 @@ Contact me at mark@xengineering.net       -->
     }
 
     function lockSettingsManually() {
-      const settingsSection = document.getElementById('settings-section');
-      const lockStatus = document.getElementById('lock-status');
+      const section = document.getElementById('settings-section');
+      if (section) section.classList.add("locked");
 
-      if (settingsSection) settingsSection.disabled = true;
+      const lockStatus = document.getElementById('lock-status');
       if (lockStatus) {
         lockStatus.textContent = "Settings are Locked --- Enter Password to Unlock";
-        lockStatus.style.color = "#00a19a";  // Your house orange
+        lockStatus.style.color = "#00a19a";
       }
       currentAdminPassword = "";
     }
+
+
 
     function setNewPassword() {
       const button = document.getElementById('newpassword_set');
@@ -1449,22 +1546,24 @@ Contact me at mark@xengineering.net       -->
       return false; // prevent form submit
     }
 
-
-
-
-
-
     window.addEventListener("load", function () {
       //gray out Settings on a reload
       const settingsSection = document.getElementById('settings-section');
       if (settingsSection) {
-        settingsSection.disabled = true;
+        settingsSection.classList.add("locked");
       }
       const lockStatus = document.getElementById('lock-status');
       if (lockStatus) {
         lockStatus.textContent = "Settings are Locked";
         lockStatus.style.color = "#00a19a";  //  My house orange
       }
+      if (localStorage.getItem('darkMode') === '1') {
+        document.body.classList.add('dark-mode');
+        const darkToggle = document.getElementById("DarkMode_checkbox");
+        if (darkToggle) darkToggle.checked = true;
+      }
+
+
       initWifiPlot();
       initCurrentTempPlot();
       initVoltagePlot();
@@ -1514,7 +1613,7 @@ Contact me at mark@xengineering.net       -->
           ["SwitchingFrequency_echo", "SwitchingFrequency"],
           ["interval1_echo", "interval1"],
           ["FieldAdjustmentInterval1_echo", "FieldAdjustmentInterval1"],
-          ["ManualVoltage_echo", "ManualVoltage"],
+          ["ManualDuty_echo", "ManualDuty"],
           ["SwitchControlOverride1_echo", "SwitchControlOverride1"],
           ["OnOff1_echo", "OnOff1"],
           ["ManualFieldToggle1_echo", "ManualFieldToggle1"],
@@ -1522,7 +1621,9 @@ Contact me at mark@xengineering.net       -->
           ["LimpHome1_echo", "LimpHome1"],
           ["VeData1_echo", "VeData1"],
           ["NMEA0183Data1_echo", "NMEA0183Data1"],
-          ["NMEA2KData1_echo", "NMEA2KData1"]
+          ["NMEA2KData1_echo", "NMEA2KData1"],
+          ["TargetAmpL_echo", "TargetAmpL"]
+
         ];
 
 
@@ -1607,7 +1708,7 @@ Contact me at mark@xengineering.net       -->
             SwitchingFrequency: values[fieldIndexes.SwitchingFrequency],
             interval1: values[fieldIndexes.interval1],
             FieldAdjustmentInterval1: values[fieldIndexes.FieldAdjustmentInterval1],
-            ManualVoltage: values[fieldIndexes.ManualVoltage],
+            ManualDuty: values[fieldIndexes.ManualDuty],
             SwitchControlOverride1: values[fieldIndexes.SwitchControlOverride1],
             OnOff1: values[fieldIndexes.OnOff1],
             ManualFieldToggle1: values[fieldIndexes.ManualFieldToggle1],
@@ -1615,7 +1716,9 @@ Contact me at mark@xengineering.net       -->
             LimpHome1: values[fieldIndexes.LimpHome1],
             VeData1: values[fieldIndexes.VeData1],
             NMEA0183Data1: values[fieldIndexes.NMEA0183Data1],
-            NMEA2KData1: values[fieldIndexes.NMEA2KData1]
+            NMEA2KData1: values[fieldIndexes.NMEA2KData1],
+            TargetAmpL: values[fieldIndexes.TargetAmpL]
+
           };
 
           window._debugData = data;
@@ -1630,9 +1733,9 @@ Contact me at mark@xengineering.net       -->
                 el.textContent = "—";
                 continue;
               }
-              if (["BatteryV", "Channel3V", "IBV", "VictronVoltage", "vvout", "FullChargeVoltage", "TargetFloatVoltage1", "ManualVoltage"].includes(key)) {
+              if (["BatteryV", "Channel3V", "IBV", "VictronVoltage", "vvout", "FullChargeVoltage", "TargetFloatVoltage1"].includes(key)) {
                 el.textContent = (value / 100).toFixed(2);
-              } else if (["MeasuredAmps", "Bcur", "iiout", "TargetAmpz"].includes(key)) {
+              } else if (["MeasuredAmps", "Bcur", "iiout", "TargetAmpz", "TargetAmpL"].includes(key)) {
                 el.textContent = (value / 10).toFixed(1);
               } else {
                 el.textContent = Math.round(value);
@@ -1665,8 +1768,8 @@ Contact me at mark@xengineering.net       -->
           if ('FieldAdjustmentInterval1' in data) {
             document.getElementById('FieldAdjustmentInterval1_echo').textContent = (data.FieldAdjustmentInterval1 / 100).toFixed(2);
           }
-          if ('ManualVoltage' in data) {
-            document.getElementById('ManualVoltage_echo').textContent = (data.ManualVoltage / 100).toFixed(2);
+          if ('ManualDuty' in data) {
+            document.getElementById('ManualDuty_echo').textContent = data.ManualDuty;
           }
           if ('SwitchControlOverride1' in data) {
             document.getElementById('SwitchControlOverride1_echo').textContent = data.SwitchControlOverride1;
@@ -1692,11 +1795,20 @@ Contact me at mark@xengineering.net       -->
           if ('NMEA2KData1' in data) {
             document.getElementById('NMEA2KData1_echo').textContent = data.NMEA2KData1;
           }
+          if ('TargetAmpL' in data) {
+            document.getElementById('TargetAmpL_echo').textContent = data.TargetAmpL;
+          }
 
           const now = Math.floor(Date.now() / 1000);
 
 
           updateTogglesFromData(data);
+
+          // something to do with grayed out settings
+          if (currentAdminPassword === "") {
+            document.getElementById('settings-section').classList.add("locked");
+          }
+
 
 
           // Update plot data - this section remains the same
@@ -1802,6 +1914,72 @@ Contact me at mark@xengineering.net       -->
 
 
 
+      // uplot plot minor details like dark mode and gentle space
+      function updateUplotTheme(plot) {
+        const textColor = getComputedStyle(document.body).getPropertyValue('--text-dark').trim();
+        const gridColor = getComputedStyle(document.body).getPropertyValue('--border').trim();
+
+        // Update axis label divs
+        plot.root.querySelectorAll('.u-label').forEach(el => {
+          el.style.color = textColor;
+        });
+
+        // Update tick label text (SVG)
+        plot.root.querySelectorAll('.u-axis text').forEach(el => {
+          el.setAttribute('fill', textColor);
+        });
+
+        // Update axis strokes (SVG)
+        plot.root.querySelectorAll('.u-axis path').forEach(el => {
+          el.setAttribute('stroke', textColor);
+        });
+
+        // Update grid lines (SVG)
+        plot.root.querySelectorAll('.u-grid line').forEach(el => {
+          el.setAttribute('stroke', gridColor);
+        });
+      }
+
+      // Improve legend appearance with clean lines and responsive spacing
+      const style = document.createElement('style');
+      style.textContent = `
+  .u-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .u-legend .u-series {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .u-legend .u-marker {
+    display: inline-block;
+    width: 18px;
+    height: 3px;
+    background-color: currentColor;
+    border-radius: 1px;
+  }
+
+  .plot-container {
+    padding: 10px;
+    box-sizing: border-box;
+  }
+
+  @media (max-width: 768px) {
+    .plot-container {
+      padding: 5px;
+    }
+  }
+`;
+      document.head.appendChild(style);
+
+
 
       // Initialize toggle states on page load
       document.getElementById("ManualFieldToggle1_checkbox").checked = (document.getElementById("ManualFieldToggle1").value === "1");
@@ -1854,7 +2032,7 @@ Contact me at mark@xengineering.net       -->
 
   <div id="corner-status" class="corner-status corner-status-connected">CONNECTED</div>
 
-  <!-- Hidden fallback elements to satisfy JavaScript field lookups DELETE THIS HACK JOB -->
+  <!-- Hidden fallback elements to satisfy JavaScript field lookups DELETE THIS HACK JOB SOMEDAY -->
   <div style="display:none;">
     <span id="RPMMaxID" style="display:none;">0</span>
     <span id="SoC_percentID" style="display:none;">0</span>
@@ -1873,7 +2051,7 @@ Contact me at mark@xengineering.net       -->
     <span id="SwitchingFrequency_echo" style="display:none;">0</span>
     <span id="interval1_echo" style="display:none;">0</span>
     <span id="FieldAdjustmentInterval1_echo" style="display:none;">0</span>
-    <span id="ManualVoltage_echo" style="display:none;">0</span>
+    <span id="ManualDuty_echo" style="display:none;">0</span>
     <span id="SwitchControlOverride1_echo" style="display:none;">0</span>
     <span id="OnOff1_echo" style="display:none;">0</span>
     <span id="ManualFieldToggle1_echo" style="display:none;">0</span>
@@ -1889,7 +2067,7 @@ Contact me at mark@xengineering.net       -->
     <input id="SwitchingFrequency" style="display:none;" value="0" />
     <input id="interval1" style="display:none;" value="0" />
     <input id="FieldAdjustmentInterval1" style="display:none;" value="0" />
-    <input id="ManualVoltage" style="display:none;" value="0" />
+    <input id="ManualDuty" style="display:none;" value="0" />
     <input id="SwitchControlOverride1" style="display:none;" value="0" />
     <input id="OnOff1" style="display:none;" value="0" />
     <input id="ManualFieldToggle1" style="display:none;" value="0" />
@@ -1898,7 +2076,15 @@ Contact me at mark@xengineering.net       -->
     <input id="VeData1" style="display:none;" value="0" />
     <input id="NMEA0183Data1" style="display:none;" value="0" />
     <input id="NMEA2KData1" style="display:none;" value="0" />
+    <input id="TargetAmpL" style="display:none;" value="0" />
+    <input id="TargetAmpL_echo" style="display:none;" value="0" />
+
+
   </div>
+
+
+
+
 
 
 </body>
