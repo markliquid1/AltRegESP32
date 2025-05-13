@@ -104,38 +104,41 @@ int AnalogReadTime = 0;   // this is the present
 int AnalogReadTime2 = 0;  // this is the maximum ever
 
 //Input Settings
-int TargetAmps = 55;  //Normal alternator output, for best performance, set ot something that just barely won't overheat
+int TargetAmps = 55;   //Normal alternator output, for best performance, set to something that just barely won't overheat
+int TargetAmpLA = 25;  //Alternator output in Lo mode
+int uTargetAmps = 0;   // the one that gets set to either the normal setting or the low setting then used.
+
 float TargetFloatVoltage = 13.9;
 float TargetBulkVoltage = 14.5;
 float ChargingVoltageTarget = 0;  // This is what the code really uses. It gets set to TargetFloatVoltage or TargetBulkVoltage later on
 
 float dutyCycle = 5;
 float dutyStep = 0.8;  // duty step to adjust field target by, each time the loop runs.  Larger numbers = faster response, less stability
-const float MaxDuty = 99.0;
-const float MinDuty = 0.0;
-const int ManualDutyTarget = 50;  // example manual override value
+float MaxDuty = 99.0;
+float MinDuty = 0.0;
+int ManualDutyTarget = 50;  // example manual override value
 
 
 float FieldAdjustmentInterval = 500;      // The regulator field output is updated once every this many milliseconds
 float MinimumFieldVoltage = 1;            // A min value here ensures that engine speed can be measured even with no alternator output commanded.  (This is only enforced when Ignition input is high)
 float AlternatorTemperatureLimitF = 150;  // the offset appears to be +40 to +50 to get true max alternator external metal temp, depending on temp sensor installation, so 150 here will produce a metal temp ~200F
 int ManualFieldToggle = 1;                // set to 1 to enable manual control of regulator field output, helpful for debugging
-float ManualVoltageTarget = 5;            // voltage target corresponding to the toggle above
-int SwitchControlOverride = 1;            // set to 1 for web interface switches to override physical switch panel
-int ForceFloat = 0;                       // set to 1 to force the float voltage to be the charging target
-int OnOff = 1;                            // 0 is charger off, 1 is charger On
-int Ignition = 1;                         // This will eventually be an over-rideable digital input
-int HiLow = 1;                            // 0 will be a low setting, 1 a high setting
-int LimpHome = 0;                         // 1 will set to limp home mode, whatever that gets set up to be
-int resolution = 12;                      // for OneWire temp sensor measurement
-int VeData = 0;                           // Set to 1 if VE serial data exists
-int NMEA0183Data = 0;                     // Set to 1 if NMEA serial data exists doesn't do anything yet
-int NMEA2KData = 1;                       // doesn't do anything yet
+//float ManualVoltageTarget = 5;            // voltage target corresponding to the toggle above
+int SwitchControlOverride = 1;  // set to 1 for web interface switches to override physical switch panel
+int ForceFloat = 0;             // set to 1 to force the float voltage to be the charging target
+int OnOff = 1;                  // 0 is charger off, 1 is charger On
+int Ignition = 1;               // This will eventually be an over-rideable digital input
+int HiLow = 1;                  // 0 will be a low setting, 1 a high setting
+int LimpHome = 0;               // 1 will set to limp home mode, whatever that gets set up to be
+int resolution = 12;            // for OneWire temp sensor measurement
+int VeData = 0;                 // Set to 1 if VE serial data exists
+int NMEA0183Data = 0;           // Set to 1 if NMEA serial data exists doesn't do anything yet
+int NMEA2KData = 1;             // doesn't do anything yet
 //Field PWM stuff
 float interval = 0.8;          // larger value = faster response but more unstable
 float vout = 1;                // needs deleting
 const int pwmPin = 32;         // field PWM
-const int pwmChannel = 0;      //0–7 available for high-speed PWM  (ESP32)
+//const int pwmChannel = 0;      //0–7 available for high-speed PWM  (ESP32)
 const int pwmResolution = 16;  // 16-bit resolution (0–65535)
 float fffr = 500;              // this is the switching frequency in Hz, uses Float for wifi reasons
 
@@ -236,7 +239,7 @@ int prev_millis7888 = 0;  // used to reset the meximum loop time
 //"Blink without delay" style timer variables used to control how often differnet parts of code execute
 static unsigned long prev_millis4;   //  Not Needed?
 static unsigned long prev_millis66;  //used to delay the updating of the display
-static unsigned long prev_millis22;  // used to delay sampling of sic450    //Maybe obsolete
+static unsigned long prev_millis22;  // used to delay field adjustment
 static unsigned long prev_millis3;   // used to delay sampling of ADS1115 to every 2 seconds for example
 //static unsigned long prev_millis2;    // used to delay sampling of temp sensor to every 2 seconds for example
 static unsigned long prev_millis33;    // used to delay sampling of Serial Data (ve direct)
@@ -286,7 +289,7 @@ unsigned long webgaugesinterval = 1000;  // delay in ms between sensor updates o
 //not the "Live Data" display section that shows real-time values.
 
 const char *TLimit = "TemperatureLimitF";  //TLimit is a pointer to an immutable String "TemperatureLimitF"
-const char *ManualV = "ManualVoltage";
+const char *ManualD = "ManualDuty";
 const char *FullChargeV = "FullChargeVoltage";
 const char *TargetA = "TargetAmpz";
 const char *FrequencyP = "SwitchingFrequency";
@@ -302,6 +305,8 @@ const char *LH = "LimpHome1";
 const char *VD = "VeData1";
 const char *N0 = "NMEA0183Data1";
 const char *N2 = "NMEA2KData1";
+const char *TargetL = "TargetAmpL";
+
 
 // WiFi provisioning settings
 const char *WIFI_SSID_FILE = "/ssid.txt";
@@ -469,8 +474,14 @@ void setup() {
   setCpuFrequencyMhz(240);
   Serial.begin(115200);
   delay(500);          // not sure if this is needed
+
   pinMode(4, OUTPUT);  // This pin is used to provide a high signal to Field Enable pin      PROBABLY OBSOLETE
   pinMode(2, OUTPUT);  // This pin is used to provide a heartbeat (pin 2 of ESP32 is the LED)
+ // ledcSetup(pwmChannel, fffr, pwmResolution);     // Configure LEDC for PWM (field output)
+  //ledcAttachPin(pwmPin, pwmChannel);    // Configure LEDC for PWM (field output)
+  // In ESP32 v3.x, this single function replaces both ledcSetup and ledcAttachPin
+  ledcAttach(pwmPin, fffr, pwmResolution);
+
 
   // Initialize LittleFS first.
   if (!LittleFS.begin(true)) {
@@ -604,6 +615,9 @@ void loop() {
     //ReadVEData();  //read Data from Victron VeDirect
     // UpdateDisplay();
     AdjustField();
+    Serial.println("The duty cycle should be: ");
+    Serial.println(dutyCycle);
+
     // Send WiFi data to client
     SendWifiData();
   }
@@ -655,12 +669,6 @@ void loop() {
       }
     }
   }
-  if (millis() - prev_millis743 > 5000) {  // every 5 seconds check CAN network (this might need adjustment)
-    if (NMEA2KData == 1) {
-      NMEA2000.ParseMessages();
-    }
-    prev_millis743 = millis();
-  }
   //Blink LED on and off every X seconds
   if (millis() - previousMillisBLINK >= intervalBLINK) {
     // Use different blink patterns to indicate WiFi status
@@ -684,31 +692,16 @@ void loop() {
     }
     previousMillisBLINK = millis();
   }
-
-  endtime = esp_timer_get_time();  //Record a start time for demonstration
-  LoopTime = (endtime - starttime);
-
-  if (LoopTime > MaximumLoopTime) {
-    MaximumLoopTime = LoopTime;
-  }
-
   if (millis() - prev_millis7888 > 3000) {  // every 3 seconds reset the maximum loop time
     MaximumLoopTime = 0;
     prev_millis7888 = millis();
   }
-
   endtime = esp_timer_get_time();  //Record a start time for demonstration
   LoopTime = (endtime - starttime);
-  //Serial.println(LoopTime);
+
   if (LoopTime > MaximumLoopTime) {
     MaximumLoopTime = LoopTime;
   }
-
-  if (millis() - prev_millis7888 > 3000) {  // every 2 seconds reset the maximum loop time
-    MaximumLoopTime = 0;
-    prev_millis7888 = millis();
-  }
-  //Serial.println(MaximumLoopTime);
 }
 
 template<typename T> void PrintLabelValWithConversionCheckUnDef(const char *label, T val, double (*ConvFunc)(double val) = 0, bool AddLf = false, int8_t Desim = -1) {
