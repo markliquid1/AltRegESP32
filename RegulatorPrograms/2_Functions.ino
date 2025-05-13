@@ -18,21 +18,28 @@
 void setDutyPercent(int percent) {  // Function to set PWM duty cycle by percentage
   percent = constrain(percent, 0, 100);
   uint32_t duty = (65535UL * percent) / 100;
-  ledcWrite(32, duty);
+  ledcWrite(pwmPin, duty);  // In v3.x, first parameter is the pin number
 }
-void AdjustField() {
-  if (Ignition == 1 && OnOff == 1) {
 
-    if (millis() - prev_millis22 > FieldAdjustmentInterval) {  // adjust field every half second
-      digitalWrite(4, FieldEnabler);                           // Enable the Field
+void AdjustField() {
+  if (millis() - prev_millis22 > FieldAdjustmentInterval) {  // adjust field every half second
+
+    if (Ignition == 1 && OnOff == 1) {
+
+      // digitalWrite(4, FieldEnabler);                           // Enable the Field
 
       if (ManualFieldToggle == 0) {
+        if (HiLow == 1) {
+          uTargetAmps = TargetAmps;
+        } else {
+          uTargetAmps = TargetAmpLA;
+        }
         // Auto-adjust mode
-        if (MeasuredAmps < TargetAmps && dutyCycle < (MaxDuty - dutyStep)) {
+        if (MeasuredAmps < uTargetAmps && dutyCycle < (MaxDuty - dutyStep)) {
           dutyCycle += dutyStep;
         }
 
-        if (MeasuredAmps > TargetAmps && dutyCycle > (MinDuty + dutyStep)) {
+        if (MeasuredAmps > uTargetAmps && dutyCycle > (MinDuty + dutyStep)) {
           dutyCycle -= dutyStep;
         }
 
@@ -45,22 +52,19 @@ void AdjustField() {
         }
 
         dutyCycle = constrain(dutyCycle, MinDuty, MaxDuty);
-        setDutyPercent((int)dutyCycle);
-        prev_millis22 = millis();
 
       } else {
         // Manual override
         dutyCycle = ManualDutyTarget;
-        setDutyPercent(ManualDutyTarget);
-        prev_millis22 = millis();
       }
-    } else {
-      // Field is disabled — reset duty cycle
-      dutyCycle = MinDuty;
-      setDutyPercent((int)dutyCycle);
     }
-  } else {
-    dutyCycle = MinDuty;  // start over from a low field voltage when it comes time to turn back on
+
+    else {
+      dutyCycle = MinDuty;  // start over from a low field voltage when it comes time to turn back on
+      prev_millis22 = millis();
+    }
+    setDutyPercent((int)dutyCycle);  // the int thing might be redundant
+    prev_millis22 = millis();
   }
 }
 void ReadAnalogInputs() {
@@ -90,10 +94,10 @@ void ReadAnalogInputs() {
   }
 
   //ADS1115 reading is based on trigger→wait→read   so as to not waste time.  That is way the below is so complicated
-if (ADS1115Disconnected != 0) {
-  Serial.println("theADS1115 was not connected and triggered a return");
-  return;
-}
+  if (ADS1115Disconnected != 0) {
+    Serial.println("theADS1115 was not connected and triggered a return");
+    return;
+  }
 
 
   unsigned long now = millis();
@@ -603,7 +607,7 @@ void SendWifiData() {
       // CSV field order: see index.html -> fields[] mapping
       char payload[1024];  // >1400 the wifi transmission won't fit in 1 packet
       snprintf(payload, sizeof(payload),
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                // Readings
                SafeInt(AlternatorTemperatureF),  //0
                SafeInt(DutyCycle),               //1
@@ -646,7 +650,7 @@ void SendWifiData() {
                SafeInt(fffr),  //36
                SafeInt(interval, 100),
                SafeInt(FieldAdjustmentInterval),  //38
-               SafeInt(ManualVoltageTarget, 100),
+               SafeInt(ManualDutyTarget),
                SafeInt(SwitchControlOverride),  //40
                SafeInt(OnOff),
                SafeInt(ManualFieldToggle),  //42
@@ -654,7 +658,9 @@ void SendWifiData() {
                SafeInt(LimpHome),  //44
                SafeInt(VeData),
                SafeInt(NMEA0183Data),  //46
-               SafeInt(NMEA2KData));
+               SafeInt(NMEA2KData)),
+        SafeInt(TargetAmpLA);  //48
+
 
       events.send(payload, "CSVData");    // Changed event name to reflect new format
                                           //   Serial.print("Payload: ");          //For debug
@@ -840,10 +846,10 @@ void setupServer() {
       inputMessage = request->getParam(TLimit)->value();
       writeFile(LittleFS, "/TemperatureLimitF.txt", inputMessage.c_str());
       AlternatorTemperatureLimitF = inputMessage.toInt();
-    } else if (request->hasParam(ManualV)) {
-      inputMessage = request->getParam(ManualV)->value();
-      writeFile(LittleFS, "/ManualVoltage.txt", inputMessage.c_str());
-      ManualVoltageTarget = inputMessage.toFloat();
+    } else if (request->hasParam(ManualD)) {
+      inputMessage = request->getParam(ManualD)->value();
+      writeFile(LittleFS, "/ManualDuty.txt", inputMessage.c_str());
+      ManualDutyTarget = inputMessage.toInt();
     } else if (request->hasParam(FullChargeV)) {
       inputMessage = request->getParam(FullChargeV)->value();
       writeFile(LittleFS, "/FullChargeVoltage.txt", inputMessage.c_str());
@@ -904,9 +910,14 @@ void setupServer() {
       inputMessage = request->getParam(N2)->value();
       writeFile(LittleFS, "/NMEA2KData1.txt", inputMessage.c_str());
       NMEA2KData = request->getParam(N2)->value().toInt();
+    } else if (request->hasParam(TargetL)) {
+      inputMessage = request->getParam(TargetL)->value();
+      writeFile(LittleFS, "/TargetAmpL.txt", inputMessage.c_str());
+      TargetAmpLA = inputMessage.toInt();
     } else {
       inputMessage = "No message sent";
     }
+
 
     request->send(200, "text/plain", inputMessage);
   });
@@ -1343,7 +1354,6 @@ bool validatePassword(const char *password) {
 }
 
 void InitSystemSettings() {  // load all settings from LittleFS.  If no files exist, create them and populate with the hardcoded values
-
   if (!LittleFS.exists("/BatteryCapacity.txt")) {
     writeFile(LittleFS, "/BatteryCapacity.txt", String(BatteryCapacity_Ah).c_str());
   } else {
@@ -1385,10 +1395,10 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   } else {
     AlternatorTemperatureLimitF = readFile(LittleFS, "/TemperatureLimitF.txt").toInt();
   }
-  if (!LittleFS.exists("/ManualVoltage.txt")) {
-    writeFile(LittleFS, "/ManualVoltage.txt", String(ManualVoltageTarget).c_str());
+  if (!LittleFS.exists("/ManualDuty.txt")) {
+    writeFile(LittleFS, "/ManualDuty.txt", String(ManualDutyTarget).c_str());
   } else {
-    ManualVoltageTarget = readFile(LittleFS, "/ManualVoltage.txt").toFloat();  // these float values might become problematic for payload size?
+    ManualDutyTarget = readFile(LittleFS, "/ManualDuty.txt").toInt();  // 
   }
   if (!LittleFS.exists("/FullChargeVoltage.txt")) {
     writeFile(LittleFS, "/FullChargeVoltage.txt", String(ChargingVoltageTarget).c_str());
@@ -1465,10 +1475,14 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   } else {
     NMEA2KData = readFile(LittleFS, "/NMEA2KData1.txt").toInt();
   }
+  if (!LittleFS.exists("/TargetAmpL.txt")) {
+    writeFile(LittleFS, "/TargetAmpL.txt", String(TargetAmpLA).c_str());
+  } else {
+    TargetAmpLA = readFile(LittleFS, "/TargetAmpL.txt").toInt();
+  }
 }
 
 void InitPersistentVariables() {
-
   // Initializer for all Persistent variables  involving littleFS
 
   if (!LittleFS.exists("/IBVMax.txt")) {                            // if the Flash storage file does not exist
