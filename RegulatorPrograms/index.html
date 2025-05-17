@@ -324,14 +324,14 @@ Contact me at mark@xengineering.net       -->
 
     /* Dark Mode */
     .dark-mode {
-      --primary: #888888;
+      --primary: gray;
       --accent: #00a19a;
       --bg-light: #121212;
-      --text-dark: #888888;
-      --text-light: #888888;
+      --text-dark: gray;
+      --text-light: gray;
       --card-light: #1e1e1e;
       --border: #444444;
-      --reading: #888888;
+      --reading: gray;
     }
 
     .dark-mode input[type="text"],
@@ -356,14 +356,26 @@ Contact me at mark@xengineering.net       -->
       background-color: #444444;
     }
 
+    .slider {
+      background-color: #dddddd;
+      /* light gray */
+      box-shadow: inset 0 0 1px rgba(0, 0, 0, 0.3);
+    }
+
+    .slider:before {
+      background-color: #fefefe;
+      /* near-white */
+      box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+    }
+
     .dark-mode .slider {
       background-color: #333333;
     }
 
-    .slider:before {
-      background-color: #888888;
+    .dark-mode .slider:before {
+      background-color: gray;
+      border: 1px solid #444444;
     }
-
 
     .dark-mode input[type="checkbox"] {
       filter: brightness(0.6);
@@ -372,9 +384,7 @@ Contact me at mark@xengineering.net       -->
     }
   </style>
 
-
-  <script>
-    // Connection monitoring variables
+  <script> // Connection monitoring variables
     let lastEventTime = Date.now();
     const connectionCheckInterval = 10000; // Check every 10 seconds
 
@@ -383,60 +393,50 @@ Contact me at mark@xengineering.net       -->
       // console.log("Form submitted - values will update shortly");    // shut this off because it's "Console log spam" that might cause delay?
       // setTimeout(function () { document.location.reload(false); }, 500); // not needed anymore because
     }
+
+    // and some debouncing of double toggling (visual issue)
+    // Add these variables at the top of your script, with unique names
+    let lastToggleUpdateTimestamp = 0;
+    const TOGGLE_UPDATE_THROTTLE_MS = 150; // milliseconds
+
   </script>
 </head>
 
-<body>
-  <iframe name="hidden-form" style="display:none"></iframe>
-
-
-
+<body><iframe name="hidden-form" style="display:none"></iframe>
   <h2>Security</h2>
   <div class="settings-grid">
     <div class="settings-card">
       <div id="lock-status" style="font-weight:bold; color:#00a19a; margin-bottom:10px;">LOCKED</div>
-
       <div class="form-row">
         <div class="form-label">Enter Password:</div>
         <div class="form-input">
           <form action="/get" method="GET" target="hidden-form" onsubmit="setAdminPassword(); return false;"
-            style="display: flex; justify-content: flex-end; align-items: center;">
-            <input type="hidden" name="dummy" value="1" />
-            <input type="password" id="admin_password" name="admin_password" style="width: 80px; margin-right: 8px;"
-              autocomplete="current-password" />
-            <input type="submit" id="admin_password_set" value="Enter" />
-            <span id="admin_password_msg" style="margin-left:8px; font-size:12px; color:#00a19a;"></span>
-            <label style="margin-left: 8px; font-size: 12px;">
-              <input type="checkbox" onclick="togglePassword('admin_password')"> Show
-            </label>
-          </form>
+            style="display: flex; justify-content: flex-end; align-items: center;"><input type="hidden" name="dummy"
+              value="1" /><input type="password" id="admin_password" name="admin_password"
+              style="width: 80px; margin-right: 8px;" autocomplete="current-password" /><input type="submit"
+              id="admin_password_set" value="Enter" /><span id="admin_password_msg"
+              style="margin-left:8px; font-size:12px; color:#00a19a;"></span><label
+              style="margin-left: 8px; font-size: 12px;"><input type="checkbox"
+                onclick="togglePassword('admin_password')">Show </label></form>
         </div>
       </div>
-
       <div class="form-row">
         <div class="form-label">New Password:</div>
         <div class="form-input">
           <form action="/setPassword" method="POST" target="hidden-form" onsubmit="return setNewPassword();"
-            style="display: flex; justify-content: flex-end; align-items: center;">
-            <input type="hidden" name="password" class="password_field">
-            <input type="password" id="newpassword" name="newpassword" style="width: 80px; margin-right: 8px;" />
-            <input type="submit" id="newpassword_set" value="Set" />
-            <span id="newpassword_msg" style="margin-left:8px; font-size:12px; color:#00a19a;"></span>
-            <label style="margin-left: 8px; font-size: 12px;">
-              <input type="checkbox" onclick="togglePassword('newpassword')"> Show
-            </label>
-          </form>
+            style="display: flex; justify-content: flex-end; align-items: center;"><input type="hidden" name="password"
+              class="password_field"><input type="password" id="newpassword" name="newpassword"
+              style="width: 80px; margin-right: 8px;" /><input type="submit" id="newpassword_set" value="Set" /><span
+              id="newpassword_msg" style="margin-left:8px; font-size:12px; color:#00a19a;"></span><label
+              style="margin-left: 8px; font-size: 12px;"><input type="checkbox"
+                onclick="togglePassword('newpassword')">Show </label></form>
         </div>
       </div>
-      <div style="text-align: center; margin-top: 10px;">
-        <input type="submit" id="lock-settings-button" onclick="lockSettingsManually(); return false;"
-          value="Lock Settings" style="width: 120px; background-color: #00a19a;" />
-      </div>
-
-
+      <div style="text-align: center; margin-top: 10px;"><input type="submit" id="lock-settings-button"
+          onclick="lockSettingsManually(); return false;" value="Lock Settings"
+          style="width: 120px; background-color: #00a19a;" /></div>
     </div>
   </div>
-
   <style>
     #lock-settings-button:hover {
       background-color: #b71c1c;
@@ -592,6 +592,137 @@ Contact me at mark@xengineering.net       -->
           </div>
         </div>
 
+        <hr />
+        <div class="form-row">
+          <div class="form-label">RPM Scaling Factor (<span id="RPMScalingFactor_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="RPMScalingFactor" type="number" step="0.01" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+
+        <hr />
+
+        <div class="form-row">
+          <div class="form-label">Ignore Temperature (<span id="IgnoreTemperature_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">Off</span>
+              <label class="switch">
+                <input id="IgnoreTemperature_checkbox" type="checkbox"
+                  onchange="document.getElementById('IgnoreTemperature').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">On</span>
+              <input id="IgnoreTemperature" name="IgnoreTemperature" type="number" value="" style="display:none;" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">BMS Logic (<span id="BMSLogic_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">Off</span>
+              <label class="switch">
+                <input id="BMSLogic_checkbox" type="checkbox"
+                  onchange="document.getElementById('BMSLogic').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">On</span>
+              <input id="BMSLogic" name="BMSLogic" type="number" value="" style="display:none;" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">BMS Logic Level-Off (<span id="BMSLogicLevelOff_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">Off</span>
+              <label class="switch">
+                <input id="BMSLogicLevelOff_checkbox" type="checkbox"
+                  onchange="document.getElementById('BMSLogicLevelOff').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">On</span>
+              <input id="BMSLogicLevelOff" name="BMSLogicLevelOff" type="number" value="" style="display:none;" />
+            </form>
+          </div>
+        </div>
+
+      </div>
+
+
+
+      <div class="settings-card">
+        <div class="section-title">Alarm</div>
+        <div class="form-row">
+          <div class="form-label">Alarm System (<span id="AlarmActivate_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">Off</span>
+              <label class="switch">
+                <input id="AlarmActivate_checkbox" type="checkbox"
+                  onchange="document.getElementById('AlarmActivate').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">On</span>
+              <input id="AlarmActivate" name="AlarmActivate" type="number" value="" style="display:none;" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Temperature Alarm (F) (<span id="TempAlarm_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="TempAlarm" type="number" step="1" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">High Voltage Alarm (<span id="VoltageAlarmHigh_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="VoltageAlarmHigh" type="number" step="0.1" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Low Voltage Alarm (<span id="VoltageAlarmLow_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="VoltageAlarmLow" type="number" step="0.1" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">High Current Alarm (A) (<span id="CurrentAlarmHigh_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="CurrentAlarmHigh" type="number" step="1" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
       </div>
 
       <div class="settings-card">
@@ -655,6 +786,75 @@ Contact me at mark@xengineering.net       -->
             <form action="/get" method="GET" target="hidden-form">
               <input type="hidden" name="password" class="password_field">
               <input name="ManualDuty" type="number" step="1" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="section-title">Battery Monitor</div>
+        <div class="form-row">
+          <div class="form-label">Current Threshold (A) (<span id="CurrentThreshold_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="CurrentThreshold" type="number" step="0.1" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Peukert Exponent (<span id="PeukertExponent_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="PeukertExponent" type="number" step="0.01" min="1" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Charge Efficiency (%) (<span id="ChargeEfficiency_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="ChargeEfficiency" type="number" step="1" min="50" max="100" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Charged Voltage (<span id="ChargedVoltage_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="ChargedVoltage" type="number" step="0.01" min="12" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Tail Current (%) (<span id="TailCurrent_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="TailCurrent" type="number" step="0.1" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Charged Detection Time (s) (<span id="ChargedDetectionTime_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="ChargedDetectionTime" type="number" step="1" min="0" />
               <input onclick="submitMessage()" type="submit" value="Set" />
             </form>
           </div>
@@ -992,9 +1192,31 @@ Contact me at mark@xengineering.net       -->
       VeData1: 45,
       NMEA0183Data1: 46,
       NMEA2KData1: 47,
-      TargetAmpL: 48
-
+      TargetAmpL: 48,
+      CurrentThreshold: 49,
+      PeukertExponent: 50,
+      ChargeEfficiency: 51,
+      ChargedVoltage: 52,
+      TailCurrent: 53,
+      ChargedDetectionTime: 54,
+      IgnoreTemperature: 55,
+      BMSLogic: 56,
+      BMSLogicLevelOff: 57,
+      AlarmActivate: 58,
+      TempAlarm: 59,
+      VoltageAlarmHigh: 60,
+      VoltageAlarmLow: 61,
+      CurrentAlarmHigh: 62,
+      FourWay: 63,
+      RPMScalingFactor: 64,
+      ResetTemp: 65,
+      ResetVoltage: 66,
+      ResetCurrent: 67,
+      ResetEngineRunTime: 68,
+      ResetAlternatorOnTime: 69,
+      ResetEnergy: 70
     };
+
 
     function updateInlineStatus(isConnected) {
       const cornerStatus = document.getElementById('corner-status');
@@ -1571,60 +1793,82 @@ Contact me at mark@xengineering.net       -->
       initClientUpdatePlot();
       if (!!window.EventSource) {
         const telemetryFields = [
-          ["AltTempID", "AlternatorTemperatureF"],
-          ["DutyCycleID", "DutyCycle"],
-          ["BatteryVID", "BatteryV"],
-          ["MeasAmpsID", "MeasuredAmps"],
-          ["RPMID", "RPM"],
-          ["ADS3ID", "Channel3V"],
-          ["IBVID", "IBV"],
-          ["BCurrID", "Bcur"],
-          ["VictronVoltageID", "VictronVoltage"],
-          ["LoopTimeID", "LoopTime"],
-          ["WifiStrengthID", "WifiStrength"],
-          ["WifiHeartBeatID", "WifiHeartBeat"],
-          ["SendWifiTimeID", "SendWifiTime"],
-          ["AnalogReadTimeID", "AnalogReadTime"],
-          ["VeTimeID", "VeTime"],
-          ["MaximumLoopTimeID", "MaximumLoopTime"],
-          ["GPSHID", "HeadingNMEA"],
-          ["FieldVoltsID", "vvout"],
-          ["FieldAmpsID", "iiout"],
-          ["FreeHeapID", "FreeHeap"],
-          ["IBVMaxID", "IBVMax"],
-          ["MeasuredAmpsMaxID", "MeasuredAmpsMax"],
-          ["RPMMaxID", "RPMMax"],
-          ["SoC_percentID", "SoC_percent"],
-          ["EngineRunTimeID", "EngineRunTime"],
-          ["EngineCyclesID", "EngineCycles"],
-          ["AlternatorOnTimeID", "AlternatorOnTime"],
-          ["AlternatorFuelUsedID", "AlternatorFuelUsed"],
-          ["ChargedEnergyID", "ChargedEnergy"],
-          ["DischargedEnergyID", "DischargedEnergy"],
-          ["AlternatorChargedEnergyID", "AlternatorChargedEnergy"],
-          ["MaxAlternatorTemperatureF_ID", "MaxAlternatorTemperatureF"]
+          ["AltTempID", "AlternatorTemperatureF"],         // 0
+          ["DutyCycleID", "DutyCycle"],                    // 1
+          ["BatteryVID", "BatteryV"],                      // 2
+          ["MeasAmpsID", "MeasuredAmps"],                  // 3
+          ["RPMID", "RPM"],                                // 4
+          ["ADS3ID", "Channel3V"],                         // 5
+          ["IBVID", "IBV"],                                // 6
+          ["BCurrID", "Bcur"],                             // 7
+          ["VictronVoltageID", "VictronVoltage"],          // 8
+          ["LoopTimeID", "LoopTime"],                      // 9
+          ["WifiStrengthID", "WifiStrength"],              // 10
+          ["WifiHeartBeatID", "WifiHeartBeat"],            // 11
+          ["SendWifiTimeID", "SendWifiTime"],              // 12
+          ["AnalogReadTimeID", "AnalogReadTime"],          // 13
+          ["VeTimeID", "VeTime"],                          // 14
+          ["MaximumLoopTimeID", "MaximumLoopTime"],        // 15
+          ["GPSHID", "HeadingNMEA"],                       // 16
+          ["FieldVoltsID", "vvout"],                       // 17
+          ["FieldAmpsID", "iiout"],                        // 18
+          ["FreeHeapID", "FreeHeap"],                      // 19
+          ["IBVMaxID", "IBVMax"],                          // 20
+          ["MeasuredAmpsMaxID", "MeasuredAmpsMax"],        // 21
+          ["RPMMaxID", "RPMMax"],                          // 22
+          ["SoC_percentID", "SoC_percent"],                // 23
+          ["EngineRunTimeID", "EngineRunTime"],            // 24
+          ["EngineCyclesID", "EngineCycles"],              // 25
+          ["AlternatorOnTimeID", "AlternatorOnTime"],      // 26
+          ["AlternatorFuelUsedID", "AlternatorFuelUsed"],  // 27
+          ["ChargedEnergyID", "ChargedEnergy"],            // 28
+          ["DischargedEnergyID", "DischargedEnergy"],      // 29
+          ["AlternatorChargedEnergyID", "AlternatorChargedEnergy"], // 30
+          ["MaxAlternatorTemperatureF_ID", "MaxAlternatorTemperatureF"] // 31
         ];
 
         const controlEchoFields = [
-          ["TemperatureLimitF_echo", "TemperatureLimitF"],
-          ["FullChargeVoltage_echo", "FullChargeVoltage"],
-          ["TargetAmpz_echo", "TargetAmpz"],
-          ["TargetFloatVoltage1_echo", "TargetFloatVoltage1"],
-          ["SwitchingFrequency_echo", "SwitchingFrequency"],
-          ["interval1_echo", "interval1"],
-          ["FieldAdjustmentInterval1_echo", "FieldAdjustmentInterval1"],
-          ["ManualDuty_echo", "ManualDuty"],
-          ["SwitchControlOverride1_echo", "SwitchControlOverride1"],
-          ["OnOff1_echo", "OnOff1"],
-          ["ManualFieldToggle1_echo", "ManualFieldToggle1"],
-          ["HiLow1_echo", "HiLow1"],
-          ["LimpHome1_echo", "LimpHome1"],
-          ["VeData1_echo", "VeData1"],
-          ["NMEA0183Data1_echo", "NMEA0183Data1"],
-          ["NMEA2KData1_echo", "NMEA2KData1"],
-          ["TargetAmpL_echo", "TargetAmpL"]
-
+          ["TemperatureLimitF_echo", "TemperatureLimitF"],           // 32
+          ["FullChargeVoltage_echo", "FullChargeVoltage"],           // 33
+          ["TargetAmpz_echo", "TargetAmpz"],                         // 34
+          ["TargetFloatVoltage1_echo", "TargetFloatVoltage1"],       // 35
+          ["SwitchingFrequency_echo", "SwitchingFrequency"],         // 36
+          ["interval1_echo", "interval1"],                           // 37
+          ["FieldAdjustmentInterval1_echo", "FieldAdjustmentInterval1"], // 38
+          ["ManualDuty_echo", "ManualDuty"],                         // 39
+          ["SwitchControlOverride1_echo", "SwitchControlOverride1"], // 40
+          ["OnOff1_echo", "OnOff1"],                                 // 41
+          ["ManualFieldToggle1_echo", "ManualFieldToggle1"],         // 42
+          ["HiLow1_echo", "HiLow1"],                                 // 43
+          ["LimpHome1_echo", "LimpHome1"],                           // 44
+          ["VeData1_echo", "VeData1"],                               // 45
+          ["NMEA0183Data1_echo", "NMEA0183Data1"],                   // 46
+          ["NMEA2KData1_echo", "NMEA2KData1"],                       // 47
+          ["TargetAmpL_echo", "TargetAmpL"],                         // 48
+          ["CurrentThreshold_echo", "CurrentThreshold"],             // 49
+          ["PeukertExponent_echo", "PeukertExponent"],               // 50
+          ["ChargeEfficiency_echo", "ChargeEfficiency"],             // 51
+          ["ChargedVoltage_echo", "ChargedVoltage"],                 // 52
+          ["TailCurrent_echo", "TailCurrent"],                       // 53
+          ["ChargedDetectionTime_echo", "ChargedDetectionTime"],     // 54
+          ["IgnoreTemperature_echo", "IgnoreTemperature"],           // 55
+          ["BMSLogic_echo", "BMSLogic"],                             // 56
+          ["BMSLogicLevelOff_echo", "BMSLogicLevelOff"],             // 57
+          ["AlarmActivate_echo", "AlarmActivate"],                   // 58
+          ["TempAlarm_echo", "TempAlarm"],                           // 59
+          ["VoltageAlarmHigh_echo", "VoltageAlarmHigh"],             // 60
+          ["VoltageAlarmLow_echo", "VoltageAlarmLow"],               // 61
+          ["CurrentAlarmHigh_echo", "CurrentAlarmHigh"],             // 62
+          ["FourWay_echo", "FourWay"],                               // 63
+          ["RPMScalingFactor_echo", "RPMScalingFactor"],             // 64
+          ["ResetTemp_echo", "ResetTemp"],                           // 65
+          ["ResetVoltage_echo", "ResetVoltage"],                     // 66
+          ["ResetCurrent_echo", "ResetCurrent"],                     // 67
+          ["ResetEngineRunTime_echo", "ResetEngineRunTime"],         // 68
+          ["ResetAlternatorOnTime_echo", "ResetAlternatorOnTime"],   // 69
+          ["ResetEnergy_echo", "ResetEnergy"]                        // 70
         ];
+
 
 
         // this is the numerical displays, with scaling done locally
@@ -1671,27 +1915,27 @@ Contact me at mark@xengineering.net       -->
           const data = {
             AlternatorTemperatureF: values[fieldIndexes.AlternatorTemperatureF], // 0
             DutyCycle: values[fieldIndexes.DutyCycle],
-            BatteryV: values[fieldIndexes.BatteryV], //2
+            BatteryV: values[fieldIndexes.BatteryV], // 2
             MeasuredAmps: values[fieldIndexes.MeasuredAmps],
-            RPM: values[fieldIndexes.RPM],//4
+            RPM: values[fieldIndexes.RPM], // 4
             Channel3V: values[fieldIndexes.Channel3V],
-            IBV: values[fieldIndexes.IBV],//6
+            IBV: values[fieldIndexes.IBV], // 6
             Bcur: values[fieldIndexes.Bcur],
-            VictronVoltage: values[fieldIndexes.VictronVoltage],//8
+            VictronVoltage: values[fieldIndexes.VictronVoltage], // 8
             LoopTime: values[fieldIndexes.LoopTime],
-            WifiStrength: values[fieldIndexes.WifiStrength],//10
+            WifiStrength: values[fieldIndexes.WifiStrength], // 10
             WifiHeartBeat: values[fieldIndexes.WifiHeartBeat],
-            SendWifiTime: values[fieldIndexes.SendWifiTime],//12
+            SendWifiTime: values[fieldIndexes.SendWifiTime], // 12
             AnalogReadTime: values[fieldIndexes.AnalogReadTime],
-            VeTime: values[fieldIndexes.VeTime],//14
+            VeTime: values[fieldIndexes.VeTime], // 14
             MaximumLoopTime: values[fieldIndexes.MaximumLoopTime],
-            HeadingNMEA: values[fieldIndexes.HeadingNMEA],//16
+            HeadingNMEA: values[fieldIndexes.HeadingNMEA], // 16
             vvout: values[fieldIndexes.vvout],
-            iiout: values[fieldIndexes.iiout],//18
+            iiout: values[fieldIndexes.iiout], // 18
             FreeHeap: values[fieldIndexes.FreeHeap],
-            IBVMax: values[fieldIndexes.IBVMax], //20
+            IBVMax: values[fieldIndexes.IBVMax], // 20
             MeasuredAmpsMax: values[fieldIndexes.MeasuredAmpsMax],
-            RPMMax: values[fieldIndexes.RPMMax], //22
+            RPMMax: values[fieldIndexes.RPMMax], // 22
             SoC_percent: values[fieldIndexes.SoC_percent],
             EngineRunTime: values[fieldIndexes.EngineRunTime],
             EngineCycles: values[fieldIndexes.EngineCycles],
@@ -1717,9 +1961,31 @@ Contact me at mark@xengineering.net       -->
             VeData1: values[fieldIndexes.VeData1],
             NMEA0183Data1: values[fieldIndexes.NMEA0183Data1],
             NMEA2KData1: values[fieldIndexes.NMEA2KData1],
-            TargetAmpL: values[fieldIndexes.TargetAmpL]
-
+            TargetAmpL: values[fieldIndexes.TargetAmpL],
+            CurrentThreshold: values[fieldIndexes.CurrentThreshold],
+            PeukertExponent: values[fieldIndexes.PeukertExponent],
+            ChargeEfficiency: values[fieldIndexes.ChargeEfficiency],
+            ChargedVoltage: values[fieldIndexes.ChargedVoltage],
+            TailCurrent: values[fieldIndexes.TailCurrent],
+            ChargedDetectionTime: values[fieldIndexes.ChargedDetectionTime],
+            IgnoreTemperature: values[fieldIndexes.IgnoreTemperature],
+            BMSLogic: values[fieldIndexes.BMSLogic],
+            BMSLogicLevelOff: values[fieldIndexes.BMSLogicLevelOff],
+            AlarmActivate: values[fieldIndexes.AlarmActivate],
+            TempAlarm: values[fieldIndexes.TempAlarm],
+            VoltageAlarmHigh: values[fieldIndexes.VoltageAlarmHigh],
+            VoltageAlarmLow: values[fieldIndexes.VoltageAlarmLow],
+            CurrentAlarmHigh: values[fieldIndexes.CurrentAlarmHigh],
+            FourWay: values[fieldIndexes.FourWay],
+            RPMScalingFactor: values[fieldIndexes.RPMScalingFactor],
+            ResetTemp: values[fieldIndexes.ResetTemp],
+            ResetVoltage: values[fieldIndexes.ResetVoltage],
+            ResetCurrent: values[fieldIndexes.ResetCurrent],
+            ResetEngineRunTime: values[fieldIndexes.ResetEngineRunTime],
+            ResetAlternatorOnTime: values[fieldIndexes.ResetAlternatorOnTime],
+            ResetEnergy: values[fieldIndexes.ResetEnergy]
           };
+
 
           window._debugData = data;
 
@@ -1798,12 +2064,83 @@ Contact me at mark@xengineering.net       -->
           if ('TargetAmpL' in data) {
             document.getElementById('TargetAmpL_echo').textContent = data.TargetAmpL;
           }
+          if ('CurrentThreshold' in data) {
+            document.getElementById('CurrentThreshold_echo').textContent = data.CurrentThreshold;
+          }
+          if ('PeukertExponent' in data) {
+            document.getElementById('PeukertExponent_echo').textContent = (data.PeukertExponent / 100).toFixed(2);
+          }
+          if ('ChargeEfficiency' in data) {
+            document.getElementById('ChargeEfficiency_echo').textContent = data.ChargeEfficiency + '%';
+          }
+          if ('ChargedVoltage' in data) {
+            document.getElementById('ChargedVoltage_echo').textContent = (data.ChargedVoltage / 100).toFixed(2);
+          }
+          if ('TailCurrent' in data) {
+            document.getElementById('TailCurrent_echo').textContent = (data.TailCurrent / 100).toFixed(2);
+          }
+          if ('ChargedDetectionTime' in data) {
+            document.getElementById('ChargedDetectionTime_echo').textContent = data.ChargedDetectionTime;
+          }
+          if ('IgnoreTemperature' in data) {
+            document.getElementById('IgnoreTemperature_echo').textContent = data.IgnoreTemperature;
+          }
+          if ('BMSLogic' in data) {
+            document.getElementById('BMSLogic_echo').textContent = data.BMSLogic;
+          }
+          if ('BMSLogicLevelOff' in data) {
+            document.getElementById('BMSLogicLevelOff_echo').textContent = data.BMSLogicLevelOff;
+          }
+          if ('AlarmActivate' in data) {
+            document.getElementById('AlarmActivate_echo').textContent = data.AlarmActivate;
+          }
+          if ('TempAlarm' in data) {
+            document.getElementById('TempAlarm_echo').textContent = data.TempAlarm;
+          }
+          if ('VoltageAlarmHigh' in data) {
+            document.getElementById('VoltageAlarmHigh_echo').textContent = data.VoltageAlarmHigh;
+          }
+          if ('VoltageAlarmLow' in data) {
+            document.getElementById('VoltageAlarmLow_echo').textContent = data.VoltageAlarmLow;
+          }
+          if ('CurrentAlarmHigh' in data) {
+            document.getElementById('CurrentAlarmHigh_echo').textContent = data.CurrentAlarmHigh;
+          }
+          if ('FourWay' in data) {
+            document.getElementById('FourWay_echo').textContent = data.FourWay;
+          }
+          if ('RPMScalingFactor' in data) {
+            document.getElementById('RPMScalingFactor_echo').textContent = data.RPMScalingFactor;
+          }
+          if ('ResetTemp' in data) {
+            document.getElementById('ResetTemp_echo').textContent = data.ResetTemp;
+          }
+          if ('ResetVoltage' in data) {
+            document.getElementById('ResetVoltage_echo').textContent = data.ResetVoltage;
+          }
+          if ('ResetCurrent' in data) {
+            document.getElementById('ResetCurrent_echo').textContent = data.ResetCurrent;
+          }
+          if ('ResetEngineRunTime' in data) {
+            document.getElementById('ResetEngineRunTime_echo').textContent = data.ResetEngineRunTime;
+          }
+          if ('ResetAlternatorOnTime' in data) {
+            document.getElementById('ResetAlternatorOnTime_echo').textContent = data.ResetAlternatorOnTime;
+          }
+          if ('ResetEnergy' in data) {
+            document.getElementById('ResetEnergy_echo').textContent = data.ResetEnergy;
+          }
+
 
           const now = Math.floor(Date.now() / 1000);
 
 
-          updateTogglesFromData(data);
-
+          // Add throttling for toggle updates to prevent double-toggling
+          const currentTime = Date.now();
+          if (currentTime - lastToggleUpdateTimestamp >= TOGGLE_UPDATE_THROTTLE_MS) {
+            lastToggleUpdateTimestamp = currentTime;
+            updateTogglesFromData(data);
+          }
           // something to do with grayed out settings
           if (currentAdminPassword === "") {
             document.getElementById('settings-section').classList.add("locked");
@@ -1990,50 +2327,106 @@ Contact me at mark@xengineering.net       -->
       document.getElementById("VeData1_checkbox").checked = (document.getElementById("VeData1").value === "1");
       document.getElementById("NMEA0183Data1_checkbox").checked = (document.getElementById("NMEA0183Data1").value === "1");
       document.getElementById("NMEA2KData1_checkbox").checked = (document.getElementById("NMEA2KData1").value === "1");
+      document.getElementById("IgnoreTemperature_checkbox").checked = (document.getElementById("IgnoreTemperature").value === "1");
+      document.getElementById("BMSLogic_checkbox").checked = (document.getElementById("BMSLogic").value === "1");
+      document.getElementById("BMSLogicLevelOff_checkbox").checked = (document.getElementById("BMSLogicLevelOff").value === "1");
+      document.getElementById("AlarmActivate_checkbox").checked = (document.getElementById("AlarmActivate").value === "1");
+      document.getElementById("IgnoreTemperature_checkbox").checked = (document.getElementById("IgnoreTemperature").value === "1");
+      document.getElementById("BMSLogic_checkbox").checked = (document.getElementById("BMSLogic").value === "1");
+      document.getElementById("BMSLogicLevelOff_checkbox").checked = (document.getElementById("BMSLogicLevelOff").value === "1");
+      document.getElementById("AlarmActivate_checkbox").checked = (document.getElementById("AlarmActivate").value === "1");
+
       document.getElementById("admin_password").addEventListener("change", updatePasswordFields);
 
       // Define a function to update toggles when data is available
+      // function updateTogglesFromData(data) {
+      //   try {
+      //     if (!data) return;
+
+      //     if ('ManualFieldToggle1' in data) {
+      //       document.getElementById("ManualFieldToggle1_checkbox").checked = (data.ManualFieldToggle1 === 1);
+      //     }
+      //     if ('SwitchControlOverride1' in data) {
+      //       document.getElementById("SwitchControlOverride1_checkbox").checked = (data.SwitchControlOverride1 === 1);
+      //     }
+      //     if ('OnOff1' in data) {
+      //       document.getElementById("OnOff1_checkbox").checked = (data.OnOff1 === 1);
+      //     }
+      //     if ('LimpHome1' in data) {
+      //       document.getElementById("LimpHome1_checkbox").checked = (data.LimpHome1 === 1);
+      //     }
+      //     if ('HiLow1' in data) {
+      //       document.getElementById("HiLow1_checkbox").checked = (data.HiLow1 === 1);
+      //     }
+      //     if ('VeData1' in data) {
+      //       document.getElementById("VeData1_checkbox").checked = (data.VeData1 === 1);
+      //     }
+      //     if ('NMEA0183Data1' in data) {
+      //       document.getElementById("NMEA0183Data1_checkbox").checked = (data.NMEA0183Data1 === 1);
+      //     }
+      //     if ('NMEA2KData1' in data) {
+      //       document.getElementById("NMEA2KData1_checkbox").checked = (data.NMEA2KData1 === 1);
+      //     }
+
+      //     if ('IgnoreTemperature' in data) {
+      //       document.getElementById("IgnoreTemperature_checkbox").checked = (data.IgnoreTemperature === 1);
+      //     }
+      //     if ('BMSLogic' in data) {
+      //       document.getElementById("BMSLogic_checkbox").checked = (data.BMSLogic === 1);
+      //     }
+      //     if ('BMSLogicLevelOff' in data) {
+      //       document.getElementById("BMSLogicLevelOff_checkbox").checked = (data.BMSLogicLevelOff === 1);
+      //     }
+
+      //     if ('AlarmActivate' in data) {
+      //       document.getElementById("AlarmActivate_checkbox").checked = (data.AlarmActivate === 1);
+      //     }
+
+
+      //   } catch (e) {
+      //     console.log("Error updating toggle states: " + e.message);
+      //   }
+      // }
       function updateTogglesFromData(data) {
         try {
-          // Only update if data is available
           if (!data) return;
-          // Update each toggle based on the data
-          if ('ManualFieldToggle1' in data) {
-            document.getElementById("ManualFieldToggle1_checkbox").checked = (data.ManualFieldToggle1 === 1);
-          }
-          if ('SwitchControlOverride1' in data) {
-            document.getElementById("SwitchControlOverride1_checkbox").checked = (data.SwitchControlOverride1 === 1);
-          }
-          if ('OnOff1' in data) {
-            document.getElementById("OnOff1_checkbox").checked = (data.OnOff1 === 1);
-          }
-          if ('LimpHome1' in data) {
-            document.getElementById("LimpHome1_checkbox").checked = (data.LimpHome1 === 1);
-          }
-          if ('HiLow1' in data) {
-            document.getElementById("HiLow1_checkbox").checked = (data.HiLow1 === 1);
-          }
-          if ('VeData1' in data) {
-            document.getElementById("VeData1_checkbox").checked = (data.VeData1 === 1);
-          }
-          if ('NMEA0183Data1' in data) {
-            document.getElementById("NMEA0183Data1_checkbox").checked = (data.NMEA0183Data1 === 1);
-          }
-          if ('NMEA2KData1' in data) {
-            document.getElementById("NMEA2KData1_checkbox").checked = (data.NMEA2KData1 === 1);
-          }
+
+          // Only update a checkbox if the value exists in data and is different from current state
+          const updateCheckbox = (id, value) => {
+            if (value !== undefined) {
+              const checkbox = document.getElementById(id);
+              if (checkbox && checkbox.checked !== (value === 1)) {
+                checkbox.checked = (value === 1);
+              }
+            }
+          };
+
+          // Update all toggle checkboxes
+          updateCheckbox("ManualFieldToggle1_checkbox", data.ManualFieldToggle1);
+          updateCheckbox("SwitchControlOverride1_checkbox", data.SwitchControlOverride1);
+          updateCheckbox("OnOff1_checkbox", data.OnOff1);
+          updateCheckbox("LimpHome1_checkbox", data.LimpHome1);
+          updateCheckbox("HiLow1_checkbox", data.HiLow1);
+          updateCheckbox("VeData1_checkbox", data.VeData1);
+          updateCheckbox("NMEA0183Data1_checkbox", data.NMEA0183Data1);
+          updateCheckbox("NMEA2KData1_checkbox", data.NMEA2KData1);
+          updateCheckbox("IgnoreTemperature_checkbox", data.IgnoreTemperature);
+          updateCheckbox("BMSLogic_checkbox", data.BMSLogic);
+          updateCheckbox("BMSLogicLevelOff_checkbox", data.BMSLogicLevelOff);
+          updateCheckbox("AlarmActivate_checkbox", data.AlarmActivate);
         } catch (e) {
           console.log("Error updating toggle states: " + e.message);
         }
       }
-
     });
+
   </script>
 
   <div id="corner-status" class="corner-status corner-status-connected">CONNECTED</div>
 
   <!-- Hidden fallback elements to satisfy JavaScript field lookups DELETE THIS HACK JOB SOMEDAY -->
   <div style="display:none;">
+    <!-- Echo display spans -->
     <span id="RPMMaxID" style="display:none;">0</span>
     <span id="SoC_percentID" style="display:none;">0</span>
     <span id="EngineRunTimeID" style="display:none;">0</span>
@@ -2044,6 +2437,8 @@ Contact me at mark@xengineering.net       -->
     <span id="DischargedEnergyID" style="display:none;">0</span>
     <span id="AlternatorChargedEnergyID" style="display:none;">0</span>
     <span id="MaxAlternatorTemperatureF_ID" style="display:none;">0</span>
+
+    <!-- Echo spans for settings -->
     <span id="TemperatureLimitF_echo" style="display:none;">0</span>
     <span id="FullChargeVoltage_echo" style="display:none;">0</span>
     <span id="TargetAmpz_echo" style="display:none;">0</span>
@@ -2060,6 +2455,31 @@ Contact me at mark@xengineering.net       -->
     <span id="VeData1_echo" style="display:none;">0</span>
     <span id="NMEA0183Data1_echo" style="display:none;">0</span>
     <span id="NMEA2KData1_echo" style="display:none;">0</span>
+    <span id="TargetAmpL_echo" style="display:none;">0</span>
+    <span id="CurrentThreshold_echo" style="display:none;">0</span>
+    <span id="PeukertExponent_echo" style="display:none;">0</span>
+    <span id="ChargeEfficiency_echo" style="display:none;">0</span>
+    <span id="ChargedVoltage_echo" style="display:none;">0</span>
+    <span id="TailCurrent_echo" style="display:none;">0</span>
+    <span id="ChargedDetectionTime_echo" style="display:none;">0</span>
+    <span id="IgnoreTemperature_echo" style="display:none;">0</span>
+    <span id="BMSLogic_echo" style="display:none;">0</span>
+    <span id="BMSLogicLevelOff_echo" style="display:none;">0</span>
+    <span id="AlarmActivate_echo" style="display:none;">0</span>
+    <span id="TempAlarm_echo" style="display:none;">0</span>
+    <span id="VoltageAlarmHigh_echo" style="display:none;">0</span>
+    <span id="VoltageAlarmLow_echo" style="display:none;">0</span>
+    <span id="CurrentAlarmHigh_echo" style="display:none;">0</span>
+    <span id="FourWay_echo" style="display:none;">0</span>
+    <span id="RPMScalingFactor_echo" style="display:none;">0</span>
+    <span id="ResetTemp_echo" style="display:none;">0</span>
+    <span id="ResetVoltage_echo" style="display:none;">0</span>
+    <span id="ResetCurrent_echo" style="display:none;">0</span>
+    <span id="ResetEngineRunTime_echo" style="display:none;">0</span>
+    <span id="ResetAlternatorOnTime_echo" style="display:none;">0</span>
+    <span id="ResetEnergy_echo" style="display:none;">0</span>
+
+    <!-- Input values for settings -->
     <input id="TemperatureLimitF" style="display:none;" value="0" />
     <input id="FullChargeVoltage" style="display:none;" value="0" />
     <input id="TargetAmpz" style="display:none;" value="0" />
@@ -2077,16 +2497,30 @@ Contact me at mark@xengineering.net       -->
     <input id="NMEA0183Data1" style="display:none;" value="0" />
     <input id="NMEA2KData1" style="display:none;" value="0" />
     <input id="TargetAmpL" style="display:none;" value="0" />
-    <input id="TargetAmpL_echo" style="display:none;" value="0" />
-
+    <input id="CurrentThreshold" style="display:none;" value="0" />
+    <input id="PeukertExponent" style="display:none;" value="0" />
+    <input id="ChargeEfficiency" style="display:none;" value="0" />
+    <input id="ChargedVoltage" style="display:none;" value="0" />
+    <input id="TailCurrent" style="display:none;" value="0" />
+    <input id="ChargedDetectionTime" style="display:none;" value="0" />
+    <input id="IgnoreTemperature" style="display:none;" value="0" />
+    <input id="BMSLogic" style="display:none;" value="0" />
+    <input id="BMSLogicLevelOff" style="display:none;" value="0" />
+    <input id="AlarmActivate" style="display:none;" value="0" />
+    <input id="TempAlarm" style="display:none;" value="0" />
+    <input id="VoltageAlarmHigh" style="display:none;" value="0" />
+    <input id="VoltageAlarmLow" style="display:none;" value="0" />
+    <input id="CurrentAlarmHigh" style="display:none;" value="0" />
+    <input id="FourWay" style="display:none;" value="0" />
+    <input id="RPMScalingFactor" style="display:none;" value="0" />
+    <input id="ResetTemp" style="display:none;" value="0" />
+    <input id="ResetVoltage" style="display:none;" value="0" />
+    <input id="ResetCurrent" style="display:none;" value="0" />
+    <input id="ResetEngineRunTime" style="display:none;" value="0" />
+    <input id="ResetAlternatorOnTime" style="display:none;" value="0" />
+    <input id="ResetEnergy" style="display:none;" value="0" />
 
   </div>
-
-
-
-
-
-
 </body>
 
 </html>
