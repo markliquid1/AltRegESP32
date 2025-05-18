@@ -121,22 +121,22 @@ void ReadAnalogInputs() {
 
         switch (adsCurrentChannel) {
           case 0:
-            Channel0V = Raw / 32768.0 * 6.144 * 20.24291;
+            Channel0V = Raw / 32768.0 * 6.144 / 0.0697674419;  // voltage divider is 1,000,000 and 75,000 ohms
             BatteryV = Channel0V;
             if (BatteryV > 14.5) {
-              ChargingVoltageTarget = TargetFloatVoltage;
+              ChargingVoltageTarget = TargetFloatVoltage;  // this needs to be placed somewhere else someday
             }
             break;
           case 1:
-            Channel1V = Raw / 32768.0 * 6.144 * 2;
+            Channel1V = Raw / 32768.0 * 6.144 * 2;  // voltage divider is 1:1, no idea where the 2 comes from
             MeasuredAmps = (2.5 - Channel1V) * 80;  // alternator current
             break;
           case 2:
-            Channel2V = Raw / 32768.0 * 6.144 * 2133.2 * 2;
-            RPM = Channel2V;
+            Channel2V = Raw / 32768.0 * 6.144 * 2133.2 * 2;  // voltage divider is 1:1, no idea where the 2 comes from
+            RPM = Channel2V;                                 // best way to scale RPM is going to be with a tuning factor for each alternator
             break;
           case 3:
-            Channel3V = Raw / 32768.0 * 6.144 * 833;
+            Channel3V = Raw / 32768.0 * 6.144 * 833;  // Does nothing right now, thermistor someday?
             break;
         }
 
@@ -602,74 +602,107 @@ void SendWifiData() {
       printBasicTaskStackInfo();  //Should be ~70–170 µs µs for 10 tasks (conservative estimate with no serial prints)
       updateCpuLoad();            //~200–250 for 10 tasks
       testTaskStats();            // 👈 Add this line to test
-      // Build CSV string with all data as integers
-      // Format: multiply floats by 10, 100 or 1000 to preserve decimal precision as needed
-      // CSV field order: see index.html -> fields[] mapping
-      char payload[1024];  // >1400 the wifi transmission won't fit in 1 packet
+                                  // Build CSV string with all data as integers
+                                  // Format: multiply floats by 10, 100 or 1000 to preserve decimal precision as needed
+                                  // CSV field order: see index.html -> fields[] mapping
+      char payload[1024];         // >1400 the wifi transmission won't fit in 1 packet
       snprintf(payload, sizeof(payload),
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d",
                // Readings
-               SafeInt(AlternatorTemperatureF),  //0
-               SafeInt(DutyCycle),               //1
-               SafeInt(BatteryV, 100),           //2
-               SafeInt(MeasuredAmps, 100),       //3
-               SafeInt(RPM),                     //
-               SafeInt(Channel3V, 100),          //5
-               SafeInt(IBV, 100),                //
-               SafeInt(Bcur, 100),               //
-               SafeInt(VictronVoltage, 100),     //8
-               SafeInt(LoopTime),                //
-               SafeInt(WifiStrength),            //10
-               SafeInt(WifiHeartBeat),
-               SafeInt(SendWifiTime),  //12
-               SafeInt(AnalogReadTime),
-               SafeInt(VeTime),  //14
-               SafeInt(MaximumLoopTime),
-               SafeInt(HeadingNMEA),  //16
-               SafeInt(vvout, 100),
-               SafeInt(iiout, 10),  //18
-               SafeInt(FreeHeap),
-               SafeInt(IBVMax, 100),  //20
-               SafeInt(MeasuredAmpsMax, 100),
-               SafeInt(RPMMax),  //22
-               SafeInt(SoC_percent),
-               SafeInt(EngineRunTime),  //24
-               SafeInt(EngineCycles),
-               SafeInt(AlternatorOnTime),  //26
-               SafeInt(AlternatorFuelUsed),
-               SafeInt(ChargedEnergy),  //28
-               SafeInt(DischargedEnergy),
-               SafeInt(AlternatorChargedEnergy),  //30
-               SafeInt(MaxAlternatorTemperatureF),
+               SafeInt(AlternatorTemperatureF),     // 0
+               SafeInt(DutyCycle),                  // 1
+               SafeInt(BatteryV, 100),              // 2
+               SafeInt(MeasuredAmps, 100),          // 3
+               SafeInt(RPM),                        // 4
+               SafeInt(Channel3V, 100),             // 5
+               SafeInt(IBV, 100),                   // 6
+               SafeInt(Bcur, 100),                  // 7
+               SafeInt(VictronVoltage, 100),        // 8
+               SafeInt(LoopTime),                   // 9
+               SafeInt(WifiStrength),               // 10
+               SafeInt(WifiHeartBeat),              // 11
+               SafeInt(SendWifiTime),               // 12
+               SafeInt(AnalogReadTime),             // 13
+               SafeInt(VeTime),                     // 14
+               SafeInt(MaximumLoopTime),            // 15
+               SafeInt(HeadingNMEA),                // 16
+               SafeInt(vvout, 100),                 // 17
+               SafeInt(iiout, 10),                  // 18
+               SafeInt(FreeHeap),                   // 19
+               SafeInt(IBVMax, 100),                // 20
+               SafeInt(MeasuredAmpsMax, 100),       // 21
+               SafeInt(RPMMax),                     // 22
+               SafeInt(SoC_percent),                // 23
+               SafeInt(EngineRunTime),              // 24
+               SafeInt(EngineCycles),               // 25
+               SafeInt(AlternatorOnTime),           // 26
+               SafeInt(AlternatorFuelUsed),         // 27
+               SafeInt(ChargedEnergy),              // 28
+               SafeInt(DischargedEnergy),           // 29
+               SafeInt(AlternatorChargedEnergy),    // 30
+               SafeInt(MaxAlternatorTemperatureF),  // 31
 
-               // Settings    (for the echoes)
-               SafeInt(AlternatorTemperatureLimitF),  //32
-               SafeInt(ChargingVoltageTarget, 100),
-               SafeInt(TargetAmps),  //34
-               SafeInt(TargetFloatVoltage, 100),
-               SafeInt(fffr),  //36
-               SafeInt(interval, 100),
-               SafeInt(FieldAdjustmentInterval),  //38
-               SafeInt(ManualDutyTarget),
-               SafeInt(SwitchControlOverride),  //40
-               SafeInt(OnOff),
-               SafeInt(ManualFieldToggle),  //42
-               SafeInt(HiLow),
-               SafeInt(LimpHome),  //44
-               SafeInt(VeData),
-               SafeInt(NMEA0183Data),  //46
-               SafeInt(NMEA2KData)),
-        SafeInt(TargetAmpLA);  //48
+               // Settings Echo
+               SafeInt(AlternatorTemperatureLimitF),  // 32
+               SafeInt(ChargingVoltageTarget, 100),   // 33
+               SafeInt(TargetAmps),                   // 34
+               SafeInt(TargetFloatVoltage, 100),      // 35
+               SafeInt(fffr),                         // 36
+               SafeInt(interval, 100),                // 37
+               SafeInt(FieldAdjustmentInterval),      // 38
+               SafeInt(ManualDutyTarget),             // 39
+               SafeInt(SwitchControlOverride),        // 40
+               SafeInt(OnOff),                        // 41
+               SafeInt(ManualFieldToggle),            // 42
+               SafeInt(HiLow),                        // 43
+               SafeInt(LimpHome),                     // 44
+               SafeInt(VeData),                       // 45
+               SafeInt(NMEA0183Data),                 // 46
+               SafeInt(NMEA2KData),                   // 47
+               SafeInt(TargetAmpLA),                  // 48
+
+               // More Settings
+               SafeInt(CurrentThreshold_scaled),    // 49
+               SafeInt(PeukertExponent_scaled),     // 50
+               SafeInt(ChargeEfficiency_scaled),    // 51
+               SafeInt(ChargedVoltage_scaled),      // 52
+               SafeInt(TailCurrent_scaled),         // 53
+               SafeInt(ChargedDetectionTime),       // 54
+               SafeInt(IgnoreTemperature),          // 55
+               SafeInt(BMSlogic),                   // 56
+               SafeInt(BMSLogicLevelOff),           // 57
+               SafeInt(AlarmActivate),              // 58
+               SafeInt(TempAlarm),                  // 59
+               SafeInt(VoltageAlarmHigh),           // 60
+               SafeInt(VoltageAlarmLow),            // 61
+               SafeInt(CurrentAlarmHigh),           // 62
+               SafeInt(FourWay),                    // 63
+               SafeInt(RPMScalingFactor),           // 64
+               SafeInt(ResetTemp),                  // 65
+               SafeInt(ResetVoltage),               // 66
+               SafeInt(ResetCurrent),               // 67
+               SafeInt(ResetEngineRunTime),         // 68
+               SafeInt(ResetAlternatorOnTime),      // 69
+               SafeInt(ResetEnergy),                // 70
+               SafeInt(MaximumAllowedBatteryAmps),  // 71
+               SafeInt(ManualSOCPoint)              // 72
+      );
 
 
       events.send(payload, "CSVData");    // Changed event name to reflect new format
-                                          //   Serial.print("Payload: ");          //For debug
-                                          // Serial.println(payload);            // for debug
       SendWifiTime = micros() - start66;  // Calculate WiFi Send Time
     }
     prev_millis5 = millis();
   }
 }
+
 void checkAndRestart() {
   //Restart the ESP32 every hour just for maintenance because we can eventaually want to use littleFS to store Battery Monitor Stuff first
   unsigned long currentMillis = millis();
@@ -914,7 +947,147 @@ void setupServer() {
       inputMessage = request->getParam(TargetL)->value();
       writeFile(LittleFS, "/TargetAmpL.txt", inputMessage.c_str());
       TargetAmpLA = inputMessage.toInt();
-    } else {
+    }
+    // New ones May17
+    else if (request->hasParam(CTH)) {
+      inputMessage = request->getParam(CTH)->value();
+      writeFile(LittleFS, "/CurrentThreshold.txt", inputMessage.c_str());
+      CurrentThreshold_scaled = inputMessage.toInt();
+    } else if (request->hasParam(PE)) {
+      inputMessage = request->getParam(PE)->value();
+      writeFile(LittleFS, "/PeukertExponent.txt", inputMessage.c_str());
+      PeukertExponent_scaled = inputMessage.toInt();
+    } else if (request->hasParam(CEFF)) {
+      inputMessage = request->getParam(CEFF)->value();
+      writeFile(LittleFS, "/ChargeEfficiency.txt", inputMessage.c_str());
+      ChargeEfficiency_scaled = inputMessage.toInt();
+    } else if (request->hasParam(CV)) {
+      inputMessage = request->getParam(CV)->value();
+      writeFile(LittleFS, "/ChargedVoltage.txt", inputMessage.c_str());
+      ChargedVoltage_scaled = inputMessage.toInt();
+    } else if (request->hasParam(TC)) {
+      inputMessage = request->getParam(TC)->value();
+      writeFile(LittleFS, "/TailCurrent.txt", inputMessage.c_str());
+      TailCurrent_scaled = inputMessage.toInt();
+    } else if (request->hasParam(CDT)) {
+      inputMessage = request->getParam(CDT)->value();
+      writeFile(LittleFS, "/ChargedDetectionTime.txt", inputMessage.c_str());
+      ChargedDetectionTime = inputMessage.toInt();
+    } else if (request->hasParam(IT)) {
+      inputMessage = request->getParam(IT)->value();
+      writeFile(LittleFS, "/IgnoreTemperature.txt", inputMessage.c_str());
+      IgnoreTemperature = inputMessage.toInt();
+    } else if (request->hasParam(BMSL)) {
+      inputMessage = request->getParam(BMSL)->value();
+      writeFile(LittleFS, "/BMSLogic.txt", inputMessage.c_str());
+      BMSlogic = inputMessage.toInt();
+    } else if (request->hasParam(BMSOFF)) {
+      inputMessage = request->getParam(BMSOFF)->value();
+      writeFile(LittleFS, "/BMSLogicLevelOff.txt", inputMessage.c_str());
+      BMSLogicLevelOff = inputMessage.toInt();
+    } else if (request->hasParam(ALM)) {
+      inputMessage = request->getParam(ALM)->value();
+      writeFile(LittleFS, "/AlarmActivate.txt", inputMessage.c_str());
+      AlarmActivate = inputMessage.toInt();
+    } else if (request->hasParam(TAL)) {
+      inputMessage = request->getParam(TAL)->value();
+      writeFile(LittleFS, "/TempAlarm.txt", inputMessage.c_str());
+      TempAlarm = inputMessage.toInt();
+    } else if (request->hasParam(VALH)) {
+      inputMessage = request->getParam(VALH)->value();
+      writeFile(LittleFS, "/VoltageAlarmHigh.txt", inputMessage.c_str());
+      VoltageAlarmHigh = inputMessage.toInt();
+    } else if (request->hasParam(VALL)) {
+      inputMessage = request->getParam(VALL)->value();
+      writeFile(LittleFS, "/VoltageAlarmLow.txt", inputMessage.c_str());
+      VoltageAlarmLow = inputMessage.toInt();
+    } else if (request->hasParam(CAH)) {
+      inputMessage = request->getParam(CAH)->value();
+      writeFile(LittleFS, "/CurrentAlarmHigh.txt", inputMessage.c_str());
+      CurrentAlarmHigh = inputMessage.toInt();
+    } else if (request->hasParam(FW)) {
+      inputMessage = request->getParam(FW)->value();
+      writeFile(LittleFS, "/FourWay.txt", inputMessage.c_str());
+      FourWay = inputMessage.toInt();
+    } else if (request->hasParam(RPMF)) {
+      inputMessage = request->getParam(RPMF)->value();
+      writeFile(LittleFS, "/RPMScalingFactor.txt", inputMessage.c_str());
+      RPMScalingFactor = inputMessage.toInt();
+    } else if (request->hasParam(RSTT)) {
+      inputMessage = request->getParam(RSTT)->value();
+      writeFile(LittleFS, "/ResetTemp.txt", inputMessage.c_str());
+      ResetTemp = inputMessage.toInt();
+    } else if (request->hasParam(RSTV)) {
+      inputMessage = request->getParam(RSTV)->value();
+      writeFile(LittleFS, "/ResetVoltage.txt", inputMessage.c_str());
+      ResetVoltage = inputMessage.toInt();
+    } else if (request->hasParam(RSTC)) {
+      inputMessage = request->getParam(RSTC)->value();
+      writeFile(LittleFS, "/ResetCurrent.txt", inputMessage.c_str());
+      ResetCurrent = inputMessage.toInt();
+    } else if (request->hasParam(RSTER)) {
+      inputMessage = request->getParam(RSTER)->value();
+      writeFile(LittleFS, "/ResetEngineRunTime.txt", inputMessage.c_str());
+      ResetEngineRunTime = inputMessage.toInt();
+    } else if (request->hasParam(RSTAO)) {
+      inputMessage = request->getParam(RSTAO)->value();
+      writeFile(LittleFS, "/ResetAlternatorOnTime.txt", inputMessage.c_str());
+      ResetAlternatorOnTime = inputMessage.toInt();
+    } else if (request->hasParam(RSTE)) {
+      inputMessage = request->getParam(RSTE)->value();
+      writeFile(LittleFS, "/ResetEnergy.txt", inputMessage.c_str());
+      ResetEnergy = inputMessage.toInt();
+    } else if (request->hasParam("MaximumAllowedBatteryAmps")) {
+      inputMessage = request->getParam("MaximumAllowedBatteryAmps")->value();
+      writeFile(LittleFS, "/MaximumAllowedBatteryAmps.txt", inputMessage.c_str());
+      MaximumAllowedBatteryAmps = inputMessage.toInt();
+    } else if (request->hasParam("ManualSOCPoint")) {
+      inputMessage = request->getParam("ManualSOCPoint")->value();
+      writeFile(LittleFS, "/ManualSOCPoint.txt", inputMessage.c_str());
+      ManualSOCPoint = inputMessage.toInt();
+    }
+
+    //Reset buttons
+    else if (request->hasParam("ResetTemp")) {
+      MaxAlternatorTemperatureF = 0;
+      writeFile(LittleFS, "/MaxAlternatorTemperatureF.txt", "0");
+    } else if (request->hasParam("ResetVoltage")) {
+      IBVMax = 0;
+      writeFile(LittleFS, "/IBVMax.txt", "0");
+    } else if (request->hasParam("ResetCurrent")) {
+      MeasuredAmpsMax = 0;
+      writeFile(LittleFS, "/MeasuredAmpsMax.txt", "0");
+    } else if (request->hasParam("ResetEngineRunTime")) {
+      EngineRunTime = 0;
+      writeFile(LittleFS, "/EngineRunTime.txt", "0");
+    } else if (request->hasParam("ResetAlternatorOnTime")) {
+      AlternatorOnTime = 0;
+      writeFile(LittleFS, "/AlternatorOnTime.txt", "0");
+    } else if (request->hasParam("ResetEnergy")) {
+      ChargedEnergy = 0;
+      writeFile(LittleFS, "/ChargedEnergy.txt", "0");
+    } else if (request->hasParam("ResetDischargedEnergy")) {
+      DischargedEnergy = 0;
+      writeFile(LittleFS, "/DischargedEnergy.txt", "0");
+    } else if (request->hasParam("ResetFuelUsed")) {
+      AlternatorFuelUsed = 0;
+      writeFile(LittleFS, "/AlternatorFuelUsed.txt", "0");
+    } else if (request->hasParam("ResetAlternatorChargedEnergy")) {
+      AlternatorChargedEnergy = 0;
+      writeFile(LittleFS, "/AlternatorChargedEnergy.txt", "0");
+    } else if (request->hasParam("ResetEngineCycles")) {
+      EngineCycles = 0;
+      writeFile(LittleFS, "/EngineCycles.txt", "0");
+    } else if (request->hasParam("ResetRPMMax")) {
+      RPMMax = 0;
+      writeFile(LittleFS, "/RPMMax.txt", "0");
+    }
+
+
+
+
+
+    else {
       inputMessage = "No message sent";
     }
 
@@ -1398,7 +1571,7 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   if (!LittleFS.exists("/ManualDuty.txt")) {
     writeFile(LittleFS, "/ManualDuty.txt", String(ManualDutyTarget).c_str());
   } else {
-    ManualDutyTarget = readFile(LittleFS, "/ManualDuty.txt").toInt();  // 
+    ManualDutyTarget = readFile(LittleFS, "/ManualDuty.txt").toInt();  //
   }
   if (!LittleFS.exists("/FullChargeVoltage.txt")) {
     writeFile(LittleFS, "/FullChargeVoltage.txt", String(ChargingVoltageTarget).c_str());
@@ -1480,6 +1653,130 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   } else {
     TargetAmpLA = readFile(LittleFS, "/TargetAmpL.txt").toInt();
   }
+
+  //New May 17
+  if (!LittleFS.exists("/CurrentThreshold.txt")) {
+    writeFile(LittleFS, "/CurrentThreshold.txt", String(CurrentThreshold_scaled).c_str());
+  } else {
+    CurrentThreshold_scaled = readFile(LittleFS, "/CurrentThreshold.txt").toInt();
+  }
+  if (!LittleFS.exists("/PeukertExponent.txt")) {
+    writeFile(LittleFS, "/PeukertExponent.txt", String(PeukertExponent_scaled).c_str());
+  } else {
+    PeukertExponent_scaled = readFile(LittleFS, "/PeukertExponent.txt").toInt();
+  }
+  if (!LittleFS.exists("/ChargeEfficiency.txt")) {
+    writeFile(LittleFS, "/ChargeEfficiency.txt", String(ChargeEfficiency_scaled).c_str());
+  } else {
+    ChargeEfficiency_scaled = readFile(LittleFS, "/ChargeEfficiency.txt").toInt();
+  }
+  if (!LittleFS.exists("/ChargedVoltage.txt")) {
+    writeFile(LittleFS, "/ChargedVoltage.txt", String(ChargedVoltage_scaled).c_str());
+  } else {
+    ChargedVoltage_scaled = readFile(LittleFS, "/ChargedVoltage.txt").toInt();
+  }
+  if (!LittleFS.exists("/TailCurrent.txt")) {
+    writeFile(LittleFS, "/TailCurrent.txt", String(TailCurrent_scaled).c_str());
+  } else {
+    TailCurrent_scaled = readFile(LittleFS, "/TailCurrent.txt").toInt();
+  }
+  if (!LittleFS.exists("/ChargedDetectionTime.txt")) {
+    writeFile(LittleFS, "/ChargedDetectionTime.txt", String(ChargedDetectionTime).c_str());
+  } else {
+    ChargedDetectionTime = readFile(LittleFS, "/ChargedDetectionTime.txt").toInt();
+  }
+  if (!LittleFS.exists("/IgnoreTemperature.txt")) {
+    writeFile(LittleFS, "/IgnoreTemperature.txt", String(IgnoreTemperature).c_str());
+  } else {
+    IgnoreTemperature = readFile(LittleFS, "/IgnoreTemperature.txt").toInt();
+  }
+  if (!LittleFS.exists("/BMSLogic.txt")) {
+    writeFile(LittleFS, "/BMSLogic.txt", String(BMSlogic).c_str());
+  } else {
+    BMSlogic = readFile(LittleFS, "/BMSLogic.txt").toInt();
+  }
+  if (!LittleFS.exists("/BMSLogicLevelOff.txt")) {
+    writeFile(LittleFS, "/BMSLogicLevelOff.txt", String(BMSLogicLevelOff).c_str());
+  } else {
+    BMSLogicLevelOff = readFile(LittleFS, "/BMSLogicLevelOff.txt").toInt();
+  }
+  if (!LittleFS.exists("/AlarmActivate.txt")) {
+    writeFile(LittleFS, "/AlarmActivate.txt", String(AlarmActivate).c_str());
+  } else {
+    AlarmActivate = readFile(LittleFS, "/AlarmActivate.txt").toInt();
+  }
+  if (!LittleFS.exists("/TempAlarm.txt")) {
+    writeFile(LittleFS, "/TempAlarm.txt", String(TempAlarm).c_str());
+  } else {
+    TempAlarm = readFile(LittleFS, "/TempAlarm.txt").toInt();
+  }
+  if (!LittleFS.exists("/VoltageAlarmHigh.txt")) {
+    writeFile(LittleFS, "/VoltageAlarmHigh.txt", String(VoltageAlarmHigh).c_str());
+  } else {
+    VoltageAlarmHigh = readFile(LittleFS, "/VoltageAlarmHigh.txt").toInt();
+  }
+  if (!LittleFS.exists("/VoltageAlarmLow.txt")) {
+    writeFile(LittleFS, "/VoltageAlarmLow.txt", String(VoltageAlarmLow).c_str());
+  } else {
+    VoltageAlarmLow = readFile(LittleFS, "/VoltageAlarmLow.txt").toInt();
+  }
+  if (!LittleFS.exists("/CurrentAlarmHigh.txt")) {
+    writeFile(LittleFS, "/CurrentAlarmHigh.txt", String(CurrentAlarmHigh).c_str());
+  } else {
+    CurrentAlarmHigh = readFile(LittleFS, "/CurrentAlarmHigh.txt").toInt();
+  }
+  if (!LittleFS.exists("/FourWay.txt")) {
+    writeFile(LittleFS, "/FourWay.txt", String(FourWay).c_str());
+  } else {
+    FourWay = readFile(LittleFS, "/FourWay.txt").toInt();
+  }
+  if (!LittleFS.exists("/RPMScalingFactor.txt")) {
+    writeFile(LittleFS, "/RPMScalingFactor.txt", String(RPMScalingFactor).c_str());
+  } else {
+    RPMScalingFactor = readFile(LittleFS, "/RPMScalingFactor.txt").toInt();
+  }
+  if (!LittleFS.exists("/ResetTemp.txt")) {
+    writeFile(LittleFS, "/ResetTemp.txt", String(ResetTemp).c_str());
+  } else {
+    ResetTemp = readFile(LittleFS, "/ResetTemp.txt").toInt();
+  }
+  if (!LittleFS.exists("/ResetVoltage.txt")) {
+    writeFile(LittleFS, "/ResetVoltage.txt", String(ResetVoltage).c_str());
+  } else {
+    ResetVoltage = readFile(LittleFS, "/ResetVoltage.txt").toInt();
+  }
+  if (!LittleFS.exists("/ResetCurrent.txt")) {
+    writeFile(LittleFS, "/ResetCurrent.txt", String(ResetCurrent).c_str());
+  } else {
+    ResetCurrent = readFile(LittleFS, "/ResetCurrent.txt").toInt();
+  }
+  if (!LittleFS.exists("/ResetEngineRunTime.txt")) {
+    writeFile(LittleFS, "/ResetEngineRunTime.txt", String(ResetEngineRunTime).c_str());
+  } else {
+    ResetEngineRunTime = readFile(LittleFS, "/ResetEngineRunTime.txt").toInt();
+  }
+  if (!LittleFS.exists("/ResetAlternatorOnTime.txt")) {
+    writeFile(LittleFS, "/ResetAlternatorOnTime.txt", String(ResetAlternatorOnTime).c_str());
+  } else {
+    ResetAlternatorOnTime = readFile(LittleFS, "/ResetAlternatorOnTime.txt").toInt();
+  }
+  if (!LittleFS.exists("/ResetEnergy.txt")) {
+    writeFile(LittleFS, "/ResetEnergy.txt", String(ResetEnergy).c_str());
+  } else {
+    ResetEnergy = readFile(LittleFS, "/ResetEnergy.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/MaximumAllowedBatteryAmps.txt")) {
+    writeFile(LittleFS, "/MaximumAllowedBatteryAmps.txt", String(MaximumAllowedBatteryAmps).c_str());
+  } else {
+    MaximumAllowedBatteryAmps = readFile(LittleFS, "/MaximumAllowedBatteryAmps.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/ManualSOCPoint.txt")) {
+    writeFile(LittleFS, "/ManualSOCPoint.txt", String(ManualSOCPoint).c_str());
+  } else {
+    ManualSOCPoint = readFile(LittleFS, "/ManualSOCPoint.txt").toInt();
+  }
 }
 
 void InitPersistentVariables() {
@@ -1544,5 +1841,59 @@ void InitPersistentVariables() {
     writeFile(LittleFS, "/MaxAlternatorTemperatureF.txt", String(MaxAlternatorTemperatureF).c_str());
   } else {
     MaxAlternatorTemperatureF = readFile(LittleFS, "/MaxAlternatorTemperatureF.txt").toInt();
+  }
+  // reset buttons
+  if (!LittleFS.exists("/MaxAlternatorTemperatureF.txt")) {
+    writeFile(LittleFS, "/MaxAlternatorTemperatureF.txt", "0");
+  } else {
+    MaxAlternatorTemperatureF = readFile(LittleFS, "/MaxAlternatorTemperatureF.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/IBVMax.txt")) {
+    writeFile(LittleFS, "/IBVMax.txt", "0");
+  } else {
+    IBVMax = readFile(LittleFS, "/IBVMax.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/MeasuredAmpsMax.txt")) {
+    writeFile(LittleFS, "/MeasuredAmpsMax.txt", "0");
+  } else {
+    MeasuredAmpsMax = readFile(LittleFS, "/MeasuredAmpsMax.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/EngineRunTime.txt")) {
+    writeFile(LittleFS, "/EngineRunTime.txt", "0");
+  } else {
+    EngineRunTime = readFile(LittleFS, "/EngineRunTime.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/AlternatorOnTime.txt")) {
+    writeFile(LittleFS, "/AlternatorOnTime.txt", "0");
+  } else {
+    AlternatorOnTime = readFile(LittleFS, "/AlternatorOnTime.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/ChargedEnergy.txt")) {
+    writeFile(LittleFS, "/ChargedEnergy.txt", "0");
+  } else {
+    ChargedEnergy = readFile(LittleFS, "/ChargedEnergy.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/DischargedEnergy.txt")) {
+    writeFile(LittleFS, "/DischargedEnergy.txt", "0");
+  } else {
+    DischargedEnergy = readFile(LittleFS, "/DischargedEnergy.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/AlternatorFuelUsed.txt")) {
+    writeFile(LittleFS, "/AlternatorFuelUsed.txt", "0");
+  } else {
+    AlternatorFuelUsed = readFile(LittleFS, "/AlternatorFuelUsed.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/AlternatorChargedEnergy.txt")) {
+    writeFile(LittleFS, "/AlternatorChargedEnergy.txt", "0");
+  } else {
+    AlternatorChargedEnergy = readFile(LittleFS, "/AlternatorChargedEnergy.txt").toInt();
   }
 }
