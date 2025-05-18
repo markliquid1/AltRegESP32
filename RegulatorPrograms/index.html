@@ -322,6 +322,24 @@ Contact me at mark@xengineering.net       -->
       background-color: #F44336;
     }
 
+    /* Reset Buttons */
+    .btn-small {
+      background-color: #e0e0e0;
+      color: #000;
+      border: none;
+      padding: 2px 8px;
+      font-size: 0.8em;
+      margin-left: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      vertical-align: middle;
+    }
+
+    .btn-small:hover {
+      background-color: #cccccc;
+    }
+
+
     /* Dark Mode */
     .dark-mode {
       --primary: gray;
@@ -548,6 +566,7 @@ Contact me at mark@xengineering.net       -->
             </form>
           </div>
         </div>
+
         <hr />
         <div class="form-row">
           <div class="form-label">Bulk Voltage (<span id="FullChargeVoltage_echo">0</span>):</div>
@@ -761,9 +780,10 @@ Contact me at mark@xengineering.net       -->
           </div>
         </div>
         <hr />
+
+
         <div class="form-row">
-          <div class="form-label">Manual Field Control (<span id="ManualFieldToggle1_echo"></span>):
-          </div>
+          <div class="form-label">Manual Field Control (<span id="ManualFieldToggle1_echo">0</span>):</div>
           <div class="form-input">
             <form action="/get" method="GET" target="hidden-form">
               <input type="hidden" name="password" class="password_field">
@@ -778,10 +798,10 @@ Contact me at mark@xengineering.net       -->
             </form>
           </div>
         </div>
+
         <hr />
         <div class="form-row">
-          <div class="form-label">Manual Field Setpoint (%) (<span id="ManualDuty_echo">0</span>):
-          </div>
+          <div class="form-label">Manual Field Setpoint (%) (<span id="ManualDuty_echo">0</span>):</div>
           <div class="form-input">
             <form action="/get" method="GET" target="hidden-form">
               <input type="hidden" name="password" class="password_field">
@@ -790,7 +810,11 @@ Contact me at mark@xengineering.net       -->
             </form>
           </div>
         </div>
-      </div>
+      </div> <!-- closes .settings-card for Advanced -->
+
+
+
+
 
       <div class="settings-card">
         <div class="section-title">Battery Monitor</div>
@@ -953,22 +977,55 @@ Contact me at mark@xengineering.net       -->
           <p>INA Battery Voltage</p>
           <p class="reading"><span id="IBVID">0</span> V</p>
         </div>
+
         <div class="card">
-          <p>INA Max Battery Voltage</p>
-          <p class="reading"><span id="IBVMaxID">0</span> V</p>
+          <p>Max Battery Voltage</p>
+          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+            <span id="IBVMaxID">0</span><span>V</span>
+            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+              <input type="hidden" name="ResetVoltage" id="ResetVoltage" value="0" />
+              <input type="hidden" name="password" class="password_field" />
+              <button type="button" class="btn-small" onclick="resetVoltage()" id="ResetVoltage_button">Reset</button>
+            </form>
+          </div>
         </div>
+
+
+
+
+
+
         <div class="card">
           <p>State of Charge</p>
           <p class="reading"><span id="SoC_percentID">0</span> %</p>
         </div>
+
         <div class="card">
-          <p>Battery Charged Energy</p>
-          <p class="reading"><span id="ChargedEnergyID">0</span> Wh</p>
+          <p>Alternator Charged Energy</p>
+          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+            <span id="AlternatorChargedEnergyID">0</span><span>Wh</span>
+            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+              <input type="hidden" name="ResetAlternatorChargedEnergy" id="ResetAlternatorChargedEnergy" value="0" />
+              <input type="hidden" name="password" class="password_field" />
+              <button type="button" class="btn-small" onclick="resetAlternatorChargedEnergy()"
+                id="ResetAlternatorChargedEnergy_button">Reset</button>
+            </form>
+          </div>
         </div>
+
         <div class="card">
           <p>Discharged Energy</p>
-          <p class="reading"><span id="DischargedEnergyID">0</span> Wh</p>
+          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+            <span id="DischargedEnergyID">0</span><span>Wh</span>
+            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+              <input type="hidden" name="ResetDischargedEnergy" id="ResetDischargedEnergy" value="0" />
+              <input type="hidden" name="password" class="password_field" />
+              <button type="button" class="btn-small" onclick="resetDischargedEnergy()"
+                id="ResetDischargedEnergy_button">Reset</button>
+            </form>
+          </div>
         </div>
+
         <div class="card">
           <p>Battery Current</p>
           <p class="reading"><span id="BCurrID">0</span> A</p>
@@ -1001,24 +1058,67 @@ Contact me at mark@xengineering.net       -->
         </div>
         <div class="card">
           <p>Alternator On Time</p>
-          <p class="reading"><span id="AlternatorOnTimeID">0</span> H:M:S</p>
+          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+            <span id="AlternatorOnTimeID">0</span><span>H:M:S</span>
+            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+              <input type="hidden" name="ResetAlternatorOnTime" id="ResetAlternatorOnTime" value="0" />
+              <input type="hidden" name="password" class="password_field" />
+              <button type="button" class="btn-small" onclick="resetAlternatorOnTime()"
+                id="ResetAlternatorOnTime_button">Reset</button>
+            </form>
+          </div>
         </div>
+
         <div class="card">
           <p>Fuel Used</p>
-          <p class="reading"><span id="AlternatorFuelUsedID">0</span> mL</p>
+          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+            <span id="AlternatorFuelUsedID">0</span><span>mL</span>
+            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+              <input type="hidden" name="ResetFuelUsed" id="ResetFuelUsed" value="0" />
+              <input type="hidden" name="password" class="password_field" />
+              <button type="button" class="btn-small" onclick="resetFuelUsed()" id="ResetFuelUsed_button">Reset</button>
+            </form>
+          </div>
         </div>
+
         <div class="card">
-          <p>Alternator Charged Energy</p>
-          <p class="reading"><span id="AlternatorChargedEnergyID">0</span> Wh</p>
+          <p>Charged Energy</p>
+          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+            <span id="ChargedEnergyID">0</span><span>Wh</span>
+            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+              <input type="hidden" name="ResetEnergy" id="ResetEnergy" value="0" />
+              <input type="hidden" name="password" class="password_field" />
+              <button type="button" class="btn-small" onclick="resetEnergy()" id="ResetEnergy_button">Reset</button>
+            </form>
+          </div>
         </div>
+
         <div class="card">
           <p>Max Output Current</p>
-          <p class="reading"><span id="MeasuredAmpsMaxID">0</span> A</p>
+          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+            <span id="MeasuredAmpsMaxID">0</span><span>A</span>
+            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+              <input type="hidden" name="ResetCurrent" id="ResetCurrent" value="0" />
+              <input type="hidden" name="password" class="password_field" />
+              <button type="button" class="btn-small" onclick="resetCurrent()" id="ResetCurrent_button">Reset</button>
+            </form>
+          </div>
         </div>
+
+
         <div class="card">
           <p>Max Alternator Temp</p>
-          <p class="reading"><span id="MaxAlternatorTemperatureF_ID">0</span> °F</p>
+          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+            <span id="MaxAlternatorTemperatureF_ID">0</span><span>°F</span>
+            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+              <input type="hidden" name="ResetTemp" id="ResetTemp" value="0" />
+              <input type="hidden" name="password" class="password_field" />
+              <button type="button" class="btn-small" onclick="resetTemp()" id="ResetTemp_button">Reset</button>
+            </form>
+          </div>
         </div>
+
+
       </div>
     </div>
 
@@ -1031,18 +1131,44 @@ Contact me at mark@xengineering.net       -->
         </div>
         <div class="card">
           <p>Engine Run Time</p>
-          <p class="reading"><span id="EngineRunTimeID">0</span> H:M:S</p>
+          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+            <span id="EngineRunTimeID">0</span><span>H:M:S</span>
+            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+              <input type="hidden" name="ResetEngineRunTime" id="ResetEngineRunTime" value="0" />
+              <input type="hidden" name="password" class="password_field" />
+              <button type="button" class="btn-small" onclick="resetEngineRunTime()"
+                id="ResetEngineRunTime_button">Reset</button>
+            </form>
+          </div>
         </div>
+
         <div class="card">
           <p>Engine Rev Counter</p>
-          <p class="reading"><span id="EngineCyclesID">0</span> rotations</p>
+          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+            <span id="EngineCyclesID">0</span><span>rotations</span>
+            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+              <input type="hidden" name="ResetEngineCycles" id="ResetEngineCycles" value="0" />
+              <input type="hidden" name="password" class="password_field" />
+              <button type="button" class="btn-small" onclick="resetEngineCycles()"
+                id="ResetEngineCycles_button">Reset</button>
+            </form>
+          </div>
         </div>
+
         <div class="card">
           <p>Max RPM</p>
-          <p class="reading"><span id="RPMMaxID">0</span> rev/min</p>
+          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+            <span id="RPMMaxID">0</span><span>rev/min</span>
+            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+              <input type="hidden" name="ResetRPMMax" id="ResetRPMMax" value="0" />
+              <input type="hidden" name="password" class="password_field" />
+              <button type="button" class="btn-small" onclick="resetRPMMax()" id="ResetRPMMax_button">Reset</button>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
+    </div> <!-- ADD THIS: Closes Engine settings-card -->
+
 
     <div class="settings-card">
       <div class="section-title">ESP32</div>
@@ -1889,7 +2015,6 @@ Contact me at mark@xengineering.net       -->
         // Initial status - set to connected if we made it this far
         updateInlineStatus(true);
 
-        // ADD THE CODE RIGHT HERE - after the event listeners but before the BulkData listener
         setInterval(function () {
           const timeSinceLastEvent = Date.now() - lastEventTime;
           if (timeSinceLastEvent > 3000) { // 3 seconds without data = disconnected
@@ -2249,6 +2374,61 @@ Contact me at mark@xengineering.net       -->
         }, false);
       }
 
+      //Reset buttons
+      function resetTemp() {
+        document.getElementById("ResetTemp").value = "1";
+        document.getElementById("ResetTemp_button").form.submit();
+      }
+
+      function resetVoltage() {
+        document.getElementById("ResetVoltage").value = "1";
+        document.getElementById("ResetVoltage_button").form.submit();
+      }
+
+      function resetCurrent() {
+        document.getElementById("ResetCurrent").value = "1";
+        document.getElementById("ResetCurrent_button").form.submit();
+      }
+
+      function resetEngineRunTime() {
+        document.getElementById("ResetEngineRunTime").value = "1";
+        document.getElementById("ResetEngineRunTime_button").form.submit();
+      }
+
+      function resetAlternatorOnTime() {
+        document.getElementById("ResetAlternatorOnTime").value = "1";
+        document.getElementById("ResetAlternatorOnTime_button").form.submit();
+      }
+
+      function resetEnergy() {
+        document.getElementById("ResetEnergy").value = "1";
+        document.getElementById("ResetEnergy_button").form.submit();
+      }
+
+      function resetDischargedEnergy() {
+        document.getElementById("ResetDischargedEnergy").value = "1";
+        document.getElementById("ResetDischargedEnergy_button").form.submit();
+      }
+
+      function resetFuelUsed() {
+        document.getElementById("ResetFuelUsed").value = "1";
+        document.getElementById("ResetFuelUsed_button").form.submit();
+      }
+
+      function resetAlternatorChargedEnergy() {
+        document.getElementById("ResetAlternatorChargedEnergy").value = "1";
+        document.getElementById("ResetAlternatorChargedEnergy_button").form.submit();
+      }
+
+      function resetEngineCycles() {
+        document.getElementById("ResetEngineCycles").value = "1";
+        document.getElementById("ResetEngineCycles_button").form.submit();
+      }
+
+      function resetRPMMax() {
+        document.getElementById("ResetRPMMax").value = "1";
+        document.getElementById("ResetRPMMax_button").form.submit();
+      }
 
 
       // uplot plot minor details like dark mode and gentle space
@@ -2478,6 +2658,14 @@ Contact me at mark@xengineering.net       -->
     <span id="ResetEngineRunTime_echo" style="display:none;">0</span>
     <span id="ResetAlternatorOnTime_echo" style="display:none;">0</span>
     <span id="ResetEnergy_echo" style="display:none;">0</span>
+    <span id="ResetAlternatorChargedEnergy_echo" style="display:none;">0</span>
+    <span id="ResetDischargedEnergy_echo" style="display:none;">0</span>
+    <span id="ResetFuelUsed_echo" style="display:none;">0</span>
+    <span id="ResetEngineCycles_echo" style="display:none;">0</span>
+    <span id="ResetRPMMax_echo" style="display:none;">0</span>
+    <span id="FuelUsedID" style="display:none;">0</span>
+
+
 
     <!-- Input values for settings -->
     <input id="TemperatureLimitF" style="display:none;" value="0" />
@@ -2519,6 +2707,12 @@ Contact me at mark@xengineering.net       -->
     <input id="ResetEngineRunTime" style="display:none;" value="0" />
     <input id="ResetAlternatorOnTime" style="display:none;" value="0" />
     <input id="ResetEnergy" style="display:none;" value="0" />
+    <input id="ResetAlternatorChargedEnergy" style="display:none;" value="0" />
+    <input id="ResetDischargedEnergy" style="display:none;" value="0" />
+    <input id="ResetFuelUsed" style="display:none;" value="0" />
+    <input id="ResetEngineCycles" style="display:none;" value="0" />
+    <input id="ResetRPMMax" style="display:none;" value="0" />
+
 
   </div>
 </body>
