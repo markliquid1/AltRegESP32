@@ -883,6 +883,34 @@ Contact me at mark@xengineering.net       -->
             </form>
           </div>
         </div>
+
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Max Batt Amps Allowed (<span id="MaximumAllowedBatteryAmps_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="MaximumAllowedBatteryAmps" type="number" step="1" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+
+        
+
+
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Manual SoC Point (%) (<span id="ManualSOCPoint_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="ManualSOCPoint" type="number" step="1" min="0" max="100" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+
       </div>
 
       <div class="settings-card">
@@ -1340,7 +1368,10 @@ Contact me at mark@xengineering.net       -->
       ResetCurrent: 67,
       ResetEngineRunTime: 68,
       ResetAlternatorOnTime: 69,
-      ResetEnergy: 70
+      ResetEnergy: 70,
+      MaximumAllowedBatteryAmps: 71,
+      ManualSOCPoint: 72
+
     };
 
 
@@ -1992,9 +2023,11 @@ Contact me at mark@xengineering.net       -->
           ["ResetCurrent_echo", "ResetCurrent"],                     // 67
           ["ResetEngineRunTime_echo", "ResetEngineRunTime"],         // 68
           ["ResetAlternatorOnTime_echo", "ResetAlternatorOnTime"],   // 69
-          ["ResetEnergy_echo", "ResetEnergy"]                        // 70
-        ];
+          ["ResetEnergy_echo", "ResetEnergy"],                        // 70
+          ["MaximumAllowedBatteryAmps_echo", "MaximumAllowedBatteryAmps"],
+          ["ManualSOCPoint_echo", "ManualSOCPoint"]
 
+        ];
 
 
         // this is the numerical displays, with scaling done locally
@@ -2108,7 +2141,10 @@ Contact me at mark@xengineering.net       -->
             ResetCurrent: values[fieldIndexes.ResetCurrent],
             ResetEngineRunTime: values[fieldIndexes.ResetEngineRunTime],
             ResetAlternatorOnTime: values[fieldIndexes.ResetAlternatorOnTime],
-            ResetEnergy: values[fieldIndexes.ResetEnergy]
+            ResetEnergy: values[fieldIndexes.ResetEnergy],
+            MaximumAllowedBatteryAmps: values[fieldIndexes.MaximumAllowedBatteryAmps],
+            ManualSOCPoint: values[fieldIndexes.ManualSOCPoint]
+
           };
 
 
@@ -2255,6 +2291,13 @@ Contact me at mark@xengineering.net       -->
           if ('ResetEnergy' in data) {
             document.getElementById('ResetEnergy_echo').textContent = data.ResetEnergy;
           }
+          if ('MaximumAllowedBatteryAmps' in data) {
+            document.getElementById('MaximumAllowedBatteryAmps_echo').textContent = (data.MaximumAllowedBatteryAmps);
+          }
+          if ('ManualSOCPoint' in data) {
+            document.getElementById('ManualSOCPoint_echo').textContent = data.ManualSOCPoint;
+          }
+
 
 
           const now = Math.floor(Date.now() / 1000);
@@ -2664,6 +2707,8 @@ Contact me at mark@xengineering.net       -->
     <span id="ResetEngineCycles_echo" style="display:none;">0</span>
     <span id="ResetRPMMax_echo" style="display:none;">0</span>
     <span id="FuelUsedID" style="display:none;">0</span>
+    <span id="MaximumAllowedBatteryAmps_echo" style="display:none;">0</span>
+    <span id="ManualSOCPoint_echo" style="display:none;">0</span>
 
 
 
@@ -2712,6 +2757,8 @@ Contact me at mark@xengineering.net       -->
     <input id="ResetFuelUsed" style="display:none;" value="0" />
     <input id="ResetEngineCycles" style="display:none;" value="0" />
     <input id="ResetRPMMax" style="display:none;" value="0" />
+    <input id="MaximumAllowedBatteryAmps" style="display:none;" value="0" />
+    <input id="ManualSOCPoint" style="display:none;" value="0" />
 
 
   </div>
