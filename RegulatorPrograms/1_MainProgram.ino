@@ -176,6 +176,7 @@ int ADS1115Disconnected = 0;
 // Battery SOC Monitoring Variables
 int BatteryCapacity_Ah = 300;         // Battery capacity in Amp-hours
 int SoC_percent = 75;                 // State of Charge percentage (0-100)
+int ManualSOCPoint=25;               // Used to set it manually
 int CoulombCount_Ah_scaled = 7500;    // Current energy in battery (Ah × 100 for precision)
 bool FullChargeDetected = false;      // Flag for full charge detection
 unsigned long FullChargeTimer = 600;  // Timer for full charge detection, 10 minutes
@@ -190,13 +191,39 @@ int DataSaveInterval = 300000;            // Save data every 5 minutes (300,000 
 // Accumulators for runtime tracking
 unsigned long engineRunAccumulator = 0;     // Milliseconds accumulator for engine runtime
 unsigned long alternatorOnAccumulator = 0;  // Milliseconds accumulator for alternator runtime
+
+
+//Momentary Buttons
+int FactorySettings = 0;                        // Reset Button
+int AlarmTest = 0;       
+
+//More Settings
 // SOC Parameters
 int CurrentThreshold_scaled = 100;          // Ignore currents below this (A × 100)
 int PeukertExponent_scaled = 105;           // Peukert exponent × 100 (112 = 1.12)
 int ChargeEfficiency_scaled = 99;           // Charging efficiency % (0-100)
 int ChargedVoltage_scaled = 1450;           // Voltage threshold for "charged" (V × 100)
 int TailCurrent_scaled = 2000;              // Current threshold for "charged" (% of capacity × 100)
-unsigned long ChargedDetectionTime = 3600;  // Time at charged state to consider 100% (seconds)
+int ChargedDetectionTime = 3600;  // Time at charged state to consider 100% (seconds)
+int IgnoreTemperature = 0;                      // If no temp sensor, set to 1
+int BMSlogic = 0;                               // if BMS is to turn the alternator on and off
+int BMSLogicLevelOff = 0;                          // set to 0 if the BMS gives a low signal (<3V?) when no charging is desired
+int AlarmActivate = 0;                            // set to 1 to enable alarm conditions
+int TempAlarm = 0;                               // above this value, sound alarm
+int VoltageAlarmHigh = 0;                         // above this value, sound alarm
+int VoltageAlarmLow = 0;                          // below this value, sound alarm
+int CurrentAlarmHigh = 0;                           // above this value, sound alarm
+int MaximumAllowedBatteryAmps;                     // safety for battery, optional
+int FourWay = 0;                 // 0 voltage data source = INA228 , 1 voltage source = ADS1115, 2 voltage source = NMEA2k, 3 voltage source = Victron VeDirect
+int RPMScalingFactor;            // self explanatory
+//Controls For LittleFS
+int ResetTemp;              // reset the maximum alternator temperature tracker
+int ResetVoltage;            // reset the maximum battery voltage measured
+int ResetCurrent;           // reset the maximmum alternator output current
+int ResetEngineRunTime;     // reset engine run time tracker
+int ResetAlternatorOnTime;  //reset AlternatorOnTime
+int ResetEnergy;            // reset Alternator/other Charged energy, and Discharged Energy, and Fuel used
+
 
 int Voltage_scaled = 0;            // Battery voltage scaled (V × 100)
 int BatteryCurrent_scaled = 0;     // A × 100
@@ -220,13 +247,7 @@ int EngineCycles = 0;           // Average RPM * Minutes of run time
 int AlternatorOnTime = 0;       // Time alternator has been producing current (minutes)
 bool engineWasRunning = false;  // Engine state in previous check
 bool alternatorWasOn = false;   // Alternator state in previous check
-//Controls For LittleFS
-int ResetTemp;              // reset the maximum alternator temperature tracker
-int ResetVotage;            // reset the maximum battery voltage measured
-int ResetCurrent;           // reset the maximmum alternator output current
-int ResetEngineRunTime;     // reset engine run time tracker
-int ResetAlternatorOnTime;  //reset AlternatorOnTime
-int ResetEnergy;            // reset Alternator/other Charged energy, and Discharged Energy, and Fuel used
+
 
 // variables used to show how long each loop takes
 uint64_t starttime;
@@ -306,6 +327,31 @@ const char *VD = "VeData1";
 const char *N0 = "NMEA0183Data1";
 const char *N2 = "NMEA2KData1";
 const char *TargetL = "TargetAmpL";
+
+//New May 17
+const char *CTH = "CurrentThreshold";
+const char *PE = "PeukertExponent";
+const char *CEFF = "ChargeEfficiency";
+const char *CV = "ChargedVoltage";
+const char *TC = "TailCurrent";
+const char *CDT = "ChargedDetectionTime";
+const char *IT = "IgnoreTemperature";
+const char *BMSL = "BMSLogic";
+const char *BMSOFF = "BMSLogicLevelOff";
+const char *ALM = "AlarmActivate";
+const char *TAL = "TempAlarm";
+const char *VALH = "VoltageAlarmHigh";
+const char *VALL = "VoltageAlarmLow";
+const char *CAH = "CurrentAlarmHigh";
+const char *FW = "FourWay";
+const char *RPMF = "RPMScalingFactor";
+const char *RSTT = "ResetTemp";
+const char *RSTV = "ResetVoltage";
+const char *RSTC = "ResetCurrent";
+const char *RSTER = "ResetEngineRunTime";
+const char *RSTAO = "ResetAlternatorOnTime";
+const char *RSTE = "ResetEnergy";
+
 
 
 // WiFi provisioning settings
