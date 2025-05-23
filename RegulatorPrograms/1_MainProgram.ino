@@ -1,5 +1,5 @@
 // X Engineering Alternator Regulator
-//     Copyright (C) 2025  Mark Nickerson  
+//     Copyright (C) 2025  Mark Nickerson
 
 //     This program is free software: you can redistribute it and/or modify
 //     it under the terms of the GNU General Public License as published by
@@ -270,6 +270,8 @@ static unsigned long lastINARead = 0;  // don't read the INA228 needlessly often
 // Global variable to track ESP32 restart time
 unsigned long lastRestartTime = 0;
 const unsigned long RESTART_INTERVAL = 3600000;  // 1 hour in milliseconds
+
+int BatteryVoltageSource=0;           // select  "0">INA228    value="1">ADS1115     value="2">VictronVeDirect     value="3">NMEA0183     value="4">NMEA2K
 
 
 // pre-setup stuff
