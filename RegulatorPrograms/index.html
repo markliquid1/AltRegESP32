@@ -92,15 +92,15 @@ Contact me at mark@xengineering.net       -->
     }
 
     input[type="text"],
-input[type="number"],
-input[type="password"] {
-  background: #ffffff;
-  color: var(--text-dark);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 4px;
-  width: 80px;
-}
+    input[type="number"],
+    input[type="password"] {
+      background: #ffffff;
+      color: var(--text-dark);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 4px;
+      width: 80px;
+    }
 
     input:focus {
       outline: none;
@@ -208,19 +208,19 @@ input[type="password"] {
       align-items: center;
     }
 
-/* Security section forms only - prevent passwords from being too far away */
-.settings-card:first-child form {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: flex-start;
-}
+    /* Security section forms only - prevent passwords from being too far away */
+    .settings-card:first-child form {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-start;
+    }
 
-/* Fix for Security section layout only */
-#security-card .form-label {
-  flex: 0 0 auto;
-  min-width: 6em;
-}
+    /* Fix for Security section layout only */
+    #security-card .form-label {
+      flex: 0 0 auto;
+      min-width: 6em;
+    }
 
 
     /* Locking Settings Capability */
@@ -444,38 +444,50 @@ input[type="password"] {
   <div class="settings-grid">
     <div class="settings-card" id="security-card">
       <div id="lock-status" style="font-weight:bold; color:#00a19a; margin-bottom:10px;">LOCKED</div>
+
+      <!-- Enter Password Row -->
       <div class="form-row">
         <div class="form-label">Enter Password:</div>
         <div class="form-input">
           <form action="/get" method="GET" target="hidden-form" onsubmit="setAdminPassword(); return false;">
             <input type="hidden" name="dummy" value="1" />
-            <input type="password" id="admin_password" name="admin_password" autocomplete="current-password" />
-            <input type="submit" id="admin_password_set" value="Enter" />
-            <span id="admin_password_msg" style="margin-left:8px; font-size:12px; color:#00a19a;"></span>
-            <label style="margin-left: 8px; font-size: 12px;">
-              <input type="checkbox" onclick="togglePassword('admin_password')">Show
-            </label>
+            <div style="display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px;">
+              <input type="password" id="admin_password" name="admin_password" autocomplete="current-password" />
+              <input type="submit" id="admin_password_set" value="Enter" style="width: 70px;" />
+              <label style="font-size: 12px; white-space: nowrap;">
+                <input type="checkbox" onclick="togglePassword('admin_password')">Show
+              </label>
+              <span id="admin_password_msg" style="grid-column: 1 / -1; font-size: 12px; color: #00a19a;"></span>
+            </div>
           </form>
         </div>
       </div>
+
+      <!-- New Password Row -->
       <div class="form-row">
         <div class="form-label">New Password:</div>
         <div class="form-input">
           <form action="/setPassword" method="POST" target="hidden-form" onsubmit="return setNewPassword();">
-            <input type="hidden" name="password" class="password_field">
-            <input type="password" id="newpassword" name="newpassword" />
-            <input type="submit" id="newpassword_set" value="Set" />
-            <span id="newpassword_msg" style="margin-left:8px; font-size:12px; color:#00a19a;"></span>
-            <label style="margin-left: 8px; font-size: 12px;">
-              <input type="checkbox" onclick="togglePassword('newpassword')">Show
-            </label>
+            <input type="hidden" name="password" class="password_field" />
+            <div style="display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px;">
+              <input type="password" id="newpassword" name="newpassword" />
+              <input type="submit" id="newpassword_set" value="Set" style="width: 70px;" />
+              <label style="font-size: 12px; white-space: nowrap;">
+                <input type="checkbox" onclick="togglePassword('newpassword')">Show
+              </label>
+              <span id="newpassword_msg" style="grid-column: 1 / -1; font-size: 12px; color: #00a19a;"></span>
+            </div>
           </form>
         </div>
       </div>
-      <div style="text-align: center; margin-top: 10px;">
+
+      <!-- Lock Button -->
+      <div style="text-align: left; margin-top: 10px;">
         <input type="submit" id="lock-settings-button" onclick="lockSettingsManually(); return false;"
           value="Lock Settings" style="width: 120px; background-color: #00a19a;" />
       </div>
+
+
     </div>
   </div>
 
@@ -725,6 +737,45 @@ input[type="password"] {
             </form>
           </div>
         </div>
+
+        <div class="settings-card">
+          <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+            <span>Amp Control by Engine Speed</span>
+            <form action="/get" method="GET" target="hidden-form" style="display: flex; align-items: center; gap: 6px; margin: 0;">
+              <input type="hidden" name="AmpControlByRPM" id="AmpControlByRPM_hidden" value="0" />
+              <input type="hidden" name="password" class="password_field" />
+              <label style="font-size: 12px;">Off</label>
+              <label class="switch">
+                <input type="checkbox" id="AmpControlByRPM_checkbox"
+                  onchange="document.getElementById('AmpControlByRPM_hidden').value=this.checked?1:0; submitMessage();" />
+                <span class="slider round"></span>
+              </label>
+              <label style="font-size: 12px;">On</label>
+            </form>
+          </div>
+        <hr />
+          <form action="/get" method="GET" target="hidden-form">
+            <input type="hidden" name="password" class="password_field">
+            <table style="width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 6px;">
+              <thead>
+                <tr>
+                  <th style="text-align:left;">RPM</th>
+                  <th style="text-align:left;">Target</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td><input type="number" name="RPM0" style="width: 100%; padding: 2px;" /></td><td><input type="number" name="Amps0" style="width: 100%; padding: 2px;" /></td></tr>
+                <tr><td><input type="number" name="RPM1" style="width: 100%; padding: 2px;" /></td><td><input type="number" name="Amps1" style="width: 100%; padding: 2px;" /></td></tr>
+                <tr><td><input type="number" name="RPM2" style="width: 100%; padding: 2px;" /></td><td><input type="number" name="Amps2" style="width: 100%; padding: 2px;" /></td></tr>
+                <tr><td><input type="number" name="RPM3" style="width: 100%; padding: 2px;" /></td><td><input type="number" name="Amps3" style="width: 100%; padding: 2px;" /></td></tr>
+                <tr><td><input type="number" name="RPM4" style="width: 100%; padding: 2px;" /></td><td><input type="number" name="Amps4" style="width: 100%; padding: 2px;" /></td></tr>
+              </tbody>
+            </table>
+            <input onclick="submitMessage()" type="submit" value="Set" />
+          </form>
+        </div>
+        
+
       </div> <!-- closes .settings-card for Advanced -->
 
 
@@ -934,13 +985,6 @@ input[type="password"] {
           </div>
         </div>
 
-
-
-
-
-
-
-
         <hr />
         <div class="form-row">
           <div class="form-label">Enter SoC Manually (%) (<span id="ManualSOCPoint_echo">0</span>):</div>
@@ -965,7 +1009,7 @@ input[type="password"] {
             <span class="toggle-label">Off</span>
             <label class="switch">
               <input id="DarkMode_checkbox" type="checkbox"
-                onchange="document.body.classList.toggle('dark-mode'); localStorage.setItem('darkMode', this.checked ? '1' : '0'); updateUplotTheme(uplot); updateUplotTheme(currentTempPlot); updateUplotTheme(voltagePlot); updateUplotTheme(rpmPlot); updateUplotTheme(clientUpdatePlot);" />
+                onchange="document.body.classList.toggle('dark-mode'); localStorage.setItem('darkMode', this.checked ? '1' : '0'); updateUplotTheme(currentTempPlot); updateUplotTheme(voltagePlot); updateUplotTheme(rpmPlot);" />
               <span class="slider round"></span>
             </label>
 
@@ -1007,23 +1051,27 @@ input[type="password"] {
             </form>
           </div>
         </div>
+
         <hr />
         <div class="form-row">
-          <div class="form-label">NMEA 2000 Data (<span id="NMEA2KData1_echo">0</span>):</div>
+          <div class="form-label">Battery Voltage Source (<span id="BatteryVoltageSource_echo">0</span>):</div>
           <div class="form-input">
             <form action="/get" method="GET" target="hidden-form">
               <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="NMEA2KData1_checkbox" type="checkbox"
-                  onchange="document.getElementById('NMEA2KData1').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="NMEA2KData1" name="NMEA2KData1" type="number" value="" style="display:none;" />
+              <select name="BatteryVoltageSource">
+                <option value="0">INA228</option>
+                <option value="1">ADS1115</option>
+                <option value="2">VictronVeDirect</option>
+                <option value="3">NMEA0183</option>
+                <option value="4">NMEA2K</option>
+              </select>
+              <input onclick="submitMessage()" type="submit" value="Set" />
             </form>
           </div>
         </div>
+
+
+
       </div>
 
     </div>
@@ -1309,14 +1357,6 @@ input[type="password"] {
     <div class="plot-container" id="rpm-plot"></div>
   </div>
 
-  <div class="settings-card">
-    <div class="plot-container" id="client-update-plot"></div>
-  </div>
-
-  <div class="settings-card">
-    <div class="plot-container" id="wifi-plot"></div>
-  </div>
-
 
   <script>
     function debounce(fn, delay) {
@@ -1412,8 +1452,8 @@ input[type="password"] {
       ResetAlternatorOnTime: 69,
       ResetEnergy: 70,
       MaximumAllowedBatteryAmps: 71,
-      ManualSOCPoint: 72
-
+      ManualSOCPoint: 72,
+      BatteryVoltageSource: 73
     };
 
 
@@ -1431,10 +1471,6 @@ input[type="password"] {
       }
     }
 
-    // WiFi Signal Plot Data
-    const wifiData = [[], [], []];  // [timestamps, WifiStrength (dB), ClientUpdateTime (ms)]
-    let uplot;
-    let lastClientUpdateTime = 0;
 
     // Current and Temperature Plot Data
     // [timestamps, battery current, alternator current, field current, alt temp]
@@ -1456,17 +1492,7 @@ input[type="password"] {
     const PLOT_UPDATE_INTERVAL_MS = 1000; // Only update every 2 seconds (adjust as needed)
 
 
-    function schedulePlotUpdate() {
-      if (!window.updateScheduled) {
-        window.updateScheduled = true;
 
-        requestAnimationFrame(() => {
-          uplot.setData(wifiData);
-          window.updateScheduled = false;
-
-        });
-      }
-    }
 
     function scheduleCurrentTempPlotUpdate() {
       if (!window.currentTempUpdateScheduled && currentTempPlot) {
@@ -1497,84 +1523,6 @@ input[type="password"] {
         });
       }
     }
-
-
-    function initWifiPlot() {
-      const plotEl = document.getElementById('wifi-plot');
-      if (!plotEl) {
-        console.error("WiFi plot element not found");
-        return;
-      }
-
-      const opts = {
-        width: Math.min(plotEl.clientWidth, 900),
-        height: 300,
-        title: "WiFi Signal & Update Time",
-        series: [
-          {}, // timestamps
-          {
-            label: "Signal Strength (dB)",
-            stroke: "#00a19a",
-            width: 2,
-            scale: "strength"
-          },
-          {
-            label: "Client Update Time (ms)",
-            stroke: "#e53935",
-            width: 2,
-            scale: "update"
-          }
-        ],
-        axes: [
-          {}, // time axis
-          {
-            scale: "strength",
-            label: "dB",
-            grid: { show: true }
-          },
-          {
-            scale: "update",
-            label: "ms",
-            side: 1,
-            grid: { show: false }
-          }
-        ],
-        scales: {
-          x: { time: true },
-          strength: {
-            auto: true,
-            range: [-90, -30]
-          },
-          update: {
-            auto: true
-          }
-        },
-        plugins: [{
-          hooks: {
-            init: [
-              (u) => {
-                const resizePlot = debounce(() => {
-                  const plotEl = document.getElementById("wifi-plot");
-                  if (plotEl && uplot) {
-                    uplot.setSize({ width: plotEl.clientWidth, height: 300 });
-                  }
-                }, 1000);
-                const ro = new ResizeObserver(resizePlot);
-                ro.observe(plotEl);
-              }
-            ]
-          }
-        }]
-      };
-
-      uplot = new uPlot(opts, wifiData, plotEl);
-      const startTime = Math.floor(Date.now() / 1000);
-      wifiData[0].push(startTime);
-      wifiData[1].push(-65);   // WiFi Strength
-      wifiData[2].push(1000);  // Client Update Time
-      uplot.setData(wifiData);
-    }
-
 
 
     function initCurrentTempPlot() {
@@ -1929,7 +1877,6 @@ input[type="password"] {
       }
 
 
-      initWifiPlot();
       initCurrentTempPlot();
       initVoltagePlot();
       initRPMPlot();
@@ -2010,7 +1957,9 @@ input[type="password"] {
           ["ResetAlternatorOnTime_echo", "ResetAlternatorOnTime"],   // 69
           ["ResetEnergy_echo", "ResetEnergy"],                        // 70
           ["MaximumAllowedBatteryAmps_echo", "MaximumAllowedBatteryAmps"],
-          ["ManualSOCPoint_echo", "ManualSOCPoint"]
+          ["ManualSOCPoint_echo", "ManualSOCPoint"],
+          ["BatteryVoltageSource_echo", "BatteryVoltageSource"]
+
 
         ];
 
@@ -2128,8 +2077,8 @@ input[type="password"] {
             ResetAlternatorOnTime: values[fieldIndexes.ResetAlternatorOnTime],
             ResetEnergy: values[fieldIndexes.ResetEnergy],
             MaximumAllowedBatteryAmps: values[fieldIndexes.MaximumAllowedBatteryAmps],
-            ManualSOCPoint: values[fieldIndexes.ManualSOCPoint]
-
+            ManualSOCPoint: values[fieldIndexes.ManualSOCPoint],
+            BatteryVoltageSource: values[fieldIndexes.BatteryVoltageSource]
           };
 
 
@@ -2282,6 +2231,9 @@ input[type="password"] {
           if ('ManualSOCPoint' in data) {
             document.getElementById('ManualSOCPoint_echo').textContent = data.ManualSOCPoint;
           }
+          if ('BatteryVoltageSource' in data) {
+            document.getElementById('BatteryVoltageSource_echo').textContent = data.BatteryVoltageSource;
+          }
 
 
 
@@ -2301,17 +2253,6 @@ input[type="password"] {
 
 
 
-          // Update plot data - this section remains the same
-          // Update WiFi Signal plot data
-          if ('WifiStrength' in data && typeof uplot !== 'undefined') {
-            const strength = parseFloat(data.WifiStrength);
-            wifiData[0].push(now);
-            wifiData[1].push(strength);
-            if (wifiData[0].length > maxPoints) {
-              wifiData[0].shift();
-              wifiData[1].shift();
-            }
-          }
 
           // Update Current & Temperature plot data arrays
           if (typeof currentTempPlot !== 'undefined') {
@@ -2366,28 +2307,15 @@ input[type="password"] {
               rpmData[1].shift();
             }
           }
-          // Measure client-side performance
-          const clientUpdateTime = Date.now() - lastClientUpdateTime;
-          if (lastClientUpdateTime > 0) {  // Skip the first measurement
-            clientUpdateData[0].push(now);
-            clientUpdateData[1].push(clientUpdateTime);
 
-            if (clientUpdateData[0].length > maxPoints) {
-              clientUpdateData[0].shift();
-              clientUpdateData[1].shift();
-            }
-          }
-          lastClientUpdateTime = Date.now();
 
 
           // Only update the plots if enough time has passed - now update all three plots
           const nowMs = Date.now();
           if (nowMs - lastPlotUpdate > PLOT_UPDATE_INTERVAL_MS) {
-            schedulePlotUpdate();
             scheduleCurrentTempPlotUpdate();
             scheduleVoltagePlotUpdate();
             scheduleRPMPlotUpdate();
-            scheduleClientUpdatePlotUpdate();
 
             // Add connection status check here - it will run once per second with your other updates
             const timeSinceLastEvent = nowMs - lastEventTime;
@@ -2694,6 +2622,7 @@ input[type="password"] {
     <span id="FuelUsedID" style="display:none;">0</span>
     <span id="MaximumAllowedBatteryAmps_echo" style="display:none;">0</span>
     <span id="ManualSOCPoint_echo" style="display:none;">0</span>
+    <span id="BatteryVoltageSource_echo" style="display:none;">0</span>
 
 
 
@@ -2744,6 +2673,7 @@ input[type="password"] {
     <input id="ResetRPMMax" style="display:none;" value="0" />
     <input id="MaximumAllowedBatteryAmps" style="display:none;" value="0" />
     <input id="ManualSOCPoint" style="display:none;" value="0" />
+    <input id="BatteryVoltageSource" style="display:none;" value="0" />
 
 
   </div>
