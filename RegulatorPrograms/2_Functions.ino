@@ -1,6 +1,6 @@
 // X Engineering Alternator Regulator
 //     Copyright (C) 2025  Mark Nickerson
-  
+
 //     This program is free software: you can redistribute it and/or modify
 //     it under the terms of the GNU General Public License as published by
 //     the Free Software Foundation, either version 3 of the License, or
@@ -614,7 +614,7 @@ void SendWifiData() {
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-               "%d,%d,%d",
+               "%d,%d,%d,%d",
                // Readings
                SafeInt(AlternatorTemperatureF),     // 0
                SafeInt(DutyCycle),                  // 1
@@ -692,7 +692,8 @@ void SendWifiData() {
                SafeInt(ResetAlternatorOnTime),      // 69
                SafeInt(ResetEnergy),                // 70
                SafeInt(MaximumAllowedBatteryAmps),  // 71
-               SafeInt(ManualSOCPoint)              // 72
+               SafeInt(ManualSOCPoint),              // 72
+               SafeInt(BatteryVoltageSource)          //73
       );
 
 
@@ -1045,7 +1046,12 @@ void setupServer() {
       inputMessage = request->getParam("ManualSOCPoint")->value();
       writeFile(LittleFS, "/ManualSOCPoint.txt", inputMessage.c_str());
       ManualSOCPoint = inputMessage.toInt();
+    }else if (request->hasParam("BatteryVoltageSource")) {
+      inputMessage = request->getParam("BatteryVoltageSource")->value();
+      writeFile(LittleFS, "/BatteryVoltageSource.txt", inputMessage.c_str());
+      BatteryVoltageSource = inputMessage.toInt();
     }
+    
 
     //Reset buttons
     else if (request->hasParam("ResetTemp")) {
@@ -1777,6 +1783,13 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   } else {
     ManualSOCPoint = readFile(LittleFS, "/ManualSOCPoint.txt").toInt();
   }
+
+  if (!LittleFS.exists("/BatteryVoltageSource.txt")) {
+    writeFile(LittleFS, "/BatteryVoltageSource.txt", String(BatteryVoltageSource).c_str());
+  } else {
+    BatteryVoltageSource = readFile(LittleFS, "/BatteryVoltageSource.txt").toInt();
+  }
+
 }
 
 void InitPersistentVariables() {
