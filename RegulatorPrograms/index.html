@@ -26,14 +26,6 @@ Contact me at mark@xengineering.net       -->
   <meta content="width=device-width, initial-scale=1" name="viewport" />
   <link href="/uPlot.min.css" rel="stylesheet" />
   <script src="/uPlot.iife.min.js">
-    function syncToggleToHidden(name) {
-      const checkbox = document.getElementById(name + "_checkbox");
-      const hidden = document.getElementById(name);
-      if (checkbox && hidden) {
-        hidden.value = checkbox.checked ? "1" : "0";
-        hidden.form.submit();
-      }
-    }
   </script>
   <style>
     :root {
@@ -75,6 +67,12 @@ Contact me at mark@xengineering.net       -->
       margin-bottom: 0.75rem;
       font-size: 18px;
     }
+
+    /* For fixing plot legend appearance */
+    .u-legend .u-value {
+      display: none !important;
+    }
+
 
     input[type="submit"] {
       background-color: #555555;
@@ -436,6 +434,9 @@ Contact me at mark@xengineering.net       -->
     let lastToggleUpdateTimestamp = 0;
     const TOGGLE_UPDATE_THROTTLE_MS = 150; // milliseconds
 
+    let rpmAmpsInitialized = false; // this is for the RPM/AMP speed based charging table
+
+
   </script>
 </head>
 
@@ -503,6 +504,81 @@ Contact me at mark@xengineering.net       -->
     function togglePassword(id) {
       var field = document.getElementById(id);
       field.type = (field.type === "password") ? "text" : "password";
+    }
+
+
+    //Reset buttons
+    function resetTemp() {
+      updatePasswordFields();
+      document.getElementById("ResetTemp").value = "1";
+      document.getElementById("ResetTemp_button").form.submit();
+      document.getElementById("MaxAlternatorTemperatureF_ID").textContent = "--";
+    }
+    function resetCurrent() {
+      updatePasswordFields();
+      document.getElementById("ResetCurrent").value = "1";
+      document.getElementById("ResetCurrent_button").form.submit();
+      document.getElementById("MeasuredAmpsMaxID").textContent = "—";
+    }
+    function resetVoltage() {
+      updatePasswordFields();
+      document.getElementById("ResetVoltage").value = "1";
+      document.getElementById("ResetVoltage_button").form.submit();
+      document.getElementById("IBVMaxID").textContent = "--";
+    }
+    function resetCurrent() {
+      updatePasswordFields();
+      document.getElementById("ResetCurrent").value = "1";
+      document.getElementById("ResetCurrent_button").form.submit();
+      document.getElementById("MeasuredAmpsMaxID").textContent = "--";
+    }
+    function resetEngineRunTime() {
+      updatePasswordFields();
+      document.getElementById("ResetEngineRunTime").value = "1";
+      document.getElementById("ResetEngineRunTime_button").form.submit();
+      document.getElementById("EngineRunTimeID").textContent = "--";
+    }
+    function resetAlternatorOnTime() {
+      updatePasswordFields();
+      document.getElementById("ResetAlternatorOnTime").value = "1";
+      document.getElementById("ResetAlternatorOnTime_button").form.submit();
+      document.getElementById("AlternatorOnTimeID").textContent = "--";
+    }
+    function resetEnergy() {
+      updatePasswordFields();
+      document.getElementById("ResetEnergy").value = "1";
+      document.getElementById("ResetEnergy_button").form.submit();
+      document.getElementById("ChargedEnergyID").textContent = "--";
+    }
+    function resetDischargedEnergy() {
+      updatePasswordFields();
+      document.getElementById("ResetDischargedEnergy").value = "1";
+      document.getElementById("ResetDischargedEnergy_button").form.submit();
+      document.getElementById("DischargedEnergyID").textContent = "--";
+    }
+    function resetFuelUsed() {
+      updatePasswordFields();
+      document.getElementById("ResetFuelUsed").value = "1";
+      document.getElementById("ResetFuelUsed_button").form.submit();
+      document.getElementById("AlternatorFuelUsedID").textContent = "--";
+    }
+    function resetAlternatorChargedEnergy() {
+      updatePasswordFields();
+      document.getElementById("ResetAlternatorChargedEnergy").value = "1";
+      document.getElementById("ResetAlternatorChargedEnergy_button").form.submit();
+      document.getElementById("AlternatorChargedEnergyID").textContent = "--";
+    }
+    function resetEngineCycles() {
+      updatePasswordFields();
+      document.getElementById("ResetEngineCycles").value = "1";
+      document.getElementById("ResetEngineCycles_button").form.submit();
+      document.getElementById("EngineCyclesID").textContent = "--";
+    }
+    function resetRPMMax() {
+      updatePasswordFields();
+      document.getElementById("ResetRPMMax").value = "1";
+      document.getElementById("ResetRPMMax_button").form.submit();
+      document.getElementById("RPMMaxID").textContent = "--";
     }
   </script>
 
@@ -720,6 +796,8 @@ Contact me at mark@xengineering.net       -->
             </form>
           </div>
         </div>
+
+
         <hr />
         <div class="form-row">
           <div class="form-label">Charge on ___ BMS Signal (<span id="BMSLogicLevelOff_echo">0</span>):</div>
@@ -738,43 +816,93 @@ Contact me at mark@xengineering.net       -->
           </div>
         </div>
 
-        <div class="settings-card">
-          <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-            <span>Amp Control by Engine Speed</span>
-            <form action="/get" method="GET" target="hidden-form" style="display: flex; align-items: center; gap: 6px; margin: 0;">
-              <input type="hidden" name="AmpControlByRPM" id="AmpControlByRPM_hidden" value="0" />
-              <input type="hidden" name="password" class="password_field" />
-              <label style="font-size: 12px;">Off</label>
+        <hr />
+
+        <div class="form-row">
+          <div class="form-label">RPM-Based Charging Curve (<span id="AmpControlByRPM_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">Off</span>
               <label class="switch">
-                <input type="checkbox" id="AmpControlByRPM_checkbox"
-                  onchange="document.getElementById('AmpControlByRPM_hidden').value=this.checked?1:0; submitMessage();" />
+                <input id="AmpControlByRPM_checkbox" type="checkbox"
+                  onchange="document.getElementById('AmpControlByRPM').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
                 <span class="slider round"></span>
               </label>
-              <label style="font-size: 12px;">On</label>
+              <span class="toggle-label">On</span>
+              <input id="AmpControlByRPM" name="AmpControlByRPM" type="number" value="" style="display:none;" />
             </form>
           </div>
-        <hr />
-          <form action="/get" method="GET" target="hidden-form">
-            <input type="hidden" name="password" class="password_field">
-            <table style="width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 6px;">
-              <thead>
-                <tr>
-                  <th style="text-align:left;">RPM</th>
-                  <th style="text-align:left;">Target</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td><input type="number" name="RPM0" style="width: 100%; padding: 2px;" /></td><td><input type="number" name="Amps0" style="width: 100%; padding: 2px;" /></td></tr>
-                <tr><td><input type="number" name="RPM1" style="width: 100%; padding: 2px;" /></td><td><input type="number" name="Amps1" style="width: 100%; padding: 2px;" /></td></tr>
-                <tr><td><input type="number" name="RPM2" style="width: 100%; padding: 2px;" /></td><td><input type="number" name="Amps2" style="width: 100%; padding: 2px;" /></td></tr>
-                <tr><td><input type="number" name="RPM3" style="width: 100%; padding: 2px;" /></td><td><input type="number" name="Amps3" style="width: 100%; padding: 2px;" /></td></tr>
-                <tr><td><input type="number" name="RPM4" style="width: 100%; padding: 2px;" /></td><td><input type="number" name="Amps4" style="width: 100%; padding: 2px;" /></td></tr>
-              </tbody>
-            </table>
-            <input onclick="submitMessage()" type="submit" value="Set" />
-          </form>
         </div>
-        
+        <div class="form-row">
+          <div class="form-label"></div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <table style="border-collapse: collapse; width: 100%;">
+                <thead>
+                  <tr>
+                    <th
+                      style="padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: left; font-size: 12px;">
+                      RPM</th>
+                    <th
+                      style="padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: left; font-size: 12px;">
+                      Amps</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding: 2px;"><input name="RPM1" type="number" step="1" min="0" id="RPM1_input"
+                        style="width: 70px;" /></td>
+                    <td style="padding: 2px;"><input name="Amps1" type="number" step="1" min="0" id="Amps1_input"
+                        style="width: 70px;" /></td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 2px;"><input name="RPM2" type="number" step="1" min="0" id="RPM2_input"
+                        style="width: 70px;" /></td>
+                    <td style="padding: 2px;"><input name="Amps2" type="number" step="1" min="0" id="Amps2_input"
+                        style="width: 70px;" /></td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 2px;"><input name="RPM3" type="number" step="1" min="0" id="RPM3_input"
+                        style="width: 70px;" /></td>
+                    <td style="padding: 2px;"><input name="Amps3" type="number" step="1" min="0" id="Amps3_input"
+                        style="width: 70px;" /></td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 2px;"><input name="RPM4" type="number" step="1" min="0" id="RPM4_input"
+                        style="width: 70px;" /></td>
+                    <td style="padding: 2px;"><input name="Amps4" type="number" step="1" min="0" id="Amps4_input"
+                        style="width: 70px;" /></td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 2px;"><input name="RPM5" type="number" step="1" min="0" id="RPM5_input"
+                        style="width: 70px;" /></td>
+                    <td style="padding: 2px;"><input name="Amps5" type="number" step="1" min="0" id="Amps5_input"
+                        style="width: 70px;" /></td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 2px;"><input name="RPM6" type="number" step="1" min="0" id="RPM6_input"
+                        style="width: 70px;" /></td>
+                    <td style="padding: 2px;"><input name="Amps6" type="number" step="1" min="0" id="Amps6_input"
+                        style="width: 70px;" /></td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 2px;"><input name="RPM7" type="number" step="1" min="0" id="RPM7_input"
+                        style="width: 70px;" /></td>
+                    <td style="padding: 2px;"><input name="Amps7" type="number" step="1" min="0" id="Amps7_input"
+                        style="width: 70px;" /></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div style="margin-top: 8px;">
+                <input onclick="submitMessage()" type="submit" value="Save" />
+              </div>
+            </form>
+          </div>
+        </div>
+
+
 
       </div> <!-- closes .settings-card for Advanced -->
 
@@ -987,7 +1115,7 @@ Contact me at mark@xengineering.net       -->
 
         <hr />
         <div class="form-row">
-          <div class="form-label">Enter SoC Manually (%) (<span id="ManualSOCPoint_echo">0</span>):</div>
+          <div class="form-label">Set SoC Manually (%) (<span id="ManualSOCPoint_echo">0</span>):</div>
           <div class="form-input">
             <form action="/get" method="GET" target="hidden-form">
               <input type="hidden" name="password" class="password_field">
@@ -1059,11 +1187,11 @@ Contact me at mark@xengineering.net       -->
             <form action="/get" method="GET" target="hidden-form">
               <input type="hidden" name="password" class="password_field">
               <select name="BatteryVoltageSource">
-                <option value="0">INA228</option>
-                <option value="1">ADS1115</option>
-                <option value="2">VictronVeDirect</option>
-                <option value="3">NMEA0183</option>
-                <option value="4">NMEA2K</option>
+                <option value="0">0 INA228</option>
+                <option value="1">1 ADS1115</option>
+                <option value="2">2 VictronVeDirect</option>
+                <option value="3">3 NMEA0183</option>
+                <option value="4">4 NMEA2K</option>
               </select>
               <input onclick="submitMessage()" type="submit" value="Set" />
             </form>
@@ -1358,6 +1486,18 @@ Contact me at mark@xengineering.net       -->
   </div>
 
 
+  <!-- Console -->
+  <div class="settings-card">
+    <div class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+      <span>Console</span>
+      <button onclick="clearConsole()" style="font-size: 12px;">Clear</button>
+    </div>
+    <div id="consoleOutput"
+      style="font-family: monospace; font-size: 13px; background: #111; color: #0f0; padding: 6px; height: 160px; overflow-y: auto; border: 1px solid var(--border); white-space: pre-wrap;">
+    </div>
+  </div>
+
+
   <script>
     function debounce(fn, delay) {
       let timer = null;
@@ -1453,7 +1593,23 @@ Contact me at mark@xengineering.net       -->
       ResetEnergy: 70,
       MaximumAllowedBatteryAmps: 71,
       ManualSOCPoint: 72,
-      BatteryVoltageSource: 73
+      BatteryVoltageSource: 73,
+      AmpControlByRPM: 74,
+      RPM1: 75,
+      RPM2: 76,
+      RPM3: 77,
+      RPM4: 78,
+      Amps1: 79,
+      Amps2: 80,
+      Amps3: 81,
+      Amps4: 82,
+      RPM5: 83,
+      RPM6: 84,
+      RPM7: 85,
+      Amps5: 86,
+      Amps6: 87,
+      Amps7: 88
+
     };
 
 
@@ -1491,8 +1647,10 @@ Contact me at mark@xengineering.net       -->
     let lastPlotUpdate = 0; // Timestamp of last time we updated the plot
     const PLOT_UPDATE_INTERVAL_MS = 1000; // Only update every 2 seconds (adjust as needed)
 
-
-
+    //Console
+    function clearConsole() {
+      document.getElementById("consoleOutput").innerHTML = "";
+    }
 
     function scheduleCurrentTempPlotUpdate() {
       if (!window.currentTempUpdateScheduled && currentTempPlot) {
@@ -1524,7 +1682,6 @@ Contact me at mark@xengineering.net       -->
       }
     }
 
-
     function initCurrentTempPlot() {
       const plotEl = document.getElementById('current-temp-plot');
       if (!plotEl) {
@@ -1537,7 +1694,7 @@ Contact me at mark@xengineering.net       -->
         height: 300,
         title: "Current & Temperature History",
         series: [
-          {}, // timestamps
+          { label: null, points: { show: false }, stroke: "transparent", width: 0 }, // fully hide timestamp
           {
             label: "Battery Current (A)",
             stroke: "#4CAF50",
@@ -1560,11 +1717,11 @@ Contact me at mark@xengineering.net       -->
             label: "Alt. Temp (°F)",
             stroke: "#FF5722",
             width: 2,
-            scale: "current"  // <-- Temperature now uses same Y-axis as current
+            scale: "current"
           }
         ],
         axes: [
-          {}, // x-axis (time)
+          {},
           {
             scale: "current",
             label: "Amperes / °F",
@@ -1574,9 +1731,7 @@ Contact me at mark@xengineering.net       -->
         ],
         scales: {
           x: { time: true },
-          current: {
-            auto: true
-          }
+          current: { auto: true }
         },
         plugins: [{
           hooks: {
@@ -1588,8 +1743,7 @@ Contact me at mark@xengineering.net       -->
                     currentTempPlot.setSize({ width: plotEl.clientWidth, height: 300 });
                   }
                 }, 1000);
-                const ro = new ResizeObserver(resizePlot);
-                ro.observe(plotEl);
+                new ResizeObserver(resizePlot).observe(plotEl);
               }
             ]
           }
@@ -1602,11 +1756,9 @@ Contact me at mark@xengineering.net       -->
       currentTempData[1].push(0);
       currentTempData[2].push(0);
       currentTempData[3].push(0);
-      currentTempData[4].push(100); // Initial temperature value
+      currentTempData[4].push(100);
       currentTempPlot.setData(currentTempData);
     }
-
-
 
     function initVoltagePlot() {
       const plotEl = document.getElementById('voltage-plot');
@@ -1620,25 +1772,22 @@ Contact me at mark@xengineering.net       -->
         height: 300,
         title: "Battery Voltage History",
         series: [
-          {},
+          { label: null, points: { show: false }, stroke: "transparent", width: 0 },
           {
             label: "ADS Battery (V)",
-            stroke: "#FF9800", // Orange
+            stroke: "#FF9800",
             width: 2,
             scale: "voltage"
           },
           {
             label: "Victron Battery (V)",
-            stroke: "#3F51B5", // Indigo
+            stroke: "#3F51B5",
             width: 2,
             scale: "voltage"
           },
-
-
-
           {
             label: "INA Battery (V)",
-            stroke: "#607D8B", // Blue Grey
+            stroke: "#607D8B",
             width: 2,
             scale: "voltage"
           }
@@ -1653,9 +1802,7 @@ Contact me at mark@xengineering.net       -->
         ],
         scales: {
           x: { time: true },
-          voltage: {
-            auto: true,
-          }
+          voltage: { auto: true }
         },
         plugins: [{
           hooks: {
@@ -1667,8 +1814,7 @@ Contact me at mark@xengineering.net       -->
                     voltagePlot.setSize({ width: plotEl.clientWidth, height: 300 });
                   }
                 }, 1000);
-                const ro = new ResizeObserver(resizePlot);
-                ro.observe(plotEl);
+                new ResizeObserver(resizePlot).observe(plotEl);
               }
             ]
           }
@@ -1696,7 +1842,7 @@ Contact me at mark@xengineering.net       -->
         height: 300,
         title: "RPM History",
         series: [
-          {}, // timestamps
+          { label: null, points: { show: false }, stroke: "transparent", width: 0 },
           {
             label: "RPM",
             stroke: "#E91E63",
@@ -1726,8 +1872,7 @@ Contact me at mark@xengineering.net       -->
                     rpmPlot.setSize({ width: plotEl.clientWidth, height: 300 });
                   }
                 }, 1000);
-                const ro = new ResizeObserver(resizePlot);
-                ro.observe(plotEl);
+                new ResizeObserver(resizePlot).observe(plotEl);
               }
             ]
           }
@@ -1740,6 +1885,7 @@ Contact me at mark@xengineering.net       -->
       rpmData[1].push(0);
       rpmPlot.setData(rpmData);
     }
+
 
     function setAdminPassword() {
       const button = document.getElementById('admin_password_set');
@@ -1812,6 +1958,8 @@ Contact me at mark@xengineering.net       -->
       }
       currentAdminPassword = "";
     }
+
+
 
 
 
@@ -1958,7 +2106,22 @@ Contact me at mark@xengineering.net       -->
           ["ResetEnergy_echo", "ResetEnergy"],                        // 70
           ["MaximumAllowedBatteryAmps_echo", "MaximumAllowedBatteryAmps"],
           ["ManualSOCPoint_echo", "ManualSOCPoint"],
-          ["BatteryVoltageSource_echo", "BatteryVoltageSource"]
+          ["BatteryVoltageSource_echo", "BatteryVoltageSource"],
+          ["AmpControlByRPM_echo", "AmpControlByRPM"],
+          ["RPM1_echo", "RPM1"],
+          ["RPM2_echo", "RPM2"],
+          ["RPM3_echo", "RPM3"],
+          ["RPM4_echo", "RPM4"],
+          ["Amps1_echo", "Amps1"],
+          ["Amps2_echo", "Amps2"],
+          ["Amps3_echo", "Amps3"],
+          ["Amps4_echo", "Amps4"],
+          ["RPM5_echo", "RPM5"],
+          ["RPM6_echo", "RPM6"],
+          ["RPM7_echo", "RPM7"],
+          ["Amps5_echo", "Amps5"],
+          ["Amps6_echo", "Amps6"],
+          ["Amps7_echo", "Amps7"]
 
 
         ];
@@ -1966,6 +2129,22 @@ Contact me at mark@xengineering.net       -->
 
         // this is the numerical displays, with scaling done locally
         const source = new EventSource('/events');
+
+        //Console
+        source.addEventListener("console", function (event) {
+          const timestamp = new Date().toLocaleTimeString();
+          const consoleDiv = document.getElementById("consoleOutput");
+          const line = document.createElement("div");
+          line.textContent = `[${timestamp}] ${event.data}`;
+          consoleDiv.appendChild(line);
+          consoleDiv.scrollTop = consoleDiv.scrollHeight;
+          while (consoleDiv.children.length > 100) {
+            consoleDiv.removeChild(consoleDiv.firstChild);
+          }
+        });
+
+
+
         source.addEventListener('open', function () {
           updateInlineStatus(true);
         }, false);
@@ -2003,6 +2182,9 @@ Contact me at mark@xengineering.net       -->
             console.warn("CSV mismatch: ESP32/HTML field count diverged");
             return;
           }
+
+
+
 
           const data = {
             AlternatorTemperatureF: values[fieldIndexes.AlternatorTemperatureF], // 0
@@ -2078,9 +2260,24 @@ Contact me at mark@xengineering.net       -->
             ResetEnergy: values[fieldIndexes.ResetEnergy],
             MaximumAllowedBatteryAmps: values[fieldIndexes.MaximumAllowedBatteryAmps],
             ManualSOCPoint: values[fieldIndexes.ManualSOCPoint],
-            BatteryVoltageSource: values[fieldIndexes.BatteryVoltageSource]
-          };
+            BatteryVoltageSource: values[fieldIndexes.BatteryVoltageSource],
+            AmpControlByRPM: values[fieldIndexes.AmpControlByRPM],
+            RPM1: values[fieldIndexes.RPM1],
+            RPM2: values[fieldIndexes.RPM2],
+            RPM3: values[fieldIndexes.RPM3],
+            RPM4: values[fieldIndexes.RPM4],
+            Amps1: values[fieldIndexes.Amps1],
+            Amps2: values[fieldIndexes.Amps2],
+            Amps3: values[fieldIndexes.Amps3],
+            Amps4: values[fieldIndexes.Amps4],
+            RPM5: values[fieldIndexes.RPM5],
+            RPM6: values[fieldIndexes.RPM6],
+            RPM7: values[fieldIndexes.RPM7],
+            Amps5: values[fieldIndexes.Amps5],
+            Amps6: values[fieldIndexes.Amps6],
+            Amps7: values[fieldIndexes.Amps7]
 
+          };
 
           window._debugData = data;
 
@@ -2231,11 +2428,95 @@ Contact me at mark@xengineering.net       -->
           if ('ManualSOCPoint' in data) {
             document.getElementById('ManualSOCPoint_echo').textContent = data.ManualSOCPoint;
           }
+
           if ('BatteryVoltageSource' in data) {
             document.getElementById('BatteryVoltageSource_echo').textContent = data.BatteryVoltageSource;
           }
+          if ('AmpControlByRPM' in data) {
+            document.getElementById('AmpControlByRPM_echo').textContent = data.AmpControlByRPM;
+          }
+          if ('RPM1' in data) {
+            document.getElementById('RPM1_echo').textContent = data.RPM1;
+          }
+          if ('RPM2' in data) {
+            document.getElementById('RPM2_echo').textContent = data.RPM2;
+          }
+          if ('RPM3' in data) {
+            document.getElementById('RPM3_echo').textContent = data.RPM3;
+          }
+          if ('RPM4' in data) {
+            document.getElementById('RPM4_echo').textContent = data.RPM4;
+          }
+          if ('Amps1' in data) {
+            document.getElementById('Amps1_echo').textContent = data.Amps1;
+          }
+          if ('Amps2' in data) {
+            document.getElementById('Amps2_echo').textContent = data.Amps2;
+          }
+          if ('Amps3' in data) {
+            document.getElementById('Amps3_echo').textContent = data.Amps3;
+          }
+          if ('Amps4' in data) {
+            document.getElementById('Amps4_echo').textContent = data.Amps4;
+          }
+          if ('RPM5' in data) {
+            document.getElementById('RPM5_echo').textContent = data.RPM5;
+          }
+          if ('RPM6' in data) {
+            document.getElementById('RPM6_echo').textContent = data.RPM6;
+          }
+          if ('RPM7' in data) {
+            document.getElementById('RPM7_echo').textContent = data.RPM7;
+          }
+          if ('Amps5' in data) {
+            document.getElementById('Amps5_echo').textContent = data.Amps5;
+          }
+          if ('Amps6' in data) {
+            document.getElementById('Amps6_echo').textContent = data.Amps6;
+          }
+          if ('Amps7' in data) {
+            document.getElementById('Amps7_echo').textContent = data.Amps7;
+          }
 
+          // Initialize RPM/Amps fields once on page load
+          if (!rpmAmpsInitialized) {
+            const rpmAmpFields = [
+              { name: "RPM1", id: "RPM1_input" },
+              { name: "RPM2", id: "RPM2_input" },
+              { name: "RPM3", id: "RPM3_input" },
+              { name: "RPM4", id: "RPM4_input" },
+              { name: "Amps1", id: "Amps1_input" },
+              { name: "Amps2", id: "Amps2_input" },
+              { name: "Amps3", id: "Amps3_input" },
+              { name: "Amps4", id: "Amps4_input" },
+              { name: "RPM5", id: "RPM5_input" },
+              { name: "RPM6", id: "RPM6_input" },
+              { name: "RPM7", id: "RPM7_input" },
+              { name: "Amps5", id: "Amps5_input" },
+              { name: "Amps6", id: "Amps6_input" },
+              { name: "Amps7", id: "Amps7_input" }
+            ];
 
+            // Check if we have received actual data from ESP32 (not just initial zeros)
+            let hasValidData = false;
+            for (const field of rpmAmpFields) {
+              if (data[field.name] !== undefined && data[field.name] > 0) {
+                hasValidData = true;
+                break;
+              }
+            }
+
+            // Only initialize if we have real data from ESP32, or this is the first data packet
+            if (hasValidData || data.AlternatorTemperatureF !== undefined) {
+              for (const field of rpmAmpFields) {
+                const inputEl = document.getElementById(field.id);
+                if (inputEl && data[field.name] !== undefined) {
+                  inputEl.value = data[field.name];
+                }
+              }
+              rpmAmpsInitialized = true;
+            }
+          }
 
           const now = Math.floor(Date.now() / 1000);
 
@@ -2330,83 +2611,23 @@ Contact me at mark@xengineering.net       -->
         }, false);
       }
 
-      //Reset buttons
-      function resetTemp() {
-        document.getElementById("ResetTemp").value = "1";
-        document.getElementById("ResetTemp_button").form.submit();
-      }
-
-      function resetVoltage() {
-        document.getElementById("ResetVoltage").value = "1";
-        document.getElementById("ResetVoltage_button").form.submit();
-      }
-
-      function resetCurrent() {
-        document.getElementById("ResetCurrent").value = "1";
-        document.getElementById("ResetCurrent_button").form.submit();
-      }
-
-      function resetEngineRunTime() {
-        document.getElementById("ResetEngineRunTime").value = "1";
-        document.getElementById("ResetEngineRunTime_button").form.submit();
-      }
-
-      function resetAlternatorOnTime() {
-        document.getElementById("ResetAlternatorOnTime").value = "1";
-        document.getElementById("ResetAlternatorOnTime_button").form.submit();
-      }
-
-      function resetEnergy() {
-        document.getElementById("ResetEnergy").value = "1";
-        document.getElementById("ResetEnergy_button").form.submit();
-      }
-
-      function resetDischargedEnergy() {
-        document.getElementById("ResetDischargedEnergy").value = "1";
-        document.getElementById("ResetDischargedEnergy_button").form.submit();
-      }
-
-      function resetFuelUsed() {
-        document.getElementById("ResetFuelUsed").value = "1";
-        document.getElementById("ResetFuelUsed_button").form.submit();
-      }
-
-      function resetAlternatorChargedEnergy() {
-        document.getElementById("ResetAlternatorChargedEnergy").value = "1";
-        document.getElementById("ResetAlternatorChargedEnergy_button").form.submit();
-      }
-
-      function resetEngineCycles() {
-        document.getElementById("ResetEngineCycles").value = "1";
-        document.getElementById("ResetEngineCycles_button").form.submit();
-      }
-
-      function resetRPMMax() {
-        document.getElementById("ResetRPMMax").value = "1";
-        document.getElementById("ResetRPMMax_button").form.submit();
-      }
-
 
       // uplot plot minor details like dark mode and gentle space
       function updateUplotTheme(plot) {
         const textColor = getComputedStyle(document.body).getPropertyValue('--text-dark').trim();
         const gridColor = getComputedStyle(document.body).getPropertyValue('--border').trim();
-
         // Update axis label divs
         plot.root.querySelectorAll('.u-label').forEach(el => {
           el.style.color = textColor;
         });
-
         // Update tick label text (SVG)
         plot.root.querySelectorAll('.u-axis text').forEach(el => {
           el.setAttribute('fill', textColor);
         });
-
         // Update axis strokes (SVG)
         plot.root.querySelectorAll('.u-axis path').forEach(el => {
           el.setAttribute('stroke', textColor);
         });
-
         // Update grid lines (SVG)
         plot.root.querySelectorAll('.u-grid line').forEach(el => {
           el.setAttribute('stroke', gridColor);
@@ -2467,62 +2688,10 @@ Contact me at mark@xengineering.net       -->
       document.getElementById("BMSLogic_checkbox").checked = (document.getElementById("BMSLogic").value === "1");
       document.getElementById("BMSLogicLevelOff_checkbox").checked = (document.getElementById("BMSLogicLevelOff").value === "1");
       document.getElementById("AlarmActivate_checkbox").checked = (document.getElementById("AlarmActivate").value === "1");
-      document.getElementById("IgnoreTemperature_checkbox").checked = (document.getElementById("IgnoreTemperature").value === "1");
-      document.getElementById("BMSLogic_checkbox").checked = (document.getElementById("BMSLogic").value === "1");
-      document.getElementById("BMSLogicLevelOff_checkbox").checked = (document.getElementById("BMSLogicLevelOff").value === "1");
-      document.getElementById("AlarmActivate_checkbox").checked = (document.getElementById("AlarmActivate").value === "1");
+      document.getElementById("AmpControlByRPM_checkbox").checked = (document.getElementById("AmpControlByRPM").value === "1");
 
       document.getElementById("admin_password").addEventListener("change", updatePasswordFields);
 
-      // Define a function to update toggles when data is available
-      // function updateTogglesFromData(data) {
-      //   try {
-      //     if (!data) return;
-
-      //     if ('ManualFieldToggle1' in data) {
-      //       document.getElementById("ManualFieldToggle1_checkbox").checked = (data.ManualFieldToggle1 === 1);
-      //     }
-      //     if ('SwitchControlOverride1' in data) {
-      //       document.getElementById("SwitchControlOverride1_checkbox").checked = (data.SwitchControlOverride1 === 1);
-      //     }
-      //     if ('OnOff1' in data) {
-      //       document.getElementById("OnOff1_checkbox").checked = (data.OnOff1 === 1);
-      //     }
-      //     if ('LimpHome1' in data) {
-      //       document.getElementById("LimpHome1_checkbox").checked = (data.LimpHome1 === 1);
-      //     }
-      //     if ('HiLow1' in data) {
-      //       document.getElementById("HiLow1_checkbox").checked = (data.HiLow1 === 1);
-      //     }
-      //     if ('VeData1' in data) {
-      //       document.getElementById("VeData1_checkbox").checked = (data.VeData1 === 1);
-      //     }
-      //     if ('NMEA0183Data1' in data) {
-      //       document.getElementById("NMEA0183Data1_checkbox").checked = (data.NMEA0183Data1 === 1);
-      //     }
-      //     if ('NMEA2KData1' in data) {
-      //       document.getElementById("NMEA2KData1_checkbox").checked = (data.NMEA2KData1 === 1);
-      //     }
-
-      //     if ('IgnoreTemperature' in data) {
-      //       document.getElementById("IgnoreTemperature_checkbox").checked = (data.IgnoreTemperature === 1);
-      //     }
-      //     if ('BMSLogic' in data) {
-      //       document.getElementById("BMSLogic_checkbox").checked = (data.BMSLogic === 1);
-      //     }
-      //     if ('BMSLogicLevelOff' in data) {
-      //       document.getElementById("BMSLogicLevelOff_checkbox").checked = (data.BMSLogicLevelOff === 1);
-      //     }
-
-      //     if ('AlarmActivate' in data) {
-      //       document.getElementById("AlarmActivate_checkbox").checked = (data.AlarmActivate === 1);
-      //     }
-
-
-      //   } catch (e) {
-      //     console.log("Error updating toggle states: " + e.message);
-      //   }
-      // }
       function updateTogglesFromData(data) {
         try {
           if (!data) return;
@@ -2550,6 +2719,8 @@ Contact me at mark@xengineering.net       -->
           updateCheckbox("BMSLogic_checkbox", data.BMSLogic);
           updateCheckbox("BMSLogicLevelOff_checkbox", data.BMSLogicLevelOff);
           updateCheckbox("AlarmActivate_checkbox", data.AlarmActivate);
+          updateCheckbox("AmpControlByRPM_checkbox", data.AmpControlByRPM);
+
         } catch (e) {
           console.log("Error updating toggle states: " + e.message);
         }
@@ -2623,7 +2794,21 @@ Contact me at mark@xengineering.net       -->
     <span id="MaximumAllowedBatteryAmps_echo" style="display:none;">0</span>
     <span id="ManualSOCPoint_echo" style="display:none;">0</span>
     <span id="BatteryVoltageSource_echo" style="display:none;">0</span>
-
+    <span id="AmpControlByRPM_echo" style="display:none;">0</span>
+    <span id="RPM1_echo" style="display:none;">0</span>
+    <span id="RPM2_echo" style="display:none;">0</span>
+    <span id="RPM3_echo" style="display:none;">0</span>
+    <span id="RPM4_echo" style="display:none;">0</span>
+    <span id="Amps1_echo" style="display:none;">0</span>
+    <span id="Amps2_echo" style="display:none;">0</span>
+    <span id="Amps3_echo" style="display:none;">0</span>
+    <span id="Amps4_echo" style="display:none;">0</span>
+    <span id="RPM5_echo" style="display:none;">0</span>
+    <span id="RPM6_echo" style="display:none;">0</span>
+    <span id="RPM7_echo" style="display:none;">0</span>
+    <span id="Amps5_echo" style="display:none;">0</span>
+    <span id="Amps6_echo" style="display:none;">0</span>
+    <span id="Amps7_echo" style="display:none;">0</span>
 
 
     <!-- Input values for settings -->
@@ -2674,6 +2859,21 @@ Contact me at mark@xengineering.net       -->
     <input id="MaximumAllowedBatteryAmps" style="display:none;" value="0" />
     <input id="ManualSOCPoint" style="display:none;" value="0" />
     <input id="BatteryVoltageSource" style="display:none;" value="0" />
+    <input id="AmpControlByRPM" style="display:none;" value="0" />
+    <input id="RPM1" style="display:none;" value="0" />
+    <input id="RPM2" style="display:none;" value="0" />
+    <input id="RPM3" style="display:none;" value="0" />
+    <input id="RPM4" style="display:none;" value="0" />
+    <input id="Amps1" style="display:none;" value="0" />
+    <input id="Amps2" style="display:none;" value="0" />
+    <input id="Amps3" style="display:none;" value="0" />
+    <input id="Amps4" style="display:none;" value="0" />
+    <input id="RPM5" style="display:none;" value="0" />
+    <input id="RPM6" style="display:none;" value="0" />
+    <input id="RPM7" style="display:none;" value="0" />
+    <input id="Amps5" style="display:none;" value="0" />
+    <input id="Amps6" style="display:none;" value="0" />
+    <input id="Amps7" style="display:none;" value="0" />
 
 
   </div>
