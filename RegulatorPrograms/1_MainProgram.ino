@@ -15,7 +15,6 @@
 
 // Contact me at mark@xengineering.net
 
-
 #include <OneWire.h>            // temp sensors
 #include <DallasTemperature.h>  // temp sensors
 #include <SPI.h>                // display
@@ -45,6 +44,9 @@ INA228 INA(0x40);
 #include "freertos/task.h"               // for stack usage
 #define configGENERATE_RUN_TIME_STATS 1  // for CPU use tracking
 #include <mbedtls/md.h>                  // security
+#include <vector>   // Console message queue system
+#include <String>   // Console message queue system
+
 
 
 // Settings - these will be moved to LittleFS
@@ -81,6 +83,10 @@ unsigned long lastCheckTime = 0;  // Last time CPU load was measured
 int cpuLoadCore0 = 0;             // CPU load percentage for Core 0
 int cpuLoadCore1 = 0;             // CPU load percentage for Core 1
 
+//Console
+std::vector<String> consoleMessageQueue;
+unsigned long lastConsoleMessageTime = 0;
+const unsigned long CONSOLE_MESSAGE_INTERVAL = 2000; // 60 seconds
 
 // DNS Server for captive portal
 DNSServer dnsServer;
@@ -135,9 +141,9 @@ int VeData = 0;                 // Set to 1 if VE serial data exists
 int NMEA0183Data = 0;           // Set to 1 if NMEA serial data exists doesn't do anything yet
 int NMEA2KData = 1;             // doesn't do anything yet
 //Field PWM stuff
-float interval = 0.8;          // larger value = faster response but more unstable
-float vout = 1;                // needs deleting
-const int pwmPin = 32;         // field PWM
+float interval = 0.8;   // larger value = faster response but more unstable
+float vout = 1;         // needs deleting
+const int pwmPin = 32;  // field PWM
 //const int pwmChannel = 0;      //0–7 available for high-speed PWM  (ESP32)
 const int pwmResolution = 16;  // 16-bit resolution (0–65535)
 float fffr = 500;              // this is the switching frequency in Hz, uses Float for wifi reasons
@@ -176,7 +182,7 @@ int ADS1115Disconnected = 0;
 // Battery SOC Monitoring Variables
 int BatteryCapacity_Ah = 300;         // Battery capacity in Amp-hours
 int SoC_percent = 75;                 // State of Charge percentage (0-100)
-int ManualSOCPoint=25;               // Used to set it manually
+int ManualSOCPoint = 25;              // Used to set it manually
 int CoulombCount_Ah_scaled = 7500;    // Current energy in battery (Ah × 100 for precision)
 bool FullChargeDetected = false;      // Flag for full charge detection
 unsigned long FullChargeTimer = 600;  // Timer for full charge detection, 10 minutes
@@ -194,36 +200,43 @@ unsigned long alternatorOnAccumulator = 0;  // Milliseconds accumulator for alte
 
 
 //Momentary Buttons
-int FactorySettings = 0;                        // Reset Button
-int AlarmTest = 0;       
+int FactorySettings = 0;  // Reset Button
+int AlarmTest = 0;
 
 //More Settings
 // SOC Parameters
-int CurrentThreshold_scaled = 100;          // Ignore currents below this (A × 100)
-int PeukertExponent_scaled = 105;           // Peukert exponent × 100 (112 = 1.12)
-int ChargeEfficiency_scaled = 99;           // Charging efficiency % (0-100)
-int ChargedVoltage_scaled = 1450;           // Voltage threshold for "charged" (V × 100)
-int TailCurrent_scaled = 2000;              // Current threshold for "charged" (% of capacity × 100)
-int ChargedDetectionTime = 3600;  // Time at charged state to consider 100% (seconds)
-int IgnoreTemperature = 0;                      // If no temp sensor, set to 1
-int BMSlogic = 0;                               // if BMS is to turn the alternator on and off
-int BMSLogicLevelOff = 0;                          // set to 0 if the BMS gives a low signal (<3V?) when no charging is desired
-int AlarmActivate = 0;                            // set to 1 to enable alarm conditions
-int TempAlarm = 0;                               // above this value, sound alarm
-int VoltageAlarmHigh = 0;                         // above this value, sound alarm
-int VoltageAlarmLow = 0;                          // below this value, sound alarm
-int CurrentAlarmHigh = 0;                           // above this value, sound alarm
-int MaximumAllowedBatteryAmps;                     // safety for battery, optional
-int FourWay = 0;                 // 0 voltage data source = INA228 , 1 voltage source = ADS1115, 2 voltage source = NMEA2k, 3 voltage source = Victron VeDirect
-int RPMScalingFactor;            // self explanatory
-//Controls For LittleFS
+int CurrentThreshold_scaled = 100;  // Ignore currents below this (A × 100)
+int PeukertExponent_scaled = 105;   // Peukert exponent × 100 (112 = 1.12)
+int ChargeEfficiency_scaled = 99;   // Charging efficiency % (0-100)
+int ChargedVoltage_scaled = 1450;   // Voltage threshold for "charged" (V × 100)
+int TailCurrent_scaled = 2000;      // Current threshold for "charged" (% of capacity × 100)
+int ChargedDetectionTime = 3600;    // Time at charged state to consider 100% (seconds)
+int IgnoreTemperature = 0;          // If no temp sensor, set to 1
+int BMSlogic = 0;                   // if BMS is asked to turn the alternator on and off
+int BMSLogicLevelOff = 0;           // set to 0 if the BMS gives a low signal (<3V?) when no charging is desired
+bool chargingEnabled;               // defined from other variables
+bool bmsSignalActive;               // Read from digital input pin 36
+int AlarmActivate = 0;              // set to 1 to enable alarm conditions
+int TempAlarm = 0;                  // above this value, sound alarm
+int VoltageAlarmHigh = 0;           // above this value, sound alarm
+int VoltageAlarmLow = 0;            // below this value, sound alarm
+int CurrentAlarmHigh = 0;           // above this value, sound alarm
+int MaximumAllowedBatteryAmps;      // safety for battery, optional
+int FourWay = 0;                    // 0 voltage data source = INA228 , 1 voltage source = ADS1115, 2 voltage source = NMEA2k, 3 voltage source = Victron VeDirect
+int RPMScalingFactor;               // self explanatory
+
+//Pointless Flags delete later
 int ResetTemp;              // reset the maximum alternator temperature tracker
-int ResetVoltage;            // reset the maximum battery voltage measured
+int ResetVoltage;           // reset the maximum battery voltage measured
 int ResetCurrent;           // reset the maximmum alternator output current
 int ResetEngineRunTime;     // reset engine run time tracker
 int ResetAlternatorOnTime;  //reset AlternatorOnTime
-int ResetEnergy;            // reset Alternator/other Charged energy, and Discharged Energy, and Fuel used
-
+int ResetEnergy;            // ???
+int ResetDischargedEnergy;  // total discharged from battery
+int ResetFuelUsed;          // fuel used by alternator
+int ResetAlternatorChargedEnergy; 
+int ResetEngineCycles;
+int ResetRPMMax;
 
 int Voltage_scaled = 0;            // Battery voltage scaled (V × 100)
 int BatteryCurrent_scaled = 0;     // A × 100
@@ -271,7 +284,24 @@ static unsigned long lastINARead = 0;  // don't read the INA228 needlessly often
 unsigned long lastRestartTime = 0;
 const unsigned long RESTART_INTERVAL = 3600000;  // 1 hour in milliseconds
 
-int BatteryVoltageSource=0;           // select  "0">INA228    value="1">ADS1115     value="2">VictronVeDirect     value="3">NMEA0183     value="4">NMEA2K
+int BatteryVoltageSource = 0;  // select  "0">INA228    value="1">ADS1115     value="2">VictronVeDirect     value="3">NMEA0183     value="4">NMEA2K
+int AmpControlByRPM = 0;       // this is the toggle
+// In lieu of a table for RPM based charging....
+int RPM1 = 0;
+int RPM2 = 0;
+int RPM3 = 0;
+int RPM4 = 0;
+int Amps1 = 0;
+int Amps2 = 0;
+int Amps3 = 0;
+int Amps4 = 0;
+int RPM5 = 0;
+int RPM6 = 0;
+int RPM7 = 0;
+int Amps5 = 0;
+int Amps6 = 0;
+int Amps7 = 0;
+int RPMThreshold = -20000;  //below this, there will be no field output in auto mode
 
 
 // pre-setup stuff
@@ -284,9 +314,6 @@ DallasTemperature sensors(&oneWire);
 DeviceAddress tempDeviceAddress;
 
 
-//Field control
-bool FieldEnabler = 1;
-
 //Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);´
 Adafruit_SSD1306 display(128, 64, 23, 18, 19, -1, 5);
 
@@ -297,64 +324,6 @@ VeDirectFrameHandler myve;
 AsyncWebServer server(80);               // Create AsyncWebServer object on port 80
 AsyncEventSource events("/events");      // Create an Event Source on /events
 unsigned long webgaugesinterval = 1000;  // delay in ms between sensor updates on webpage
-
-
-
-// These string constants serve as identifiers for your form parameters in the web interface. They're defined as constants to avoid typos and make maintenance easier.
-// When your web form sends data to the ESP32, it uses form fields with specific names. This code creates constants that match those form field names so they can
-//be consistently referenced throughout your code.
-//This approach has several benefits:
-//If you need to rename a form field, you only change it in one place
-//It prevents typos that would be hard to debug (like checking for "TempratureLimitF" with the 'e' missing)
-//It makes the code more readable by using shorter variable names in the logic
-//It centralizes all your form field names in one place
-//These constants specifically relate to the "Settings" section where users can change configuration values,
-//not the "Live Data" display section that shows real-time values.
-
-const char *TLimit = "TemperatureLimitF";  //TLimit is a pointer to an immutable String "TemperatureLimitF"
-const char *ManualD = "ManualDuty";
-const char *FullChargeV = "FullChargeVoltage";
-const char *TargetA = "TargetAmpz";
-const char *FrequencyP = "SwitchingFrequency";
-const char *TFV = "TargetFloatVoltage1";
-const char *Intt = "interval1";
-const char *FAI = "FieldAdjustmentInterval1";
-const char *MFT = "ManualFieldToggle1";
-const char *SCO = "SwitchControlOverride1";
-const char *FF = "ForceFLoat1";
-const char *OO = "OnOff1";
-const char *HL = "HiLow1";
-const char *LH = "LimpHome1";
-const char *VD = "VeData1";
-const char *N0 = "NMEA0183Data1";
-const char *N2 = "NMEA2KData1";
-const char *TargetL = "TargetAmpL";
-
-//New May 17
-const char *CTH = "CurrentThreshold";
-const char *PE = "PeukertExponent";
-const char *CEFF = "ChargeEfficiency";
-const char *CV = "ChargedVoltage";
-const char *TC = "TailCurrent";
-const char *CDT = "ChargedDetectionTime";
-const char *IT = "IgnoreTemperature";
-const char *BMSL = "BMSLogic";
-const char *BMSOFF = "BMSLogicLevelOff";
-const char *ALM = "AlarmActivate";
-const char *TAL = "TempAlarm";
-const char *VALH = "VoltageAlarmHigh";
-const char *VALL = "VoltageAlarmLow";
-const char *CAH = "CurrentAlarmHigh";
-const char *FW = "FourWay";
-const char *RPMF = "RPMScalingFactor";
-const char *RSTT = "ResetTemp";
-const char *RSTV = "ResetVoltage";
-const char *RSTC = "ResetCurrent";
-const char *RSTER = "ResetEngineRunTime";
-const char *RSTAO = "ResetAlternatorOnTime";
-const char *RSTE = "ResetEnergy";
-
-
 
 // WiFi provisioning settings
 const char *WIFI_SSID_FILE = "/ssid.txt";
@@ -519,13 +488,14 @@ const char WIFI_CONFIG_HTML[] PROGMEM = R"rawliteral(
 
 
 void setup() {
+    queueConsoleMessage("System starting up...");
   setCpuFrequencyMhz(240);
   Serial.begin(115200);
-  delay(500);          // not sure if this is needed
+  delay(500);  // not sure if this is needed
 
   pinMode(4, OUTPUT);  // This pin is used to provide a high signal to Field Enable pin      PROBABLY OBSOLETE
   pinMode(2, OUTPUT);  // This pin is used to provide a heartbeat (pin 2 of ESP32 is the LED)
- // ledcSetup(pwmChannel, fffr, pwmResolution);     // Configure LEDC for PWM (field output)
+                       // ledcSetup(pwmChannel, fffr, pwmResolution);     // Configure LEDC for PWM (field output)
   //ledcAttachPin(pwmPin, pwmChannel);    // Configure LEDC for PWM (field output)
   // In ESP32 v3.x, this single function replaces both ledcSetup and ledcAttachPin
   ledcAttach(pwmPin, fffr, pwmResolution);
@@ -534,6 +504,8 @@ void setup() {
   // Initialize LittleFS first.
   if (!LittleFS.begin(true)) {
     Serial.println("An Error has occurred while mounting LittleFS");
+    queueConsoleMessage("WARNING: An Error has occurred while mounting LittleFS");
+
     // Continue anyway since we might be able to format and use it later (?)
   }
 
@@ -566,6 +538,9 @@ void setup() {
 
   if (!INA.begin()) {
     Serial.println("Could not connect INA. Fix and Reboot");
+    queueConsoleMessage("WARNING: Could not connect INA228 Battery Voltage/Amp measuring chip");
+
+
     INADisconnected = 1;
     // while (1)
     ;
@@ -581,6 +556,7 @@ void setup() {
 
   if (!display.begin(SSD1306_SWITCHCAPVCC)) {
     Serial.println(F("SSD1306 dipslay allocation failed"));
+queueConsoleMessage("WARNING: SSD1306 OLED display allocation failed");
     for (;;)
       ;
   }
@@ -594,6 +570,8 @@ void setup() {
   //Connection check
   if (!adc.testConnection()) {
     Serial.println("ADS1115 Connection failed and would have triggered a return if it wasn't commented out");
+    queueConsoleMessage("WARNING: ADS1115 Analog Input chip failed");
+
     ADS1115Disconnected = 1;
     // return;
   } else {
@@ -624,6 +602,8 @@ void setup() {
   sensors.getAddress(tempDeviceAddress, 0);
   if (sensors.getDeviceCount() == 0) {
     Serial.println("WARNING: No DS18B20 sensors found on the bus.");
+    queueConsoleMessage("WARNING: No DS18B20 sensors found on the bus");
+
     sensors.setWaitForConversion(false);  // this is critical!
   }
 
@@ -663,9 +643,6 @@ void loop() {
     //ReadVEData();  //read Data from Victron VeDirect
     // UpdateDisplay();
     AdjustField();
-    Serial.println("The duty cycle should be: ");
-    Serial.println(dutyCycle);
-
     // Send WiFi data to client
     SendWifiData();
   }
@@ -683,13 +660,10 @@ void loop() {
         // turn it back on
         setCpuFrequencyMhz(240);
         setupWiFi();  // Use our new WiFi setup function
-        //Serial.println("Wifi is reinitialized");
+        Serial.println("Wifi is reinitialized");
+        queueConsoleMessage("Wifi is reinitialized");
       }
       Freq = getCpuFrequencyMhz();
-      Serial.print("CPU Freq = ");
-      Serial.println(Freq);
-      Serial.println();
-      Serial.println();
     }
   }
 
@@ -711,6 +685,8 @@ void loop() {
       String saved_password = readFile(LittleFS, WIFI_PASS_FILE);
       if (connectToWiFi(saved_ssid.c_str(), saved_password.c_str(), 3000)) {
         Serial.println("Reconnected to WiFi!");
+        queueConsoleMessage("Reconnected to WiFi!");
+
         // mDNS will be reinitialized in the connectToWiFi function
       } else {
         Serial.println("Failed to reconnect. Will try again in 5 seconds.");
