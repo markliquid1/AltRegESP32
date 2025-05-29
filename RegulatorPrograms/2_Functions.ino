@@ -38,7 +38,7 @@ void AdjustField() {
       }
     }
     if (chargingEnabled) {
-      digitalWrite(4, 1);            // Enable the Field
+      digitalWrite(4, 1);            // Enable the Field FieldEnable
       if (ManualFieldToggle == 0) {  // Automatic mode
         // Step 1: Determine base target amps from Hi/Low setting
         if (HiLow == 1) {
@@ -73,7 +73,8 @@ void AdjustField() {
           dutyCycle -= 2 * dutyStep;
         }
         // Voltage protection (most aggressive reduction)
-        if (BatteryV > ChargingVoltageTarget && dutyCycle > (MinDuty + 3 * dutyStep)) {
+        float currentBatteryVoltage = getBatteryVoltage();
+        if (currentBatteryVoltage > ChargingVoltageTarget && dutyCycle > (MinDuty + 3 * dutyStep)) {
           dutyCycle -= 3 * dutyStep;
         }
         // Battery current protection (safety limit)
@@ -87,7 +88,7 @@ void AdjustField() {
       }
     } else {
       // Charging disabled: shut down field and reset for next enable
-      digitalWrite(4, 0);  // Disable the Field
+      digitalWrite(4, 0);  // Disable the Field (FieldEnable)
       dutyCycle = MinDuty;
     }
     // Apply the calculated duty cycle
@@ -100,21 +101,24 @@ void AdjustField() {
 void ReadAnalogInputs() {
   if (millis() - lastINARead >= 900) {  // could go down to 600 here, but this logic belongs in Loop anyway
     if (INADisconnected == 0) {
-      //Serial.println();
-      //Serial.print("INA228 Battery Voltage: ");
+      Serial.println();
       int start33 = micros();  // Start timing analog input reading
-
       lastINARead = millis();
       IBV = INA.getBusVoltage();
+      //Serial.print("INA228 Battery Voltage (Volts): ");
       // Serial.println(IBV);
-      // Serial.print("INA228 Battery Bcur (Amps): ");
       ShuntVoltage_mV = INA.getShuntVoltage_mV();
-      Bcur = ShuntVoltage_mV * 10;
+      //Bcur = (ShuntVoltage_mV * 1000.0) / ShuntResistance_uOhm;
+      //Example:
+      //For a 100 µΩ shunt and 5 mV reading:
+      // Bcur = (5.0 * 1000.0) / 100.0 = 50.0 Amps
+      Bcur = ShuntVoltage_mV * 1000.0f / ShuntResistanceMicroOhm;  //shunt is 0.1 mΩ or 100uOohms, Bcur is in Amps
+      if (InvertBattAmps ==1){
+        Bcur=Bcur * -1; // swap sign if necessary
+      }
       BatteryCurrent_scaled = Bcur * 100;
-
-      //Serial.print(Bcur);
-      //Serial.println();
-
+      Serial.print("INA228 Battery Bcur (Amps): ");
+      Serial.println(Bcur);
       int end33 = micros();               // End timing
       AnalogReadTime2 = end33 - start33;  // Store elapsed time
       if (AnalogReadTime2 > AnalogReadTime) {
@@ -128,10 +132,7 @@ void ReadAnalogInputs() {
     Serial.println("theADS1115 was not connected and triggered a return");
     return;
   }
-
-
   unsigned long now = millis();
-
   switch (adsState) {
     case ADS_IDLE:
       switch (adsCurrentChannel) {
@@ -151,22 +152,26 @@ void ReadAnalogInputs() {
 
         switch (adsCurrentChannel) {
           case 0:
-            Channel0V = Raw / 32768.0 * 6.144 / 0.0697674419;  // voltage divider is 1,000,000 and 75,000 ohms
+            Channel0V = Raw / 32767.0 * 6.144 / 0.0697674419;  // voltage divider is 1,000,000 and 75,000 ohms
             BatteryV = Channel0V;
             if (BatteryV > 14.5) {
               ChargingVoltageTarget = TargetFloatVoltage;  // this needs to be placed somewhere else someday
             }
             break;
           case 1:
-            Channel1V = Raw / 32768.0 * 6.144 * 2;  // voltage divider is 1:1, no idea where the 2 comes from
-            MeasuredAmps = (2.5 - Channel1V) * 80;  // alternator current
+            Channel1V = Raw / 32767.0 * 6.144;      // voltage divider is 1:1, so this gets us to volts
+            // Amps=100×(Vin−2.5)
+            MeasuredAmps =   (Channel1V - 2.5) * 100;  // alternator current
+            if (InvertAltAmps == 1){
+              MeasuredAmps=MeasuredAmps*-1; // swap sign if necessary
+            }
             break;
           case 2:
-            Channel2V = Raw / 32768.0 * 6.144 * 2 * RPMScalingFactor;  // voltage divider is 1:1, no idea where the 2 comes from.  Guess and check to develop RPMScaingFactor
-            RPM = Channel2V;          // 
+            Channel2V = Raw / 32767.0 * 6.144 * RPMScalingFactor;  // voltage divider is 1:1,  Guess and check to develop RPMScaingFactor
+            RPM = Channel2V;
             break;
           case 3:
-            Channel3V = Raw / 32768.0 * 6.144 * 833;  // Does nothing right now, thermistor someday?
+            Channel3V = Raw / 32767.0 * 6.144 * 833;  // Does nothing right now, thermistor someday?
             break;
         }
 
@@ -189,30 +194,31 @@ void ReadAnalogInputs() {
 void TempTask(void *parameter) {
 
   // a placeholder for the temperature measurment- uncomment this and comment out temp measurement for debugging
-  for (;;) {
-    vTaskDelay(pdMS_TO_TICKS(1000));  // sleep for 1 second
-  }
-
   // for (;;) {
-  //   // Step 1: Trigger a conversion
-  //   sensors.requestTemperaturesByAddress(tempDeviceAddress);
-
-  //   // Step 2: Wait for conversion to complete while other things run
-  //   vTaskDelay(pdMS_TO_TICKS(9000));  // This is the spacing between reads
-
-  //   // Step 3: Read the completed result
-  //   uint8_t scratchPad[9];
-  //   if (sensors.readScratchPad(tempDeviceAddress, scratchPad)) {
-  //     int16_t raw = (scratchPad[1] << 8) | scratchPad[0];
-  //     float tempC = raw / 16.0;
-  //     AlternatorTemperatureF = tempC * 1.8 + 32.0;
-  //   } else {
-  //     AlternatorTemperatureF = NAN;
-  //     Serial.println("Temp read failed");
-  //   }
-  //   Serial.printf("Temp: %.2f °F at %lu ms\n", AlternatorTemperatureF, millis());
-  //   // Immediately loop again — next conversion starts right now
+  //   vTaskDelay(pdMS_TO_TICKS(1000));  // sleep for 1 second
   // }
+
+  for (;;) {
+    // Step 1: Trigger a conversion
+    sensors.requestTemperaturesByAddress(tempDeviceAddress);
+
+    // Step 2: Wait for conversion to complete while other things run
+    vTaskDelay(pdMS_TO_TICKS(9000));  // This is the spacing between reads
+
+    // Step 3: Read the completed result
+    uint8_t scratchPad[9];
+    if (sensors.readScratchPad(tempDeviceAddress, scratchPad)) {
+      int16_t raw = (scratchPad[1] << 8) | scratchPad[0];
+      float tempC = raw / 16.0;
+      AlternatorTemperatureF = tempC * 1.8 + 32.0;
+    } else {
+      AlternatorTemperatureF = NAN;
+      Serial.println("Temp read failed");
+      queueConsoleMessage("WARNING: Temp sensor read failed");
+    }
+    //Serial.printf("Temp: %.2f °F at %lu ms\n", AlternatorTemperatureF, millis());
+    // Immediately loop again — next conversion starts right now
+  }
 }
 void UpdateDisplay() {
   if (millis() - prev_millis66 > 3000) {  // update display every 3 seconds
@@ -625,10 +631,8 @@ void SendWifiData() {
   if (millis() - prev_millis5 > webgaugesinterval) {
     WifiStrength = WiFi.RSSI();
     WifiHeartBeat++;
-
     // Process console message queue - send one message per interval
     processConsoleQueue();
-
     if (WifiStrength >= -70) {
       int start66 = micros();     // Start timing the wifi section
       printHeapStats();           //   Should be ~25–65 µs with no serial prints
@@ -648,7 +652,7 @@ void SendWifiData() {
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-               "%d,%d,%d,%d,%d,%d",
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d",
                // Readings
                SafeInt(AlternatorTemperatureF),     // 0
                SafeInt(DutyCycle),                  // 1
@@ -742,8 +746,10 @@ void SendWifiData() {
                SafeInt(RPM7),                       //85
                SafeInt(Amps5),                      //86
                SafeInt(Amps6),                      //87
-               SafeInt(Amps7)                       //88
-
+               SafeInt(Amps7),                      //88
+               SafeInt(ShuntResistanceMicroOhm),     //89
+               SafeInt(InvertAltAmps),               // 90
+               SafeInt(InvertBattAmps)              //91
       );
 
 
@@ -755,7 +761,7 @@ void SendWifiData() {
 }
 
 void checkAndRestart() {
-  //Restart the ESP32 every hour just for maintenance because we can eventaually want to use littleFS to store Battery Monitor Stuff first
+  //Restart the ESP32 every hour just for maintenance
   unsigned long currentMillis = millis();
 
   // Check if millis() has rolled over (happens after ~49.7 days)
@@ -765,7 +771,7 @@ void checkAndRestart() {
 
   // Check if it's time to restart
   if (currentMillis - lastRestartTime >= RESTART_INTERVAL) {
-    Serial.println("Performing scheduled restart for system maintenance");
+    queueConsoleMessage("Performing scheduled restart for system maintenance");
 
     // Optional: send a message to the web client before restarting
     events.send("Device restarting for maintenance. Will reconnect shortly.", "status");
@@ -980,7 +986,19 @@ void setupServer() {
       inputMessage = request->getParam("HiLow1")->value();
       writeFile(LittleFS, "/HiLow1.txt", inputMessage.c_str());
       HiLow = inputMessage.toInt();
-    } else if (request->hasParam("LimpHome1")) {
+    } 
+    else if (request->hasParam("InvertAltAmps")) {
+      inputMessage = request->getParam("InvertAltAmps")->value();
+      writeFile(LittleFS, "/InvertAltAmps.txt", inputMessage.c_str());
+      InvertAltAmps = inputMessage.toInt();
+    } 
+    else if (request->hasParam("InvertBattAmps")) {
+      inputMessage = request->getParam("InvertBattAmps")->value();
+      writeFile(LittleFS, "/InvertBattAmps.txt", inputMessage.c_str());
+      InvertBattAmps = inputMessage.toInt();
+    } 
+    
+    else if (request->hasParam("LimpHome1")) {
       inputMessage = request->getParam("LimpHome1")->value();
       writeFile(LittleFS, "/LimpHome1.txt", inputMessage.c_str());
       LimpHome = inputMessage.toInt();
@@ -1148,7 +1166,12 @@ void setupServer() {
       inputMessage = request->getParam("AmpControlByRPM")->value();
       writeFile(LittleFS, "/AmpControlByRPM.txt", inputMessage.c_str());
       AmpControlByRPM = inputMessage.toInt();
-    }  // Handle RPM/AMPS table - use separate if statements, not else if
+    } else if (request->hasParam("ShuntResistanceMicroOhm")) {
+      inputMessage = request->getParam("ShuntResistanceMicroOhm")->value();
+      writeFile(LittleFS, "/ShuntResistanceMicroOhm.txt", inputMessage.c_str());
+      ShuntResistanceMicroOhm = inputMessage.toInt();
+    }
+    // Handle RPM/AMPS table - use separate if statements, not else if
     if (request->hasParam("RPM1")) {
       inputMessage = request->getParam("RPM1")->value();
       writeFile(LittleFS, "/RPM1.txt", inputMessage.c_str());
@@ -1452,11 +1475,12 @@ void UpdateBatterySOC(unsigned long elapsedMillis) {
   if (elapsedSeconds < 1) elapsedSeconds = 1;
 
   // Update scaled values
-  Voltage_scaled = BatteryV * 100;
+  float currentBatteryVoltage = getBatteryVoltage();
+  Voltage_scaled = currentBatteryVoltage * 100;
   AlternatorCurrent_scaled = MeasuredAmps * 100;
   BatteryPower_scaled = (Voltage_scaled * BatteryCurrent_scaled) / 100;  // W × 100
   EnergyDelta_scaled = (BatteryPower_scaled * elapsedSeconds) / 3600;
-  AlternatorPower_scaled = (int)(BatteryV * MeasuredAmps * 100);  // W × 100
+  AlternatorPower_scaled = (int)(voltage * MeasuredAmps * 100);  // W × 100
   AltEnergyDelta_scaled = (AlternatorPower_scaled * elapsedSeconds) / 3600;
 
   // Calculate fuel used based on alternator energy output (Wh × 100)
@@ -1758,6 +1782,16 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   } else {
     HiLow = readFile(LittleFS, "/HiLow1.txt").toInt();
   }
+    if (!LittleFS.exists("/InvertAltAmps.txt")) {
+    writeFile(LittleFS, "/InvertAltAmps.txt", String(InvertAltAmps).c_str());
+  } else {
+    InvertAltAmps = readFile(LittleFS, "/InvertAltAmps.txt").toInt();
+  }
+    if (!LittleFS.exists("/InvertBattAmps.txt")) {
+    writeFile(LittleFS, "/InvertBattAmps.txt", String(InvertBattAmps).c_str());
+  } else {
+    InvertBattAmps = readFile(LittleFS, "/InvertBattAmps.txt").toInt();
+  }
   if (!LittleFS.exists("/LimpHome1.txt")) {
     writeFile(LittleFS, "/LimpHome1.txt", String(LimpHome).c_str());
   } else {
@@ -2002,6 +2036,12 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   } else {
     Amps7 = readFile(LittleFS, "/Amps7.txt").toInt();
   }
+
+  if (!LittleFS.exists("/ShuntResistanceMicroOhm.txt")) {
+    writeFile(LittleFS, "/ShuntResistanceMicroOhm.txt", String(ShuntResistanceMicroOhm).c_str());
+  } else {
+    ShuntResistanceMicroOhm = readFile(LittleFS, "/ShuntResistanceMicroOhm.txt").toInt();
+  }
 }
 
 void InitPersistentVariables() {
@@ -2176,32 +2216,107 @@ int interpolateAmpsFromRPM(float currentRPM) {
 
 void queueConsoleMessage(String message) {
   consoleMessageQueue.push_back(message);
-  Serial.println("Queued: " + message); // For debugging via serial monitor
+  Serial.println("Queued: " + message);  // For debugging via serial monitor
 }
 
 void processConsoleQueue() {
-  unsigned long now = millis();
-  
+  unsigned long now11 = millis();
+
   // Check if it's time to send messages and we have messages to send
-  if (now - lastConsoleMessageTime >= CONSOLE_MESSAGE_INTERVAL && !consoleMessageQueue.empty()) {
+  if (now11 - lastConsoleMessageTime >= CONSOLE_MESSAGE_INTERVAL && !consoleMessageQueue.empty()) {
     // Send up to 3 messages per interval
     int messagesToSend = min(3, (int)consoleMessageQueue.size());
-    
-    for(int i = 0; i < messagesToSend; i++) {
+
+    for (int i = 0; i < messagesToSend; i++) {
       String message = consoleMessageQueue.front();
       consoleMessageQueue.erase(consoleMessageQueue.begin());
       events.send(message.c_str(), "console");
-      Serial.println("Sent to console: " + message); // For debugging
+      Serial.println("Sent to console: " + message);  // For debugging
     }
-    
-    lastConsoleMessageTime = now;
+
+    lastConsoleMessageTime = now11;
   }
+}
+
+float getBatteryVoltage() {
+  static unsigned long lastWarningTime = 0;
+  const unsigned long WARNING_INTERVAL = 10000;  // 10 seconds between warnings
+  switch (BatteryVoltageSource) {
+    case 0:  // INA228
+      if (INADisconnected == 0) {
+        voltage = IBV;
+      } else {
+        if (millis() - lastWarningTime > WARNING_INTERVAL) {
+          queueConsoleMessage("WARNING: INA228 disconnected, falling back to ADS1115");
+          lastWarningTime = millis();
+        }
+        voltage = BatteryV;  // Fallback to ADS1115
+      }
+      break;
+    case 1:  // ADS1115
+      if (ADS1115Disconnected == 0) {
+        voltage = BatteryV;
+      } else {
+        if (millis() - lastWarningTime > WARNING_INTERVAL) {
+          queueConsoleMessage("WARNING: ADS1115 disconnected, falling back to INA228");
+          lastWarningTime = millis();
+        }
+        voltage = IBV;  // Fallback to INA228
+      }
+      break;
+    case 2:                                                 // VictronVeDirect
+      if (VictronVoltage > 8.0 && VictronVoltage < 70.0) {  // Sanity check
+        voltage = VictronVoltage;
+      } else {
+        if (millis() - lastWarningTime > WARNING_INTERVAL) {
+          queueConsoleMessage("WARNING: Invalid Victron voltage, falling back to INA228");
+          lastWarningTime = millis();
+        }
+        voltage = IBV;  // Fallback
+      }
+      break;
+    case 3:  // NMEA0183
+             // Add NMEA0183 voltage reading when implemented
+      if (millis() - lastWarningTime > WARNING_INTERVAL) {
+        queueConsoleMessage("NMEA0183 voltage source not yet implemented, using INA228");
+        lastWarningTime = millis();
+      }
+      voltage = IBV;
+      break;
+    case 4:  // NMEA2K
+             // Add NMEA2K voltage reading when implemented
+      if (millis() - lastWarningTime > WARNING_INTERVAL) {
+        queueConsoleMessage("NMEA2K voltage source not yet implemented, using INA228");
+        lastWarningTime = millis();
+      }
+      voltage = IBV;
+      break;
+    default:
+      if (millis() - lastWarningTime > WARNING_INTERVAL) {
+        queueConsoleMessage("Invalid battery voltage source, using INA228");
+        lastWarningTime = millis();
+      }
+      voltage = IBV;
+      break;
+  }
+  // Final check
+  if (voltage < 8.0 || voltage > 70.0 || isnan(voltage)) {
+    if (millis() - lastWarningTime > WARNING_INTERVAL) {
+      queueConsoleMessage("WARNING: No battery measurement detected");
+      lastWarningTime = millis();
+    }
+  }
+  return voltage;
 }
 
 void StuffToDoAtSomePoint() {
   //every reset button has a pointless flag and an echo.  I did not delete them for fear of breaking the payload and they hardly cost anything to keep
   //Factory reset
   //Save settings files
-  //Battery Voltage Source drop down menu- make this text update on page re-load instead of just an echo number 
-  //Ask AI to go through and add many more relevent Console messages
+  //Battery Voltage Source drop down menu- make this text update on page re-load instead of just an echo number
+  //Ask AI to go through and add many more relevent Console messages- make sure none of them come in too rapidly
+  // Is it possible to power up if the igniton is off?  A bunch of setup functions may fail?
+  //Read ignition and other Digital Inputs somewhere
+  //Add an option to control off battery current rather than Alternator current
+  // What happens when rpm table is screwed up by an idiot
 }
