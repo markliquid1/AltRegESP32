@@ -44,9 +44,10 @@ INA228 INA(0x40);
 #include "freertos/task.h"               // for stack usage
 #define configGENERATE_RUN_TIME_STATS 1  // for CPU use tracking
 #include <mbedtls/md.h>                  // security
-#include <vector>   // Console message queue system
-#include <String>   // Console message queue system
-
+#include <vector>                        // Console message queue system
+#include <String>                        // Console message queue system
+#include "esp_task_wdt.h"                //Watch dog to prevent hung up code from wreaking havoc
+#include "esp_log.h"                     // get rid of spam in serial monitor
 
 
 // Settings - these will be moved to LittleFS
@@ -86,7 +87,7 @@ int cpuLoadCore1 = 0;             // CPU load percentage for Core 1
 //Console
 std::vector<String> consoleMessageQueue;
 unsigned long lastConsoleMessageTime = 0;
-const unsigned long CONSOLE_MESSAGE_INTERVAL = 2000; // 60 seconds
+const unsigned long CONSOLE_MESSAGE_INTERVAL = 2000;  // 60 seconds
 
 // DNS Server for captive portal
 DNSServer dnsServer;
@@ -101,9 +102,11 @@ enum WiFiMode {
 WiFiMode currentWiFiMode = AWIFI_MODE_CLIENT;
 
 //delete this later ?
-int powersavemode = 0;
 int INADisconnected = 0;
 int WifiHeartBeat = 0;
+int previousMillisBLINK = 0;  // used for heartbeat blinking LED
+int intervalBLINK = 1000;     // used for heartbeat blinking LED interval
+bool ledState = false;        // used for heartbeat blinking LED state
 int VeTime = 0;
 int SendWifiTime = 0;
 int AnalogReadTime = 0;   // this is the present
@@ -122,7 +125,7 @@ float dutyCycle = 5;
 float dutyStep = 0.8;  // duty step to adjust field target by, each time the loop runs.  Larger numbers = faster response, less stability
 float MaxDuty = 99.0;
 float MinDuty = 0.0;
-int ManualDutyTarget = 50;  // example manual override value
+int ManualDutyTarget = 4;  // example manual override value
 
 
 float FieldAdjustmentInterval = 500;      // The regulator field output is updated once every this many milliseconds
@@ -132,14 +135,14 @@ int ManualFieldToggle = 1;                // set to 1 to enable manual control o
 //float ManualVoltageTarget = 5;            // voltage target corresponding to the toggle above
 int SwitchControlOverride = 1;  // set to 1 for web interface switches to override physical switch panel
 int ForceFloat = 0;             // set to 1 to force the float voltage to be the charging target
-int OnOff = 1;                  // 0 is charger off, 1 is charger On
+int OnOff = 1;                  // 0 is charger off, 1 is charger On (corresponds to Alternator Enable in Basic Settings)
 int Ignition = 1;               // This will eventually be an over-rideable digital input
 int HiLow = 1;                  // 0 will be a low setting, 1 a high setting
 int LimpHome = 0;               // 1 will set to limp home mode, whatever that gets set up to be
 int resolution = 12;            // for OneWire temp sensor measurement
 int VeData = 0;                 // Set to 1 if VE serial data exists
 int NMEA0183Data = 0;           // Set to 1 if NMEA serial data exists doesn't do anything yet
-int NMEA2KData = 1;             // doesn't do anything yet
+int NMEA2KData = 0;             // doesn't do anything yet
 //Field PWM stuff
 float interval = 0.8;   // larger value = faster response but more unstable
 float vout = 1;         // needs deleting
@@ -147,13 +150,11 @@ const int pwmPin = 32;  // field PWM
 //const int pwmChannel = 0;      //0–7 available for high-speed PWM  (ESP32)
 const int pwmResolution = 16;  // 16-bit resolution (0–65535)
 float fffr = 500;              // this is the switching frequency in Hz, uses Float for wifi reasons
+int InvertAltAmps = 1;         // change sign of alternator amp reading
+int InvertBattAmps = 0;         // change sign of battery amp reading
 
-int previousMillisZZ = 0;  // Temporary, for getting power consumption down
-int intervalZZ = 60000;    // Turn WiFi on and off every 60 seconds (until there's an Ignition signal controlling it)
-uint32_t Freq = 0;         // ESP32 switching Frequency in case we want to report it for debugging
-int previousMillisBLINK;   // used for heartbeat blinking LED test can delete later
-int intervalBLINK = 1000;  // used for heartbeat blinking LED test can delete later
-bool ledState;             // used for heartbeat blinking LED test can delete later
+
+uint32_t Freq = 0;  // ESP32 switching Frequency in case we want to report it for debugging
 
 //Variables to store measurements
 float ShuntVoltage_mV;                  // Battery shunt voltage from INA228
@@ -172,9 +173,10 @@ float HeadingNMEA = 0;                  // Just here to test NMEA functionality
 // ADS1115
 int16_t Raw = 0;
 float Channel0V, Channel1V, Channel2V, Channel3V;
-float BatteryV, MeasuredAmps, RPM;
-float MeasuredAmpsMax;  // used to track maximum alternator output
-float RPMMax;           // used to track maximum RPM
+float BatteryV, MeasuredAmps, RPM;  //Readings from ADS1115
+float voltage;                      // This is the one that gets populated by dropdown menu selection (battery voltage source)
+float MeasuredAmpsMax;              // used to track maximum alternator output
+float RPMMax;                       // used to track maximum RPM
 int ADS1115Disconnected = 0;
 
 
@@ -210,6 +212,7 @@ int PeukertExponent_scaled = 105;   // Peukert exponent × 100 (112 = 1.12)
 int ChargeEfficiency_scaled = 99;   // Charging efficiency % (0-100)
 int ChargedVoltage_scaled = 1450;   // Voltage threshold for "charged" (V × 100)
 int TailCurrent_scaled = 2000;      // Current threshold for "charged" (% of capacity × 100)
+int ShuntResistanceMicroOhm = 100;    // Shunt resistance in microohms
 int ChargedDetectionTime = 3600;    // Time at charged state to consider 100% (seconds)
 int IgnoreTemperature = 0;          // If no temp sensor, set to 1
 int BMSlogic = 0;                   // if BMS is asked to turn the alternator on and off
@@ -223,7 +226,7 @@ int VoltageAlarmLow = 0;            // below this value, sound alarm
 int CurrentAlarmHigh = 0;           // above this value, sound alarm
 int MaximumAllowedBatteryAmps;      // safety for battery, optional
 int FourWay = 0;                    // 0 voltage data source = INA228 , 1 voltage source = ADS1115, 2 voltage source = NMEA2k, 3 voltage source = Victron VeDirect
-int RPMScalingFactor;               // self explanatory
+int RPMScalingFactor = 2000;        // self explanatory, adjust until it matches your trusted tachometer
 
 //Pointless Flags delete later
 int ResetTemp;              // reset the maximum alternator temperature tracker
@@ -234,7 +237,7 @@ int ResetAlternatorOnTime;  //reset AlternatorOnTime
 int ResetEnergy;            // ???
 int ResetDischargedEnergy;  // total discharged from battery
 int ResetFuelUsed;          // fuel used by alternator
-int ResetAlternatorChargedEnergy; 
+int ResetAlternatorChargedEnergy;
 int ResetEngineCycles;
 int ResetRPMMax;
 
@@ -314,7 +317,7 @@ DallasTemperature sensors(&oneWire);
 DeviceAddress tempDeviceAddress;
 
 
-//Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);´
+//Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
 Adafruit_SSD1306 display(128, 64, 23, 18, 19, -1, 5);
 
 //VictronEnergy
@@ -486,26 +489,23 @@ const char WIFI_CONFIG_HTML[] PROGMEM = R"rawliteral(
 )rawliteral";
 
 
-
 void setup() {
-    queueConsoleMessage("System starting up...");
+  esp_log_level_set("esp32-hal-i2c-ng", ESP_LOG_WARN);  // get rid of spam in serial monitor
+  queueConsoleMessage("System starting up...");
   setCpuFrequencyMhz(240);
   Serial.begin(115200);
   delay(500);  // not sure if this is needed
 
-  pinMode(4, OUTPUT);  // This pin is used to provide a high signal to Field Enable pin      PROBABLY OBSOLETE
+  pinMode(4, OUTPUT);  // This pin is used to provide a high signal to Field Enable pin
   pinMode(2, OUTPUT);  // This pin is used to provide a heartbeat (pin 2 of ESP32 is the LED)
-                       // ledcSetup(pwmChannel, fffr, pwmResolution);     // Configure LEDC for PWM (field output)
-  //ledcAttachPin(pwmPin, pwmChannel);    // Configure LEDC for PWM (field output)
   // In ESP32 v3.x, this single function replaces both ledcSetup and ledcAttachPin
   ledcAttach(pwmPin, fffr, pwmResolution);
 
 
-  // Initialize LittleFS first.
+  // Initialize LittleFS first
   if (!LittleFS.begin(true)) {
     Serial.println("An Error has occurred while mounting LittleFS");
     queueConsoleMessage("WARNING: An Error has occurred while mounting LittleFS");
-
     // Continue anyway since we might be able to format and use it later (?)
   }
 
@@ -556,7 +556,7 @@ void setup() {
 
   if (!display.begin(SSD1306_SWITCHCAPVCC)) {
     Serial.println(F("SSD1306 dipslay allocation failed"));
-queueConsoleMessage("WARNING: SSD1306 OLED display allocation failed");
+    queueConsoleMessage("WARNING: SSD1306 OLED display allocation failed");
     for (;;)
       ;
   }
@@ -607,6 +607,24 @@ queueConsoleMessage("WARNING: SSD1306 OLED display allocation failed");
     sensors.setWaitForConversion(false);  // this is critical!
   }
 
+
+  // Enable watchdog with new API for ESP32 Arduino 3.x
+  esp_task_wdt_config_t wdt_config = {
+    .timeout_ms = 8000,    // 8 seconds timeout
+    .idle_core_mask = 0,   // Don't watch idle cores
+    .trigger_panic = true  // Restart on timeout
+  };
+  esp_task_wdt_init(&wdt_config);
+  esp_task_wdt_add(NULL);  // Add current task to watchdog
+
+  // Check if we recovered from a watchdog reset
+  esp_reset_reason_t reset_reason = esp_reset_reason();
+  if (reset_reason == ESP_RST_TASK_WDT) {
+    queueConsoleMessage("CRITICAL: System recovered from watchdog reset - code was hung");
+  } else if (reset_reason == ESP_RST_SW) {
+    queueConsoleMessage("System restarted - scheduled maintenance");
+  }
+
   xTaskCreatePinnedToCore(
     TempTask,
     "TempTask",
@@ -619,81 +637,82 @@ queueConsoleMessage("WARNING: SSD1306 OLED display allocation failed");
 }
 
 void loop() {
-  //SOC Stuff
+  starttime = esp_timer_get_time();  //Record start time for Loop
   currentTime = millis();
-  if (currentTime - lastSOCUpdateTime >= SOCUpdateInterval) {
+  esp_task_wdt_reset();  // feed the watchdog
+
+
+  // SOC stuff and data saving - do this always for battery monitoring regardless of WiFi mode/ Ignition status
+  if (currentTime - lastSOCUpdateTime >= SOCUpdateInterval) {  // SOC stuff, do this always
     elapsedMillis = currentTime - lastSOCUpdateTime;
     lastSOCUpdateTime = currentTime;
     UpdateEngineRuntime(elapsedMillis);
     UpdateBatterySOC(elapsedMillis);
   }
+
   // Periodic Data Save Logic - run every DataSaveInterval
-  if (currentTime - lastDataSaveTime >= DataSaveInterval) {
+  if (currentTime - lastDataSaveTime >= DataSaveInterval) {  // have to figure out an appropriate rate for this to not wear out Flash memory
     lastDataSaveTime = currentTime;
     SaveAllData();
   }
-  starttime = esp_timer_get_time();  //Record a start time for demonstration
+
   // Handle DNS requests if in AP mode
   if (currentWiFiMode == AWIFI_MODE_AP) {
     dnsHandleRequest();
   } else {
-    //MDNS.update();// Update mDNS to maintain hostname visibility    Turns out thsi was already being done on its own
-    // Only do these tasks if in normal client mode
+    // This is all the normal stuff .... only done in Client Mode
     ReadAnalogInputs();
-    //ReadVEData();  //read Data from Victron VeDirect
-    // UpdateDisplay();
-    AdjustField();
-    // Send WiFi data to client
-    SendWifiData();
-  }
-  if (powersavemode == 1) {
-    /// Replace this later with control from Ignition Signal
-    //This turns wifi off every 60 seconds just to prove that it will be a power savings
-    if (millis() - previousMillisZZ >= intervalZZ) {
-      previousMillisZZ = millis();
-      if (getCpuFrequencyMhz() == 240) {
-        // try to shut downn wifi
-        setCpuFrequencyMhz(10);
-        WiFi.mode(WIFI_OFF);
-        Serial.println("wifi has been turned off");
-      } else {
-        // turn it back on
-        setCpuFrequencyMhz(240);
-        setupWiFi();  // Use our new WiFi setup function
-        Serial.println("Wifi is reinitialized");
-        queueConsoleMessage("Wifi is reinitialized");
-      }
-      Freq = getCpuFrequencyMhz();
+    if (VeData == 1) {
+      ReadVEData();  //read Data from Victron VeDirect
     }
-  }
-
-  if (millis() - prev_millis743 > 5000) {  // every 5 seconds check CAN network (this might need adjustment)
     if (NMEA2KData == 1) {
-      NMEA2000.ParseMessages();
+      NMEA2000.ParseMessages();  // read data from NMEA2K
     }
-    prev_millis743 = millis();
-  }
-  // Check WiFi connection status if in client mode
-  if (currentWiFiMode == AWIFI_MODE_CLIENT && WiFi.status() != WL_CONNECTED) {
-    static unsigned long lastWiFiCheckTime = 0;
 
-    // Try to reconnect every 5 seconds
-    if (millis() - lastWiFiCheckTime > 5000) {
-      lastWiFiCheckTime = millis();
-      Serial.println("WiFi connection lost. Attempting to reconnect...");
-      String saved_ssid = readFile(LittleFS, WIFI_SSID_FILE);
-      String saved_password = readFile(LittleFS, WIFI_PASS_FILE);
-      if (connectToWiFi(saved_ssid.c_str(), saved_password.c_str(), 3000)) {
-        Serial.println("Reconnected to WiFi!");
-        queueConsoleMessage("Reconnected to WiFi!");
+    // UpdateDisplay();   // turn this back on later
+    AdjustField();  // This may need to get moved if it takes any power, but have to be careful we don't get stuck with Field On!
 
-        // mDNS will be reinitialized in the connectToWiFi function
-      } else {
-        Serial.println("Failed to reconnect. Will try again in 5 seconds.");
+    // Handle ignition-based power management for saving power
+    if (Ignition == 0) {
+      setCpuFrequencyMhz(10);
+      WiFi.mode(WIFI_OFF);
+      Serial.println("wifi has been turned off");
+    } else {
+      if (WiFi.status() != WL_CONNECTED) {             // Only setup WiFi if not already connected
+        setCpuFrequencyMhz(240);                       // turn it back on - ignition is on so enter full power mode
+        setupWiFi();                                   // Use our new WiFi setup function
+        Serial.println("Wifi is reinitialized");       // too many ignition on/off cycles could break this, something to harden later?
+        queueConsoleMessage("Wifi is reinitialized");  // too many ignition on/off cycles could break this, something to harden later?
       }
+      // Send WiFi data to client
+      SendWifiData();
+      // Check WiFi connection status if in client mode - only try to reconnect when ignition is on
+      if (currentWiFiMode == AWIFI_MODE_CLIENT && WiFi.status() != WL_CONNECTED) {
+        static unsigned long lastWiFiCheckTime = 0;
+        // Try to reconnect every 5 seconds
+        if (millis() - lastWiFiCheckTime > 5000) {
+          lastWiFiCheckTime = millis();
+          Serial.println("WiFi connection lost. Attempting to reconnect...");
+          String saved_ssid = readFile(LittleFS, WIFI_SSID_FILE);
+          String saved_password = readFile(LittleFS, WIFI_PASS_FILE);
+          if (connectToWiFi(saved_ssid.c_str(), saved_password.c_str(), 3000)) {
+            Serial.println("Reconnected to WiFi!");
+            queueConsoleMessage("Reconnected to WiFi!");
+            // mDNS will be reinitialized in the connectToWiFi function
+          } else {
+            Serial.println("Failed to reconnect. Will try again in 5 seconds.");
+          }
+        }
+      }
+      Freq = getCpuFrequencyMhz();  // unused at this time
     }
   }
-  //Blink LED on and off every X seconds
+
+  //Blink LED on and off every X seconds - works in both power modes for status indication
+  // optimize for power consumpiton later
+  //AP Mode: Fast triple blink pattern
+  //WiFi Disconnected: Medium blink with 100ms pulse
+  //WiFi Connected: Normal toggle
   if (millis() - previousMillisBLINK >= intervalBLINK) {
     // Use different blink patterns to indicate WiFi status
     if (currentWiFiMode == AWIFI_MODE_AP) {
@@ -720,12 +739,13 @@ void loop() {
     MaximumLoopTime = 0;
     prev_millis7888 = millis();
   }
-  endtime = esp_timer_get_time();  //Record a start time for demonstration
+  endtime = esp_timer_get_time();  //Record end of Loop
   LoopTime = (endtime - starttime);
 
   if (LoopTime > MaximumLoopTime) {
     MaximumLoopTime = LoopTime;
   }
+  checkAndRestart();  // Handle scheduled maintenance restarts
 }
 
 template<typename T> void PrintLabelValWithConversionCheckUnDef(const char *label, T val, double (*ConvFunc)(double val) = 0, bool AddLf = false, int8_t Desim = -1) {
