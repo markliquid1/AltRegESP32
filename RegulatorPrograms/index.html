@@ -1115,6 +1115,18 @@ Contact me at mark@xengineering.net       -->
 
         <hr />
         <div class="form-row">
+          <div class="form-label">Shunt Resitance mOhms (micro)(<span id="ShuntResistanceMicroOhm_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="ShuntResistanceMicroOhm" type="number" step="1" min="12" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+
+        <hr />
+        <div class="form-row">
           <div class="form-label">Set SoC Manually (%) (<span id="ManualSOCPoint_echo">0</span>):</div>
           <div class="form-input">
             <form action="/get" method="GET" target="hidden-form">
@@ -1197,7 +1209,40 @@ Contact me at mark@xengineering.net       -->
             </form>
           </div>
         </div>
-
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Invert Battery Amps (<span id="InvertBattAmps_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">No</span>
+              <label class="switch">
+                <input id="InvertBattAmps_checkbox" type="checkbox"
+                  onchange="document.getElementById('InvertBattAmps').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">Yes</span>
+              <input id="InvertBattAmps" name="InvertBattAmps" type="number" value="" style="display:none;" />
+            </form>
+          </div>
+        </div>
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Invert Alternator Amps (<span id="InvertAltAmps_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">No</span>
+              <label class="switch">
+                <input id="InvertAltAmps_checkbox" type="checkbox"
+                  onchange="document.getElementById('InvertAltAmps').value = this.checked ? '1' : '0'; this.form.submit(); submitMessage();" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">Yes</span>
+              <input id="InvertAltAmps" name="InvertAltAmps" type="number" value="" style="display:none;" />
+            </form>
+          </div>
+        </div>
 
 
       </div>
@@ -1488,9 +1533,9 @@ Contact me at mark@xengineering.net       -->
 
   <!-- Console -->
   <div class="settings-card">
-    <div class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
-      <span>Console</span>
-      <button onclick="clearConsole()" style="font-size: 12px;">Clear</button>
+    <div class="form-label">
+      Console
+      <button onclick="clearConsole()" style="font-size: 12px; margin-left: 10px;">Clear</button>
     </div>
     <div id="consoleOutput"
       style="font-family: monospace; font-size: 13px; background: #111; color: #0f0; padding: 6px; height: 160px; overflow-y: auto; border: 1px solid var(--border); white-space: pre-wrap;">
@@ -1608,7 +1653,10 @@ Contact me at mark@xengineering.net       -->
       RPM7: 85,
       Amps5: 86,
       Amps6: 87,
-      Amps7: 88
+      Amps7: 88,
+      ShuntResistanceMicroOhm: 89,
+      InvertAltAmps: 90,
+      InvertBattAmps: 91
 
     };
 
@@ -1682,6 +1730,8 @@ Contact me at mark@xengineering.net       -->
       }
     }
 
+
+
     function initCurrentTempPlot() {
       const plotEl = document.getElementById('current-temp-plot');
       if (!plotEl) {
@@ -1694,7 +1744,7 @@ Contact me at mark@xengineering.net       -->
         height: 300,
         title: "Current & Temperature History",
         series: [
-          { label: null, points: { show: false }, stroke: "transparent", width: 0 }, // fully hide timestamp
+          { label: null, points: { show: false }, stroke: "transparent", width: 0 }, // timestamp - hidden
           {
             label: "Battery Current (A)",
             stroke: "#4CAF50",
@@ -1733,10 +1783,22 @@ Contact me at mark@xengineering.net       -->
           x: { time: true },
           current: { auto: true }
         },
+        // DISABLE the built-in legend completely
+        legend: {
+          show: false
+        },
         plugins: [{
           hooks: {
             init: [
               (u) => {
+                // Create custom legend after plot is created
+                createCustomLegend('current-temp-plot', [
+                  { label: "Battery Current (A)", color: "#4CAF50" },
+                  { label: "Alternator Current (A)", color: "#2196F3" },
+                  { label: "Field Current (A)", color: "#9C27B0" },
+                  { label: "Alt. Temp (°F)", color: "#FF5722" }
+                ]);
+
                 const resizePlot = debounce(() => {
                   const plotEl = document.getElementById("current-temp-plot");
                   if (plotEl && currentTempPlot) {
@@ -1772,7 +1834,7 @@ Contact me at mark@xengineering.net       -->
         height: 300,
         title: "Battery Voltage History",
         series: [
-          { label: null, points: { show: false }, stroke: "transparent", width: 0 },
+          { label: null, points: { show: false }, stroke: "transparent", width: 0 }, // timestamp - hidden
           {
             label: "ADS Battery (V)",
             stroke: "#FF9800",
@@ -1804,10 +1866,21 @@ Contact me at mark@xengineering.net       -->
           x: { time: true },
           voltage: { auto: true }
         },
+        // DISABLE the built-in legend completely
+        legend: {
+          show: false
+        },
         plugins: [{
           hooks: {
             init: [
               (u) => {
+                // Create custom legend after plot is created
+                createCustomLegend('voltage-plot', [
+                  { label: "ADS Battery (V)", color: "#FF9800" },
+                  { label: "Victron Battery (V)", color: "#3F51B5" },
+                  { label: "INA Battery (V)", color: "#607D8B" }
+                ]);
+
                 const resizePlot = debounce(() => {
                   const plotEl = document.getElementById("voltage-plot");
                   if (plotEl && voltagePlot) {
@@ -1842,7 +1915,7 @@ Contact me at mark@xengineering.net       -->
         height: 300,
         title: "RPM History",
         series: [
-          { label: null, points: { show: false }, stroke: "transparent", width: 0 },
+          { label: null, points: { show: false }, stroke: "transparent", width: 0 }, // timestamp - hidden
           {
             label: "RPM",
             stroke: "#E91E63",
@@ -1862,10 +1935,19 @@ Contact me at mark@xengineering.net       -->
           x: { time: true },
           rpm: { auto: true }
         },
+        // DISABLE the built-in legend completely
+        legend: {
+          show: false
+        },
         plugins: [{
           hooks: {
             init: [
               (u) => {
+                // Create custom legend after plot is created
+                createCustomLegend('rpm-plot', [
+                  { label: "RPM", color: "#E91E63" }
+                ]);
+
                 const resizePlot = debounce(() => {
                   const plotEl = document.getElementById("rpm-plot");
                   if (plotEl && rpmPlot) {
@@ -1885,6 +1967,58 @@ Contact me at mark@xengineering.net       -->
       rpmData[1].push(0);
       rpmPlot.setData(rpmData);
     }
+
+    // Custom legend creation function
+    function createCustomLegend(plotId, legendItems) {
+      const plotContainer = document.getElementById(plotId);
+      if (!plotContainer) return;
+
+      // Remove any existing custom legend
+      const existingLegend = plotContainer.querySelector('.custom-legend');
+      if (existingLegend) {
+        existingLegend.remove();
+      }
+
+      // Create new custom legend
+      const legendDiv = document.createElement('div');
+      legendDiv.className = 'custom-legend';
+      legendDiv.style.cssText = `
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  `;
+
+      legendItems.forEach(item => {
+        const legendItem = document.createElement('div');
+        legendItem.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    `;
+
+        const colorBox = document.createElement('div');
+        colorBox.style.cssText = `
+      width: 16px;
+      height: 3px;
+      background-color: ${item.color};
+      border-radius: 1px;
+    `;
+
+        const label = document.createElement('span');
+        label.textContent = item.label;
+        label.style.color = 'var(--text-dark)';
+
+        legendItem.appendChild(colorBox);
+        legendItem.appendChild(label);
+        legendDiv.appendChild(legendItem);
+      });
+
+      plotContainer.appendChild(legendDiv);
+    }
+
 
 
     function setAdminPassword() {
@@ -2121,8 +2255,10 @@ Contact me at mark@xengineering.net       -->
           ["RPM7_echo", "RPM7"],
           ["Amps5_echo", "Amps5"],
           ["Amps6_echo", "Amps6"],
-          ["Amps7_echo", "Amps7"]
-
+          ["Amps7_echo", "Amps7"],
+          ["ShuntResistanceMicroOhm_echo", "ShuntResistanceMicroOhm"],
+          ["InvertAltAmps_echo", "InvertAltAmps"],
+          ["InvertBattAmps_echo", "InvertBattAmps"]
 
         ];
 
@@ -2275,8 +2411,10 @@ Contact me at mark@xengineering.net       -->
             RPM7: values[fieldIndexes.RPM7],
             Amps5: values[fieldIndexes.Amps5],
             Amps6: values[fieldIndexes.Amps6],
-            Amps7: values[fieldIndexes.Amps7]
-
+            Amps7: values[fieldIndexes.Amps7],
+            ShuntResistanceMicroOhm: values[fieldIndexes.ShuntResistanceMicroOhm],
+            InvertAltAmps: values[fieldIndexes.InvertAltAmps],
+            InvertBattAmps: values[fieldIndexes.InvertBattAmps]
           };
 
           window._debugData = data;
@@ -2291,9 +2429,9 @@ Contact me at mark@xengineering.net       -->
                 el.textContent = "—";
                 continue;
               }
-              if (["BatteryV", "Channel3V", "IBV", "VictronVoltage", "vvout", "FullChargeVoltage", "TargetFloatVoltage1"].includes(key)) {
+              if (["BatteryV", "Channel3V", "IBV", "VictronVoltage", "vvout", "FullChargeVoltage", "TargetFloatVoltage1", "IBVMax", "Bcur", "MeasuredAmps"].includes(key)) {
                 el.textContent = (value / 100).toFixed(2);
-              } else if (["MeasuredAmps", "Bcur", "iiout", "TargetAmpz", "TargetAmpL"].includes(key)) {
+              } else if (["iiout", "TargetAmpz", "TargetAmpL", "MeasuredAmpsMax"].includes(key)) {
                 el.textContent = (value / 10).toFixed(1);
               } else {
                 el.textContent = Math.round(value);
@@ -2478,6 +2616,18 @@ Contact me at mark@xengineering.net       -->
             document.getElementById('Amps7_echo').textContent = data.Amps7;
           }
 
+          if ('ShuntResistanceMicroOhm' in data) {
+            document.getElementById('ShuntResistanceMicroOhm_echo').textContent = data.ShuntResistanceMicroOhm;
+          }
+
+          if ('InvertAltAmps' in data) {
+            document.getElementById('InvertAltAmps_echo').textContent = data.InvertAltAmps;
+          }
+
+          if ('InvertBattAmps' in data) {
+            document.getElementById('InvertBattAmps_echo').textContent = data.InvertBattAmps;
+          }
+
           // Initialize RPM/Amps fields once on page load
           if (!rpmAmpsInitialized) {
             const rpmAmpFields = [
@@ -2537,8 +2687,8 @@ Contact me at mark@xengineering.net       -->
 
           // Update Current & Temperature plot data arrays
           if (typeof currentTempPlot !== 'undefined') {
-            const battCurrent = 'Bcur' in data ? parseFloat(data.Bcur) / 10 : null;
-            const altCurrent = 'MeasuredAmps' in data ? parseFloat(data.MeasuredAmps) / 10 : null;
+            const battCurrent = 'Bcur' in data ? parseFloat(data.Bcur) / 100 : null;
+            const altCurrent = 'MeasuredAmps' in data ? parseFloat(data.MeasuredAmps) / 100 : null;
             const fieldCurrent = 'iiout' in data ? parseFloat(data.iiout) / 10 : null;
             const altTemp = 'AlternatorTemperatureF' in data ? parseFloat(data.AlternatorTemperatureF) : null;
 
@@ -2689,6 +2839,8 @@ Contact me at mark@xengineering.net       -->
       document.getElementById("BMSLogicLevelOff_checkbox").checked = (document.getElementById("BMSLogicLevelOff").value === "1");
       document.getElementById("AlarmActivate_checkbox").checked = (document.getElementById("AlarmActivate").value === "1");
       document.getElementById("AmpControlByRPM_checkbox").checked = (document.getElementById("AmpControlByRPM").value === "1");
+      document.getElementById("InvertAltAmps_checkbox").checked = (document.getElementById("InvertAltAmps").value === "1");
+      document.getElementById("InvertBattAmps_checkbox").checked = (document.getElementById("InvertBattAmps").value === "1");
 
       document.getElementById("admin_password").addEventListener("change", updatePasswordFields);
 
@@ -2720,7 +2872,8 @@ Contact me at mark@xengineering.net       -->
           updateCheckbox("BMSLogicLevelOff_checkbox", data.BMSLogicLevelOff);
           updateCheckbox("AlarmActivate_checkbox", data.AlarmActivate);
           updateCheckbox("AmpControlByRPM_checkbox", data.AmpControlByRPM);
-
+          updateCheckbox("InvertAltAmps_checkbox", data.InvertAltAmps);
+          updateCheckbox("InvertBattAmps_checkbox", data.InvertBattAmps);
         } catch (e) {
           console.log("Error updating toggle states: " + e.message);
         }
@@ -2809,6 +2962,9 @@ Contact me at mark@xengineering.net       -->
     <span id="Amps5_echo" style="display:none;">0</span>
     <span id="Amps6_echo" style="display:none;">0</span>
     <span id="Amps7_echo" style="display:none;">0</span>
+    <span id="ShuntResistanceMicroOhm_echo" style="display:none;">0</span>
+    <span id="InvertAltAmps_echo" style="display:none;">0</span>
+    <span id="InvertBattAmps_echo" style="display:none;">0</span>
 
 
     <!-- Input values for settings -->
@@ -2874,6 +3030,10 @@ Contact me at mark@xengineering.net       -->
     <input id="Amps5" style="display:none;" value="0" />
     <input id="Amps6" style="display:none;" value="0" />
     <input id="Amps7" style="display:none;" value="0" />
+    <input id="ShuntResistanceMicroOhm" style="display:none;" value="0" />
+    <input id="InvertAltAmps" style="display:none;" value="0" />
+    <input id="InvertBattAmps" style="display:none;" value="0" />
+
 
 
   </div>
