@@ -113,7 +113,7 @@ int AnalogReadTime = 0;   // this is the present
 int AnalogReadTime2 = 0;  // this is the maximum ever
 
 //Input Settings
-int TargetAmps = 55;   //Normal alternator output, for best performance, set to something that just barely won't overheat
+int TargetAmps = 40;   //Normal alternator output, for best performance, set to something that just barely won't overheat
 int TargetAmpLA = 25;  //Alternator output in Lo mode
 int uTargetAmps = 0;   // the one that gets set to either the normal setting or the low setting then used.
 
@@ -224,6 +224,8 @@ int CurrentAlarmHigh = 0;           // above this value, sound alarm
 int MaximumAllowedBatteryAmps;      // safety for battery, optional
 int FourWay = 0;                    // 0 voltage data source = INA228 , 1 voltage source = ADS1115, 2 voltage source = NMEA2k, 3 voltage source = Victron VeDirect
 int RPMScalingFactor = 2000;        // self explanatory, adjust until it matches your trusted tachometer
+float AlternatorCOffset = 0;          // tare for alt current
+float BatteryCOffset=0;               // tare or batt current
 
 //Pointless Flags delete later
 int ResetTemp;              // reset the maximum alternator temperature tracker
@@ -552,8 +554,8 @@ void setup() {
   // at least 529ms for an update with these settings for average and conversion time
   INA.setMode(11);                       // Bh = Continuous shunt and bus voltage
   INA.setAverage(4);                     //0h = 1, 1h = 4, 2h = 16, 3h = 64, 4h = 128, 5h = 256, 6h = 512, 7h = 1024     Applies to all channels
-  INA.setBusVoltageConversionTime(5);    // Sets the conversion time of the bus voltage measurement: 0h = 50 µs, 1h = 84 µs, 2h = 150 µs, 3h = 280 µs, 4h = 540 µs, 5h = 1052 µs, 6h = 2074 µs, 7h = 4120 µs
-  INA.setShuntVoltageConversionTime(5);  // Sets the conversion time of the bus voltage measurement: 0h = 50 µs, 1h = 84 µs, 2h = 150 µs, 3h = 280 µs, 4h = 540 µs, 5h = 1052 µs, 6h = 2074 µs, 7h = 4120 µs
+  INA.setBusVoltageConversionTime(7);    // Sets the conversion time of the bus voltage measurement: 0h = 50 µs, 1h = 84 µs, 2h = 150 µs, 3h = 280 µs, 4h = 540 µs, 5h = 1052 µs, 6h = 2074 µs, 7h = 4120 µs
+  INA.setShuntVoltageConversionTime(7);  // Sets the conversion time of the bus voltage measurement: 0h = 50 µs, 1h = 84 µs, 2h = 150 µs, 3h = 280 µs, 4h = 540 µs, 5h = 1052 µs, 6h = 2074 µs, 7h = 4120 µs
 
   if (!display.begin(SSD1306_SWITCHCAPVCC)) {
     Serial.println(F("SSD1306 dipslay allocation failed"));
