@@ -124,7 +124,7 @@ float ChargingVoltageTarget = 0;  // This is what the code really uses. It gets 
 float dutyCycle = 5;
 float dutyStep = 0.8;  // duty step to adjust field target by, each time the loop runs.  Larger numbers = faster response, less stability
 float MaxDuty = 99.0;
-float MinDuty = 0.0;
+float MinDuty = 18.0;
 int ManualDutyTarget = 4;  // example manual override value
 
 
@@ -135,7 +135,7 @@ int ManualFieldToggle = 1;                // set to 1 to enable manual control o
 //float ManualVoltageTarget = 5;            // voltage target corresponding to the toggle above
 int SwitchControlOverride = 1;  // set to 1 for web interface switches to override physical switch panel
 int ForceFloat = 0;             // set to 1 to force the float voltage to be the charging target
-int OnOff = 1;                  // 0 is charger off, 1 is charger On (corresponds to Alternator Enable in Basic Settings)
+int OnOff = 0;                  // 0 is charger off, 1 is charger On (corresponds to Alternator Enable in Basic Settings)
 int Ignition = 1;               // This will eventually be an over-rideable digital input
 int HiLow = 1;                  // 0 will be a low setting, 1 a high setting
 int LimpHome = 0;               // 1 will set to limp home mode, whatever that gets set up to be
@@ -151,9 +151,7 @@ const int pwmPin = 32;  // field PWM
 const int pwmResolution = 16;  // 16-bit resolution (0–65535)
 float fffr = 500;              // this is the switching frequency in Hz, uses Float for wifi reasons
 int InvertAltAmps = 1;         // change sign of alternator amp reading
-int InvertBattAmps = 0;         // change sign of battery amp reading
-
-
+int InvertBattAmps = 0;        // change sign of battery amp reading
 uint32_t Freq = 0;  // ESP32 switching Frequency in case we want to report it for debugging
 
 //Variables to store measurements
@@ -161,9 +159,10 @@ float ShuntVoltage_mV;                  // Battery shunt voltage from INA228
 float Bcur;                             // battery shunt current from INA228
 float IBV;                              // Ina 228 battery voltage
 float IBVMax = NAN;                     // used to track maximum battery voltage
-float DutyCycle;                        // Field outout %
-float vvout;                            // Used to be field output in volts, now it's duty cycle
-float iiout;                            // Field output current
+float DutyCycle;                        // Field outout %--- this is just what's transmitted over Wifi (case sensitive)
+float FieldResistance = 2;              // Field resistance in Ohms usually between 2 and 6 Ω, changes 10-20% with temp
+float vvout;                            // Calculated field volts (approximate)
+float iiout;                            // Calculated field amps (approximate)
 float AlternatorTemperatureF = NAN;     // alternator temperature
 float MaxAlternatorTemperatureF = NAN;  // maximum alternator temperature
 TaskHandle_t tempTaskHandle = NULL;     // make a separate cpu task for temp reading because it's so slow
@@ -174,16 +173,14 @@ float HeadingNMEA = 0;                  // Just here to test NMEA functionality
 int16_t Raw = 0;
 float Channel0V, Channel1V, Channel2V, Channel3V;
 float BatteryV, MeasuredAmps, RPM;  //Readings from ADS1115
-float voltage;                      // This is the one that gets populated by dropdown menu selection (battery voltage source)
-float MeasuredAmpsMax;              // used to track maximum alternator output
-float RPMMax;                       // used to track maximum RPM
+//float voltage;                      // This is the one that gets populated by dropdown menu selection (battery voltage source)
+float MeasuredAmpsMax;  // used to track maximum alternator output
+float RPMMax;           // used to track maximum RPM
 int ADS1115Disconnected = 0;
-
-
 
 // Battery SOC Monitoring Variables
 int BatteryCapacity_Ah = 300;         // Battery capacity in Amp-hours
-int SoC_percent = 75;                 // State of Charge percentage (0-100)
+int SoC_percent = 7500;               // State of Charge percentage (0-100) but have to multiply by 100 for annoying reasons, but go with it
 int ManualSOCPoint = 25;              // Used to set it manually
 int CoulombCount_Ah_scaled = 7500;    // Current energy in battery (Ah × 100 for precision)
 bool FullChargeDetected = false;      // Flag for full charge detection
@@ -194,7 +191,7 @@ unsigned long elapsedMillis = 0;
 unsigned long lastSOCUpdateTime = 0;      // Last time SOC was updated
 unsigned long lastEngineMonitorTime = 0;  // Last time engine metrics were updated
 unsigned long lastDataSaveTime = 0;       // Last time data was saved to LittleFS
-int SOCUpdateInterval = 1000;             // Update SOC every 1 second
+int SOCUpdateInterval = 2000;             // Update SOC every 2 seconds.   Don't make this smaller than 1 without study
 int DataSaveInterval = 300000;            // Save data every 5 minutes (300,000 ms).  Flash will hit 20K cycle end of life in 70 years, good enough!
 // Accumulators for runtime tracking
 unsigned long engineRunAccumulator = 0;     // Milliseconds accumulator for engine runtime
@@ -212,7 +209,7 @@ int PeukertExponent_scaled = 105;   // Peukert exponent × 100 (112 = 1.12)
 int ChargeEfficiency_scaled = 99;   // Charging efficiency % (0-100)
 int ChargedVoltage_scaled = 1450;   // Voltage threshold for "charged" (V × 100)
 int TailCurrent_scaled = 2000;      // Current threshold for "charged" (% of capacity × 100)
-int ShuntResistanceMicroOhm = 100;    // Shunt resistance in microohms
+int ShuntResistanceMicroOhm = 100;  // Shunt resistance in microohms
 int ChargedDetectionTime = 3600;    // Time at charged state to consider 100% (seconds)
 int IgnoreTemperature = 0;          // If no temp sensor, set to 1
 int BMSlogic = 0;                   // if BMS is asked to turn the alternator on and off
@@ -250,12 +247,13 @@ int AlternatorPower_scaled = 0;    // Alternator power (W × 100)
 int AltEnergyDelta_scaled = 0;     // Alternator energy change (Wh × 100)
 int joulesOut = 0;
 int fuelEnergyUsed_J = 0;
-int AlternatorFuelUsed = 0;   // Total fuel used by alternator (mL)
+int AlternatorFuelUsed = 0;   // Total fuel used by alternator (mL) - INTEGER (note: mL not L)
 bool alternatorIsOn = false;  // Current alternator state
 // Energy Tracking Variables
-int ChargedEnergy = 0;            // Total charged energy from battery (Wh)
-int DischargedEnergy = 0;         // Total discharged energy from battery (Wh)
-int AlternatorChargedEnergy = 0;  // Total energy from alternator (Wh)
+
+int ChargedEnergy = 0;            // Total charged energy from battery (Wh) - INTEGER
+int DischargedEnergy = 0;         // Total discharged energy from battery (Wh) - INTEGER
+int AlternatorChargedEnergy = 0;  // Total energy from alternator (Wh) - INTEGER
 int FuelEfficiency_scaled = 250;  // Engine efficiency: Wh per mL of fuel (× 100)
 // Engine & Alternator Runtime Tracking
 int EngineRunTime = 0;          // Time engine has been spinning (minutes)
@@ -304,7 +302,10 @@ int RPM7 = 0;
 int Amps5 = 0;
 int Amps6 = 0;
 int Amps7 = 0;
-int RPMThreshold = -20000;  //below this, there will be no field output in auto mode
+int RPMThreshold = -20000;  //below this, there will be no field output in auto mode (Update this if we have RPM at low speeds and no field, otherwise, depend on Ignition)
+
+int maxPoints;  //number of points plotted per plot (X axis length)
+
 
 
 // pre-setup stuff
@@ -637,15 +638,15 @@ void setup() {
 }
 
 void loop() {
-  starttime = esp_timer_get_time();  //Record start time for Loop
+  starttime = esp_timer_get_time();  // Record start time for Loop
   currentTime = millis();
-  esp_task_wdt_reset();  // feed the watchdog
+  esp_task_wdt_reset();  // Feed the watchdog
 
-
-  // SOC stuff and data saving - do this always for battery monitoring regardless of WiFi mode/ Ignition status
-  if (currentTime - lastSOCUpdateTime >= SOCUpdateInterval) {  // SOC stuff, do this always
+  // SOC and runtime update every 2 seconds
+  if (currentTime - lastSOCUpdateTime >= SOCUpdateInterval) {
     elapsedMillis = currentTime - lastSOCUpdateTime;
     lastSOCUpdateTime = currentTime;
+
     UpdateEngineRuntime(elapsedMillis);
     UpdateBatterySOC(elapsedMillis);
   }
