@@ -23,12 +23,13 @@ void setDutyPercent(int percent) {  // Function to set PWM duty cycle by percent
 
 void AdjustField() {
   if (millis() - prev_millis22 > FieldAdjustmentInterval) {  // adjust field every FieldAdjustmentInterval milliseconds
+    float currentBatteryVoltage = getBatteryVoltage();
     // Check if charging should be enabled (ignition on, system enabled, BMS allows)
     chargingEnabled = (Ignition == 1 && OnOff == 1);
-    // Check BMS override if BMS logic is enabled
+    // Check BMS override if BMS logic is enabled--- this is a manual human setting in the user interface
     if (BMSlogic == 1) {
       // If BMS signal is active (based on BMSLogicLevelOff setting)
-      bmsSignalActive = digitalRead(36);
+      bmsSignalActive = digitalRead(36);  // this is the signal from the BMS itself
       if (BMSLogicLevelOff == 0) {
         // BMS gives LOW signal when charging NOT desired
         chargingEnabled = chargingEnabled && bmsSignalActive;
@@ -37,9 +38,9 @@ void AdjustField() {
         chargingEnabled = chargingEnabled && !bmsSignalActive;
       }
     }
-    if (chargingEnabled) {
+    if (chargingEnabled) {           // if the BMS doesn't want charging, this is skipped, but otherwise....
       digitalWrite(4, 1);            // Enable the Field FieldEnable
-      if (ManualFieldToggle == 0) {  // Automatic mode
+      if (ManualFieldToggle == 0) {  // Automatic mode       // Should move this outside the BMS logic at some point..
         // Step 1: Determine base target amps from Hi/Low setting
         if (HiLow == 1) {
           uTargetAmps = TargetAmps;  // Normal target
@@ -83,8 +84,12 @@ void AdjustField() {
         }
         // Ensure duty cycle stays within bounds
         dutyCycle = constrain(dutyCycle, MinDuty, MaxDuty);
-      } else {  // Manual override mode
+      }
+
+      else {  // Manual override mode
         dutyCycle = ManualDutyTarget;
+        // Ensure duty cycle stays within bounds
+        dutyCycle = constrain(dutyCycle, MinDuty, MaxDuty);
       }
     } else {
       // Charging disabled: shut down field and reset for next enable
@@ -93,6 +98,9 @@ void AdjustField() {
     }
     // Apply the calculated duty cycle
     setDutyPercent((int)dutyCycle);
+    DutyCycle = dutyCycle;                            //shoddy work, oh well
+    vvout = dutyCycle / 100 * currentBatteryVoltage;  //
+    iiout = vvout / FieldResistance;
     // Update timer (only once)
     prev_millis22 = millis();
   }
@@ -113,8 +121,8 @@ void ReadAnalogInputs() {
       //For a 100 µΩ shunt and 5 mV reading:
       // Bcur = (5.0 * 1000.0) / 100.0 = 50.0 Amps
       Bcur = ShuntVoltage_mV * 1000.0f / ShuntResistanceMicroOhm;  //shunt is 0.1 mΩ or 100uOohms, Bcur is in Amps
-      if (InvertBattAmps ==1){
-        Bcur=Bcur * -1; // swap sign if necessary
+      if (InvertBattAmps == 1) {
+        Bcur = Bcur * -1;  // swap sign if necessary
       }
       BatteryCurrent_scaled = Bcur * 100;
       Serial.print("INA228 Battery Bcur (Amps): ");
@@ -159,11 +167,11 @@ void ReadAnalogInputs() {
             }
             break;
           case 1:
-            Channel1V = Raw / 32767.0 * 6.144;      // voltage divider is 1:1, so this gets us to volts
+            Channel1V = Raw / 32767.0 * 6.144;  // voltage divider is 1:1, so this gets us to volts
             // Amps=100×(Vin−2.5)
-            MeasuredAmps =   (Channel1V - 2.5) * 100;  // alternator current
-            if (InvertAltAmps == 1){
-              MeasuredAmps=MeasuredAmps*-1; // swap sign if necessary
+            MeasuredAmps = (Channel1V - 2.5) * 100;  // alternator current
+            if (InvertAltAmps == 1) {
+              MeasuredAmps = MeasuredAmps * -1;  // swap sign if necessary
             }
             break;
           case 2:
@@ -652,7 +660,7 @@ void SendWifiData() {
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d",
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                // Readings
                SafeInt(AlternatorTemperatureF),     // 0
                SafeInt(DutyCycle),                  // 1
@@ -747,9 +755,14 @@ void SendWifiData() {
                SafeInt(Amps5),                      //86
                SafeInt(Amps6),                      //87
                SafeInt(Amps7),                      //88
-               SafeInt(ShuntResistanceMicroOhm),     //89
-               SafeInt(InvertAltAmps),               // 90
-               SafeInt(InvertBattAmps)              //91
+               SafeInt(ShuntResistanceMicroOhm),    //89
+               SafeInt(InvertAltAmps),              // 90
+               SafeInt(InvertBattAmps),             //91
+               SafeInt(MaxDuty),                    //92
+               SafeInt(MinDuty),                    //93
+               SafeInt(FieldResistance),            //94
+               SafeInt(maxPoints)                   //95
+
       );
 
 
@@ -986,19 +999,23 @@ void setupServer() {
       inputMessage = request->getParam("HiLow1")->value();
       writeFile(LittleFS, "/HiLow1.txt", inputMessage.c_str());
       HiLow = inputMessage.toInt();
-    } 
-    else if (request->hasParam("InvertAltAmps")) {
+    } else if (request->hasParam("InvertAltAmps")) {
       inputMessage = request->getParam("InvertAltAmps")->value();
       writeFile(LittleFS, "/InvertAltAmps.txt", inputMessage.c_str());
       InvertAltAmps = inputMessage.toInt();
-    } 
-    else if (request->hasParam("InvertBattAmps")) {
+    } else if (request->hasParam("InvertBattAmps")) {
       inputMessage = request->getParam("InvertBattAmps")->value();
       writeFile(LittleFS, "/InvertBattAmps.txt", inputMessage.c_str());
       InvertBattAmps = inputMessage.toInt();
-    } 
-    
-    else if (request->hasParam("LimpHome1")) {
+    } else if (request->hasParam("MaxDuty")) {
+      inputMessage = request->getParam("MaxDuty")->value();
+      writeFile(LittleFS, "/MaxDuty.txt", inputMessage.c_str());
+      MaxDuty = inputMessage.toInt();
+    } else if (request->hasParam("MinDuty")) {
+      inputMessage = request->getParam("MinDuty")->value();
+      writeFile(LittleFS, "/MinDuty.txt", inputMessage.c_str());
+      MinDuty = inputMessage.toInt();
+    } else if (request->hasParam("LimpHome1")) {
       inputMessage = request->getParam("LimpHome1")->value();
       writeFile(LittleFS, "/LimpHome1.txt", inputMessage.c_str());
       LimpHome = inputMessage.toInt();
@@ -1082,7 +1099,15 @@ void setupServer() {
       inputMessage = request->getParam("RPMScalingFactor")->value();
       writeFile(LittleFS, "/RPMScalingFactor.txt", inputMessage.c_str());
       RPMScalingFactor = inputMessage.toInt();
-    } else if (request->hasParam("ResetTemp")) {
+    }
+
+    else if (request->hasParam("FieldResistance")) {
+      inputMessage = request->getParam("FieldResistance")->value();
+      writeFile(LittleFS, "/FieldResistance.txt", inputMessage.c_str());
+      FieldResistance = inputMessage.toInt();
+    }
+
+    else if (request->hasParam("ResetTemp")) {
       inputMessage = request->getParam("ResetTemp")->value();       // pointless
       writeFile(LittleFS, "/ResetTemp.txt", inputMessage.c_str());  // pointless
       ResetTemp = inputMessage.toInt();                             // pointless
@@ -1152,12 +1177,12 @@ void setupServer() {
       inputMessage = request->getParam("MaximumAllowedBatteryAmps")->value();
       writeFile(LittleFS, "/MaximumAllowedBatteryAmps.txt", inputMessage.c_str());
       MaximumAllowedBatteryAmps = inputMessage.toInt();
-    } else if (request->hasParam("ManualSOCPoint")) {
-      inputMessage = request->getParam("ManualSOCPoint")->value();       //pointless
-      writeFile(LittleFS, "/ManualSOCPoint.txt", inputMessage.c_str());  //pointless
-      ManualSOCPoint = inputMessage.toInt();                             // pointless
-      SoC_percent = ManualSOCPoint;
-      writeFile(LittleFS, "/SoC_percent.txt", inputMessage.c_str());  //pointless
+    } else if (request->hasParam("ManualSOCPoint")) {                        //pointless
+      inputMessage = request->getParam("ManualSOCPoint")->value();           //pointless
+      writeFile(LittleFS, "/ManualSOCPoint.txt", inputMessage.c_str());      //pointless
+      ManualSOCPoint = inputMessage.toInt();                                 //pointless
+      SoC_percent = ManualSOCPoint * 100;                                    // Convert user input to internal scaling//pointless
+      writeFile(LittleFS, "/SoC_percent.txt", String(SoC_percent).c_str());  //pointless
     } else if (request->hasParam("BatteryVoltageSource")) {
       inputMessage = request->getParam("BatteryVoltageSource")->value();
       writeFile(LittleFS, "/BatteryVoltageSource.txt", inputMessage.c_str());
@@ -1170,6 +1195,10 @@ void setupServer() {
       inputMessage = request->getParam("ShuntResistanceMicroOhm")->value();
       writeFile(LittleFS, "/ShuntResistanceMicroOhm.txt", inputMessage.c_str());
       ShuntResistanceMicroOhm = inputMessage.toInt();
+    } else if (request->hasParam("maxPoints")) {
+      inputMessage = request->getParam("maxPoints")->value();
+      writeFile(LittleFS, "/maxPoints.txt", inputMessage.c_str());
+      maxPoints = inputMessage.toInt();
     }
     // Handle RPM/AMPS table - use separate if statements, not else if
     if (request->hasParam("RPM1")) {
@@ -1471,22 +1500,79 @@ void testTaskStats() {
 
 void UpdateBatterySOC(unsigned long elapsedMillis) {
   // Convert elapsed milliseconds to seconds for calculations
-  unsigned long elapsedSeconds = elapsedMillis / 1000;
-  if (elapsedSeconds < 1) elapsedSeconds = 1;
+  float elapsedSeconds = elapsedMillis / 1000.0f;
 
   // Update scaled values
   float currentBatteryVoltage = getBatteryVoltage();
   Voltage_scaled = currentBatteryVoltage * 100;
   AlternatorCurrent_scaled = MeasuredAmps * 100;
   BatteryPower_scaled = (Voltage_scaled * BatteryCurrent_scaled) / 100;  // W × 100
-  EnergyDelta_scaled = (BatteryPower_scaled * elapsedSeconds) / 3600;
-  AlternatorPower_scaled = (int)(voltage * MeasuredAmps * 100);  // W × 100
-  AltEnergyDelta_scaled = (AlternatorPower_scaled * elapsedSeconds) / 3600;
 
-  // Calculate fuel used based on alternator energy output (Wh × 100)
-  joulesOut = (AltEnergyDelta_scaled * 3600) / 100;  // Joules
-  fuelEnergyUsed_J = joulesOut * 2;                  // Assume 50% alternator efficiency
-  AlternatorFuelUsed += (fuelEnergyUsed_J / 36000);  // Inline the mL calc
+  // FIXED: Energy calculation using proper floating point math, then convert to integer
+  float batteryPower_W = BatteryPower_scaled / 100.0f;
+  float energyDelta_Wh = (batteryPower_W * elapsedSeconds) / 3600.0f;
+
+  float alternatorPower_W = (currentBatteryVoltage * MeasuredAmps);
+  float altEnergyDelta_Wh = (alternatorPower_W * elapsedSeconds) / 3600.0f;
+
+  // Calculate fuel used (convert Wh to mL for integer storage)
+  if (altEnergyDelta_Wh > 0) {
+    // 1. Convert watt-hours to joules (1 Wh = 3600 J)
+    float energyJoules = altEnergyDelta_Wh * 3600.0f;
+    // 2. Assume engine thermal efficiency is 30%
+    const float engineEfficiency = 0.30f;
+    // 3. Assume alternator mechanical-to-electrical efficiency is 50%
+    const float alternatorEfficiency = 0.50f;
+    // 4. Total system efficiency = engine × alternator = 0.30 × 0.50 = 0.15
+    float fuelEnergyUsed_J = energyJoules / (engineEfficiency * alternatorEfficiency);
+    // 5. Diesel energy content ≈ 36,000 J per mL
+    const float dieselEnergy_J_per_mL = 36000.0f;
+    // 6. Convert fuel energy to actual mL of diesel burned
+    float fuelUsed_mL = fuelEnergyUsed_J / dieselEnergy_J_per_mL;
+    // 7. Use accumulator to prevent losing small values
+    static float fuelAccumulator = 0.0f;
+    fuelAccumulator += fuelUsed_mL;
+    if (fuelAccumulator >= 1.0f) {
+      AlternatorFuelUsed += (int)fuelAccumulator;
+      fuelAccumulator -= (int)fuelAccumulator;
+    }
+    // Debug output every 10 seconds to see what's happening
+    // static unsigned long lastFuelDebug = 0;
+    // if (millis() - lastFuelDebug > 10000) {
+    //  queueConsoleMessage("Fuel: " + String(fuelUsed_mL, 4) + "mL this cycle, " + String(fuelAccumulator, 4) + "mL accumulated, " + String(AlternatorFuelUsed) + "mL total");
+    //  lastFuelDebug = millis();
+    // }
+  }
+
+  // Energy accumulation - use proper rounding to preserve precision
+  static float chargedEnergyAccumulator = 0.0f;
+  static float dischargedEnergyAccumulator = 0.0f;
+  static float alternatorEnergyAccumulator = 0.0f;
+
+  if (BatteryCurrent_scaled > 0) {
+    // Charging - energy going into battery
+    chargedEnergyAccumulator += energyDelta_Wh;
+    if (chargedEnergyAccumulator >= 1.0f) {
+      ChargedEnergy += (int)chargedEnergyAccumulator;
+      chargedEnergyAccumulator -= (int)chargedEnergyAccumulator;
+    }
+  } else if (BatteryCurrent_scaled < 0) {
+    // Discharging - energy coming out of battery
+    dischargedEnergyAccumulator += abs(energyDelta_Wh);
+    if (dischargedEnergyAccumulator >= 1.0f) {
+      DischargedEnergy += (int)dischargedEnergyAccumulator;
+      dischargedEnergyAccumulator -= (int)dischargedEnergyAccumulator;
+    }
+  }
+
+  // For alternator energy:
+  if (altEnergyDelta_Wh > 0) {
+    alternatorEnergyAccumulator += altEnergyDelta_Wh;
+    if (alternatorEnergyAccumulator >= 1.0f) {
+      AlternatorChargedEnergy += (int)alternatorEnergyAccumulator;
+      alternatorEnergyAccumulator -= (int)alternatorEnergyAccumulator;
+    }
+  }
 
   alternatorIsOn = (AlternatorCurrent_scaled > CurrentThreshold_scaled);
 
@@ -1500,37 +1586,51 @@ void UpdateBatterySOC(unsigned long elapsedMillis) {
 
   alternatorWasOn = alternatorIsOn;
 
-  // Correctly scaled threshold for BatteryCurrent_scaled
-  if (abs(BatteryCurrent_scaled) < 50) return;  // 0.5 * 100 = 50
+  // FIXED: Use floating point math for Ah calculations, then accumulate properly
+  static float coulombAccumulator_Ah = 0.0f;
 
-  // Use integer math for deltaAh
-  int deltaAh_scaled = (BatteryCurrent_scaled * elapsedSeconds) / 3600;  // scaled by 100 to match CoulombCount_Ah_scaled
+  // Calculate actual Ah change using floating point
+  float batteryCurrent_A = BatteryCurrent_scaled / 100.0f;
+  float deltaAh = (batteryCurrent_A * elapsedSeconds) / 3600.0f;
 
   if (BatteryCurrent_scaled >= 0) {
-    // Apply charge efficiency (ChargeEfficiency_scaled is already percentage)
-    int batteryDeltaAh_scaled = (deltaAh_scaled * ChargeEfficiency_scaled) / 100;
-    CoulombCount_Ah_scaled += batteryDeltaAh_scaled;
+    // Apply charge efficiency
+    float batteryDeltaAh = deltaAh * (ChargeEfficiency_scaled / 100.0f);
+    coulombAccumulator_Ah += batteryDeltaAh;
   } else {
-    // Apply Peukert compensation (PeukertExponent_scaled is × 100)
-    int batteryDeltaAh_scaled = (deltaAh_scaled * 100) / PeukertExponent_scaled;
-    CoulombCount_Ah_scaled += batteryDeltaAh_scaled;
+    // Apply Peukert compensation
+    float peukertFactor = PeukertExponent_scaled / 100.0f;
+    float batteryDeltaAh = deltaAh / peukertFactor;
+    coulombAccumulator_Ah += batteryDeltaAh;
   }
 
-  CoulombCount_Ah_scaled = constrain(CoulombCount_Ah_scaled, 0, BatteryCapacity_Ah * 100);
-  SoC_percent = CoulombCount_Ah_scaled / BatteryCapacity_Ah / 100;  // divide by 100 because CoulombCount is scaled
+  // Update the scaled coulomb count when we have accumulated enough change
+  if (abs(coulombAccumulator_Ah) >= 0.01f) {
+    int deltaAh_scaled = (int)(coulombAccumulator_Ah * 100.0f);
+    CoulombCount_Ah_scaled += deltaAh_scaled;
+    coulombAccumulator_Ah -= (deltaAh_scaled / 100.0f);
+  }
 
-  // --- Full Charge Detection (Integer Only, No Temps) ---
+  // Constrain and calculate SoC with decimal precision
+  CoulombCount_Ah_scaled = constrain(CoulombCount_Ah_scaled, 0, BatteryCapacity_Ah * 100);
+  float SoC_float = (float)CoulombCount_Ah_scaled / (BatteryCapacity_Ah * 100.0f) * 100.0f;
+  SoC_percent = (int)(SoC_float * 100);  // Store as percentage × 100 for 2 decimal places
+
+  // --- Full Charge Detection ---
   if ((abs(BatteryCurrent_scaled) <= (TailCurrent_scaled * BatteryCapacity_Ah)) && (Voltage_scaled >= ChargedVoltage_scaled)) {
     FullChargeTimer += elapsedSeconds;
     if (FullChargeTimer >= ChargedDetectionTime) {
-      SoC_percent = 100;
+      SoC_percent = 10000;  // 100.00% (scaled by 100)
       CoulombCount_Ah_scaled = BatteryCapacity_Ah * 100;
       FullChargeDetected = true;
+      coulombAccumulator_Ah = 0.0f;
     }
   } else {
     FullChargeTimer = 0;
     FullChargeDetected = false;
   }
+  // Debug message with properly scaled values
+  //queueConsoleMessage("SoC Calc - A:" + String(batteryCurrent_A, 2) + " DeltaAh:" + String(deltaAh, 4) + " Accum:" + String(coulombAccumulator_Ah, 4) + " SoC:" + String(SoC_percent / 100.0f, 2) + "% Count:" + String(CoulombCount_Ah_scaled));
 }
 
 void UpdateEngineRuntime(unsigned long elapsedMillis) {
@@ -1538,25 +1638,26 @@ void UpdateEngineRuntime(unsigned long elapsedMillis) {
   bool engineIsRunning = (RPM > 100 && RPM < 6000);
 
   if (engineIsRunning) {
-    // Add time to engine running counter
+    // Accumulate running time in milliseconds
     engineRunAccumulator += elapsedMillis;
 
-    // Update total engine run time every minute
-    if (engineRunAccumulator >= 60000) {  // 1 minute in milliseconds
-      int minutesRun = engineRunAccumulator / 60000;
-      EngineRunTime += minutesRun;
+    // Update total engine run time every second
+    if (engineRunAccumulator >= 1000) {  // 1 second in milliseconds
+      int secondsRun = engineRunAccumulator / 1000;
+      EngineRunTime += secondsRun;
 
-      // Update engine cycles (RPM * minutes)
-      EngineCycles += RPM * minutesRun;
+      // Update engine cycles (RPM * seconds / 60)
+      EngineCycles += (RPM * secondsRun) / 60;
 
       // Keep the remainder milliseconds
-      engineRunAccumulator %= 60000;
+      engineRunAccumulator %= 1000;
     }
   }
 
   // Update engine state
   engineWasRunning = engineIsRunning;
 }
+
 
 void SaveAllData() {
   // Save all persistent energy data
@@ -1782,12 +1883,12 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   } else {
     HiLow = readFile(LittleFS, "/HiLow1.txt").toInt();
   }
-    if (!LittleFS.exists("/InvertAltAmps.txt")) {
+  if (!LittleFS.exists("/InvertAltAmps.txt")) {
     writeFile(LittleFS, "/InvertAltAmps.txt", String(InvertAltAmps).c_str());
   } else {
     InvertAltAmps = readFile(LittleFS, "/InvertAltAmps.txt").toInt();
   }
-    if (!LittleFS.exists("/InvertBattAmps.txt")) {
+  if (!LittleFS.exists("/InvertBattAmps.txt")) {
     writeFile(LittleFS, "/InvertBattAmps.txt", String(InvertBattAmps).c_str());
   } else {
     InvertBattAmps = readFile(LittleFS, "/InvertBattAmps.txt").toInt();
@@ -1899,6 +2000,14 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   } else {
     RPMScalingFactor = readFile(LittleFS, "/RPMScalingFactor.txt").toInt();
   }
+
+  if (!LittleFS.exists("/FieldResistance.txt")) {
+    writeFile(LittleFS, "/FieldResistance.txt", String(FieldResistance).c_str());
+  } else {
+    FieldResistance = readFile(LittleFS, "/FieldResistance.txt").toInt();
+  }
+
+
   if (!LittleFS.exists("/ResetTemp.txt")) {
     writeFile(LittleFS, "/ResetTemp.txt", String(ResetTemp).c_str());
   } else {
@@ -2030,17 +2139,30 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   } else {
     Amps6 = readFile(LittleFS, "/Amps6.txt").toInt();
   }
-
   if (!LittleFS.exists("/Amps7.txt")) {
     writeFile(LittleFS, "/Amps7.txt", String(Amps7).c_str());
   } else {
     Amps7 = readFile(LittleFS, "/Amps7.txt").toInt();
   }
-
   if (!LittleFS.exists("/ShuntResistanceMicroOhm.txt")) {
     writeFile(LittleFS, "/ShuntResistanceMicroOhm.txt", String(ShuntResistanceMicroOhm).c_str());
   } else {
     ShuntResistanceMicroOhm = readFile(LittleFS, "/ShuntResistanceMicroOhm.txt").toInt();
+  }
+  if (!LittleFS.exists("/maxPoints.txt")) {
+    writeFile(LittleFS, "/maxPoints.txt", String(maxPoints).c_str());
+  } else {
+    maxPoints = readFile(LittleFS, "/maxPoints.txt").toInt();
+  }
+  if (!LittleFS.exists("/MaxDuty.txt")) {
+    writeFile(LittleFS, "/MaxDuty.txt", String(MaxDuty).c_str());
+  } else {
+    MaxDuty = readFile(LittleFS, "/MaxDuty.txt").toInt();
+  }
+  if (!LittleFS.exists("/MinDuty.txt")) {
+    writeFile(LittleFS, "/MinDuty.txt", String(MinDuty).c_str());
+  } else {
+    MinDuty = readFile(LittleFS, "/MinDuty.txt").toInt();
   }
 }
 
@@ -2090,7 +2212,7 @@ void InitPersistentVariables() {
   if (!LittleFS.exists("/ChargedEnergy.txt")) {
     writeFile(LittleFS, "/ChargedEnergy.txt", String(ChargedEnergy).c_str());
   } else {
-    ChargedEnergy = readFile(LittleFS, "/ChargedEnergy.txt").toInt();
+    ChargedEnergy = readFile(LittleFS, "/ChargedEnergy.txt").toInt();  // Back to toInt()
   }
   if (!LittleFS.exists("/DischargedEnergy.txt")) {
     writeFile(LittleFS, "/DischargedEnergy.txt", String(DischargedEnergy).c_str());
@@ -2241,72 +2363,83 @@ void processConsoleQueue() {
 float getBatteryVoltage() {
   static unsigned long lastWarningTime = 0;
   const unsigned long WARNING_INTERVAL = 10000;  // 10 seconds between warnings
+
+  float selectedVoltage = 0;  // ✅ Local variable instead of global
+
   switch (BatteryVoltageSource) {
     case 0:  // INA228
       if (INADisconnected == 0) {
-        voltage = IBV;
+        selectedVoltage = IBV;  // ✅ Use local variable
       } else {
         if (millis() - lastWarningTime > WARNING_INTERVAL) {
           queueConsoleMessage("WARNING: INA228 disconnected, falling back to ADS1115");
           lastWarningTime = millis();
         }
-        voltage = BatteryV;  // Fallback to ADS1115
+        selectedVoltage = BatteryV;  // ✅ Fallback to ADS1115
       }
       break;
+
     case 1:  // ADS1115
       if (ADS1115Disconnected == 0) {
-        voltage = BatteryV;
+        selectedVoltage = BatteryV;  // ✅ Use local variable
       } else {
         if (millis() - lastWarningTime > WARNING_INTERVAL) {
           queueConsoleMessage("WARNING: ADS1115 disconnected, falling back to INA228");
           lastWarningTime = millis();
         }
-        voltage = IBV;  // Fallback to INA228
+        selectedVoltage = IBV;  // ✅ Fallback to INA228
       }
       break;
+
     case 2:                                                 // VictronVeDirect
       if (VictronVoltage > 8.0 && VictronVoltage < 70.0) {  // Sanity check
-        voltage = VictronVoltage;
+        selectedVoltage = VictronVoltage;                   // ✅ Use local variable
       } else {
         if (millis() - lastWarningTime > WARNING_INTERVAL) {
           queueConsoleMessage("WARNING: Invalid Victron voltage, falling back to INA228");
           lastWarningTime = millis();
         }
-        voltage = IBV;  // Fallback
+        selectedVoltage = IBV;  // ✅ Fallback
       }
       break;
+
     case 3:  // NMEA0183
-             // Add NMEA0183 voltage reading when implemented
+      // Add NMEA0183 voltage reading when implemented
       if (millis() - lastWarningTime > WARNING_INTERVAL) {
         queueConsoleMessage("NMEA0183 voltage source not yet implemented, using INA228");
         lastWarningTime = millis();
       }
-      voltage = IBV;
+      selectedVoltage = IBV;  // ✅ Use local variable
       break;
+
     case 4:  // NMEA2K
-             // Add NMEA2K voltage reading when implemented
+      // Add NMEA2K voltage reading when implemented
       if (millis() - lastWarningTime > WARNING_INTERVAL) {
         queueConsoleMessage("NMEA2K voltage source not yet implemented, using INA228");
         lastWarningTime = millis();
       }
-      voltage = IBV;
+      selectedVoltage = IBV;  // ✅ Use local variable
       break;
+
     default:
       if (millis() - lastWarningTime > WARNING_INTERVAL) {
         queueConsoleMessage("Invalid battery voltage source, using INA228");
         lastWarningTime = millis();
       }
-      voltage = IBV;
+      selectedVoltage = IBV;  // ✅ Use local variable
       break;
   }
+
   // Final check
-  if (voltage < 8.0 || voltage > 70.0 || isnan(voltage)) {
+  if (selectedVoltage < 8.0 || selectedVoltage > 70.0 || isnan(selectedVoltage)) {
     if (millis() - lastWarningTime > WARNING_INTERVAL) {
-      queueConsoleMessage("WARNING: No battery measurement detected");
+      queueConsoleMessage("WARNING: No valid battery measurement detected");
       lastWarningTime = millis();
     }
+    selectedVoltage = 12.0;  // ✅ Return safe default instead of invalid value
   }
-  return voltage;
+
+  return selectedVoltage;  // ✅ Return local variable
 }
 
 void StuffToDoAtSomePoint() {
