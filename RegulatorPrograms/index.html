@@ -1066,14 +1066,7 @@ Contact me at mark@xengineering.net       -->
           </div>
         </div>
 
-
-
       </div>
-
-
-
-
-
 
 
       <div class="settings-card">
@@ -1103,7 +1096,7 @@ Contact me at mark@xengineering.net       -->
 
         <hr />
         <div class="form-row">
-          <div class="form-label">Charged Detection Time (s) (<span id="ChargedDetectionTime_echo">0</span>):</div>
+          <div class="form-label">Charge Detection Time (s) (<span id="ChargeDetectionTime_echo">0</span>):</div>
           <div class="form-input">
             <form action="/get" method="GET" target="hidden-form">
               <input type="hidden" name="password" class="password_field">
@@ -1149,7 +1142,7 @@ Contact me at mark@xengineering.net       -->
         </div>
         <hr />
         <div class="form-row">
-          <div class="form-label">Shunt Resitance mOhms (micro)(<span id="ShuntResistanceMicroOhm_echo">0</span>):</div>
+          <div class="form-label">Shunt Resitance uOhms (micro)(<span id="ShuntResistanceMicroOhm_echo">0</span>):</div>
           <div class="form-input">
             <form action="/get" method="GET" target="hidden-form">
               <input type="hidden" name="password" class="password_field">
@@ -1271,8 +1264,30 @@ Contact me at mark@xengineering.net       -->
               <input id="InvertAltAmps" name="InvertAltAmps" type="number" value="" style="display:none;" />
             </form>
           </div>
+        </div>=
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Alternator Current Offset (A) (<span id="AlternatorCOffset_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="AlternatorCOffset" type="number" step=".01" min="-100" max="100" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
         </div>
-
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Battery Current Offset (A) (<span id="BatteryCOffset_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="BatteryCOffset" type="number" step=".01" min="-100" max="100" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+        <hr />
         <div class="form-row">
           <div class="form-label">Plot Points (X axis length) (<span id="maxPoints_echo">0</span>):</div>
           <div class="form-input">
@@ -1698,7 +1713,9 @@ Contact me at mark@xengineering.net       -->
       MaxDuty: 92,
       MinDuty: 93,
       FieldResistance: 94,
-      maxPoints: 95
+      maxPoints: 95,
+      AlternatorCOffset: 96,
+      BatteryCOffset: 97
 
     };
 
@@ -1732,8 +1749,6 @@ Contact me at mark@xengineering.net       -->
     const rpmData = [[], []];
     let rpmPlot;
 
-
-    //const maxPoints = 40;
     let lastPlotUpdate = 0; // Timestamp of last time we updated the plot
     const PLOT_UPDATE_INTERVAL_MS = 1000; // Only update every 2 seconds (adjust as needed)
 
@@ -2304,7 +2319,9 @@ Contact me at mark@xengineering.net       -->
           ["MaxDuty_echo", "MaxDuty"],
           ["MinDuty_echo", "MinDuty"],
           ["FieldResistance_echo", "FieldResistance"],
-          ["maxPoints_echo", "maxPoints"]
+          ["maxPoints_echo", "maxPoints"],
+          ["AlternatorCOffset_echo", "AlternatorCOffset"],
+          ["BatteryCOffset_echo", "BatteryCOffset"]
 
         ];
 
@@ -2464,7 +2481,9 @@ Contact me at mark@xengineering.net       -->
             MaxDuty: values[fieldIndexes.MaxDuty],
             MinDuty: values[fieldIndexes.MinDuty],
             FieldResistance: values[fieldIndexes.FieldResistance],
-            maxPoints: values[fieldIndexes.maxPoints]
+            maxPoints: values[fieldIndexes.maxPoints],
+            AlternatorCOffset: values[fieldIndexes.AlternatorCOffset],
+            BatteryCOffset: values[fieldIndexes.BatteryCOffset]
 
           };
 
@@ -2482,7 +2501,7 @@ Contact me at mark@xengineering.net       -->
               }
               // Values scaled by 100 on server (transmitted as integer × 100)
               if (["BatteryV", "Channel3V", "IBV", "VictronVoltage", "vvout", "FullChargeVoltage",
-                "TargetFloatVoltage1", "IBVMax", "Bcur", "MeasuredAmps", "MeasuredAmpsMax", "SoC_percent"].includes(key)) {
+                "TargetFloatVoltage1", "IBVMax", "Bcur", "MeasuredAmps", "MeasuredAmpsMax", "SoC_percent","AlternatorCOffset","BatteryCOffset"].includes(key)) {
                 el.textContent = (value / 100).toFixed(2);
               }
               // Values scaled by 10 on server (transmitted as integer × 10)  
@@ -2714,6 +2733,12 @@ Contact me at mark@xengineering.net       -->
           }
           if ('maxPoints' in data) {
             document.getElementById('maxPoints_echo').textContent = data.maxPoints;
+          }
+          if ('AlternatorCOffset' in data) {
+            document.getElementById('AlternatorCOffset_echo').textContent = (data.AlternatorCOffset / 100).toFixed(2);
+          }
+          if ('BatteryCOffset' in data) {
+            document.getElementById('BatteryCOffset_echo').textContent = (data.BatteryCOffset / 100).toFixed(2);
           }
 
           // Initialize RPM/Amps fields once on page load
@@ -3060,6 +3085,9 @@ Contact me at mark@xengineering.net       -->
     <span id="MinDuty_echo" style="display:none;">0</span>
     <span id="FieldResistance_echo" style="display:none;">0</span>
     <span id="maxPoints_echo" style="display:none;">0</span>
+    <span id="BatteryCOffset_echo" style="display:none;">0</span>
+    <span id="AlternatorCOffset_echo" style="display:none;">0</span>
+
 
 
     <!-- Input values for settings -->
@@ -3132,7 +3160,8 @@ Contact me at mark@xengineering.net       -->
     <input id="MinDuty" style="display:none;" value="0" />
     <input id="FieldResistance" style="display:none;" value="0" />
     <input id="maxPoints" style="display:none;" value="0" />
-
+    <input id="AlternatorCOffset" style="display:none;" value="0" />
+    <input id="BatteryCOffset" style="display:none;" value="0" />
 
 
 
