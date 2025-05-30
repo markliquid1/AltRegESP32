@@ -817,7 +817,42 @@ Contact me at mark@xengineering.net       -->
         </div>
 
         <hr />
+        <div class="form-row">
+          <div class="form-label">Min Field (%) (<span id="MinDuty_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="MinDuty" type="number" step="1" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
 
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Max Field (%) (<span id="MaxDuty_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="MaxDuty" type="number" step="1" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+
+        <hr />
+        <div class="form-row">
+          <div class="form-label">Field Resistance (Ohms) (<span id="FieldResistance_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="FieldResistance" type="number" step=".01" min="0" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
+
+        <hr />
         <div class="form-row">
           <div class="form-label">RPM-Based Charging Curve (<span id="AmpControlByRPM_echo">0</span>):</div>
           <div class="form-input">
@@ -1112,7 +1147,6 @@ Contact me at mark@xengineering.net       -->
             </form>
           </div>
         </div>
-
         <hr />
         <div class="form-row">
           <div class="form-label">Shunt Resitance mOhms (micro)(<span id="ShuntResistanceMicroOhm_echo">0</span>):</div>
@@ -1124,7 +1158,6 @@ Contact me at mark@xengineering.net       -->
             </form>
           </div>
         </div>
-
         <hr />
         <div class="form-row">
           <div class="form-label">Set SoC Manually (%) (<span id="ManualSOCPoint_echo">0</span>):</div>
@@ -1136,12 +1169,9 @@ Contact me at mark@xengineering.net       -->
             </form>
           </div>
         </div>
-
       </div>
-
       <div class="settings-card">
         <div class="section-title">System</div>
-
         <hr />
         <div class="form-row">
           <div class="form-label">Dark Mode:</div>
@@ -1152,7 +1182,6 @@ Contact me at mark@xengineering.net       -->
                 onchange="document.body.classList.toggle('dark-mode'); localStorage.setItem('darkMode', this.checked ? '1' : '0'); updateUplotTheme(currentTempPlot); updateUplotTheme(voltagePlot); updateUplotTheme(rpmPlot);" />
               <span class="slider round"></span>
             </label>
-
             <span class="toggle-label">On</span>
           </div>
         </div>
@@ -1244,9 +1273,18 @@ Contact me at mark@xengineering.net       -->
           </div>
         </div>
 
+        <div class="form-row">
+          <div class="form-label">Plot Points (X axis length) (<span id="maxPoints_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <input name="maxPoints" type="number" step="1" min="5" max="10000" />
+              <input onclick="submitMessage()" type="submit" value="Set" />
+            </form>
+          </div>
+        </div>
 
       </div>
-
     </div>
   </div>
 
@@ -1336,15 +1374,15 @@ Contact me at mark@xengineering.net       -->
           <p class="reading"><span id="AltTempID">0</span> °F</p>
         </div>
         <div class="card">
-          <p>Field Duty Cycle</p>
+          <p>Command Field Duty Cycle</p>
           <p class="reading"><span id="DutyCycleID">0</span> %</p>
         </div>
         <div class="card">
-          <p>Field Voltage (Calc)</p>
+          <p>Field Volts (Calc'd)</p>
           <p class="reading"><span id="FieldVoltsID">0</span> V</p>
         </div>
         <div class="card">
-          <p>Field Current (Calc)</p>
+          <p>Field Amps (Calc'd)) </p>
           <p class="reading"><span id="FieldAmpsID">0</span> A</p>
         </div>
         <div class="card">
@@ -1363,7 +1401,7 @@ Contact me at mark@xengineering.net       -->
         <div class="card">
           <p>Fuel Used by Alt</p>
           <div class="reading" style="display: flex; align-items: center; gap: 4px;">
-            <span id="AlternatorFuelUsedID">0</span><span>mL</span>
+            <span id="AlternatorFuelUsedID">0</span><span>L</span>
             <form action="/get" method="GET" target="hidden-form" style="display: inline;">
               <input type="hidden" name="ResetFuelUsed" id="ResetFuelUsed" value="0" />
               <input type="hidden" name="password" class="password_field" />
@@ -1656,7 +1694,11 @@ Contact me at mark@xengineering.net       -->
       Amps7: 88,
       ShuntResistanceMicroOhm: 89,
       InvertAltAmps: 90,
-      InvertBattAmps: 91
+      InvertBattAmps: 91,
+      MaxDuty: 92,
+      MinDuty: 93,
+      FieldResistance: 94,
+      maxPoints: 95
 
     };
 
@@ -1691,7 +1733,7 @@ Contact me at mark@xengineering.net       -->
     let rpmPlot;
 
 
-    const maxPoints = 20;
+    //const maxPoints = 40;
     let lastPlotUpdate = 0; // Timestamp of last time we updated the plot
     const PLOT_UPDATE_INTERVAL_MS = 1000; // Only update every 2 seconds (adjust as needed)
 
@@ -2258,7 +2300,11 @@ Contact me at mark@xengineering.net       -->
           ["Amps7_echo", "Amps7"],
           ["ShuntResistanceMicroOhm_echo", "ShuntResistanceMicroOhm"],
           ["InvertAltAmps_echo", "InvertAltAmps"],
-          ["InvertBattAmps_echo", "InvertBattAmps"]
+          ["InvertBattAmps_echo", "InvertBattAmps"],
+          ["MaxDuty_echo", "MaxDuty"],
+          ["MinDuty_echo", "MinDuty"],
+          ["FieldResistance_echo", "FieldResistance"],
+          ["maxPoints_echo", "maxPoints"]
 
         ];
 
@@ -2414,7 +2460,12 @@ Contact me at mark@xengineering.net       -->
             Amps7: values[fieldIndexes.Amps7],
             ShuntResistanceMicroOhm: values[fieldIndexes.ShuntResistanceMicroOhm],
             InvertAltAmps: values[fieldIndexes.InvertAltAmps],
-            InvertBattAmps: values[fieldIndexes.InvertBattAmps]
+            InvertBattAmps: values[fieldIndexes.InvertBattAmps],
+            MaxDuty: values[fieldIndexes.MaxDuty],
+            MinDuty: values[fieldIndexes.MinDuty],
+            FieldResistance: values[fieldIndexes.FieldResistance],
+            maxPoints: values[fieldIndexes.maxPoints]
+
           };
 
           window._debugData = data;
@@ -2429,11 +2480,39 @@ Contact me at mark@xengineering.net       -->
                 el.textContent = "—";
                 continue;
               }
-              if (["BatteryV", "Channel3V", "IBV", "VictronVoltage", "vvout", "FullChargeVoltage", "TargetFloatVoltage1", "IBVMax", "Bcur", "MeasuredAmps"].includes(key)) {
+              // Values scaled by 100 on server (transmitted as integer × 100)
+              if (["BatteryV", "Channel3V", "IBV", "VictronVoltage", "vvout", "FullChargeVoltage",
+                "TargetFloatVoltage1", "IBVMax", "Bcur", "MeasuredAmps", "MeasuredAmpsMax", "SoC_percent"].includes(key)) {
                 el.textContent = (value / 100).toFixed(2);
-              } else if (["iiout", "TargetAmpz", "TargetAmpL", "MeasuredAmpsMax"].includes(key)) {
+              }
+              // Values scaled by 10 on server (transmitted as integer × 10)  
+              else if (["iiout"].includes(key)) {
                 el.textContent = (value / 10).toFixed(1);
-              } else {
+              }
+              // Keep existing scaling for MeasuredAmps and MeasuredAmpsMax (confirmed working)
+              // No changes needed here - current display is correct
+              // Energy values - transmitted as integer Wh (no scaling needed)
+              else if (["ChargedEnergy", "DischargedEnergy", "AlternatorChargedEnergy"].includes(key)) {
+                el.textContent = value;  // Display as-is (integer Wh)
+              }
+              // Fuel in mL - transmitted as integer mL, display as L with decimals
+              else if (["AlternatorFuelUsed"].includes(key)) {
+                el.textContent = (value / 1000).toFixed(3);  // Convert mL to L with 3 decimal places
+              }
+              // Time values - convert seconds to H:M:S format
+              else if (["EngineRunTime", "AlternatorOnTime"].includes(key)) {
+                const totalSeconds = value;  // Changed from totalMinutes
+                const hours = Math.floor(totalSeconds / 3600);  // 3600 seconds per hour
+                const minutes = Math.floor((totalSeconds % 3600) / 60);  // Remaining seconds to minutes
+                const seconds = totalSeconds % 60;  // Remaining seconds
+                el.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+              }
+              // Settings echo values that need scaling
+              else if (["TargetAmpz", "TargetAmpL"].includes(key)) {
+                el.textContent = value;  // These are not scaled - transmitted as integer amps
+              }
+              // Default: display as integer
+              else {
                 el.textContent = Math.round(value);
               }
             }
@@ -2459,7 +2538,7 @@ Contact me at mark@xengineering.net       -->
             document.getElementById('SwitchingFrequency_echo').textContent = data.SwitchingFrequency;
           }
           if ('interval1' in data) {
-            document.getElementById('interval1_echo').textContent = (data.interval1 / 100).toFixed(2);
+            document.getElementById('interval1_echo').textContent = (data.interval1 / 100).toFixed(3);
           }
           if ('FieldAdjustmentInterval1' in data) {
             document.getElementById('FieldAdjustmentInterval1_echo').textContent = (data.FieldAdjustmentInterval1 / 100).toFixed(2);
@@ -2615,17 +2694,26 @@ Contact me at mark@xengineering.net       -->
           if ('Amps7' in data) {
             document.getElementById('Amps7_echo').textContent = data.Amps7;
           }
-
           if ('ShuntResistanceMicroOhm' in data) {
             document.getElementById('ShuntResistanceMicroOhm_echo').textContent = data.ShuntResistanceMicroOhm;
           }
-
           if ('InvertAltAmps' in data) {
             document.getElementById('InvertAltAmps_echo').textContent = data.InvertAltAmps;
           }
-
           if ('InvertBattAmps' in data) {
             document.getElementById('InvertBattAmps_echo').textContent = data.InvertBattAmps;
+          }
+          if ('MaxDuty' in data) {
+            document.getElementById('MaxDuty_echo').textContent = data.MaxDuty;
+          }
+          if ('MinDuty' in data) {
+            document.getElementById('MinDuty_echo').textContent = data.MinDuty;
+          }
+          if ('FieldResistance' in data) {
+            document.getElementById('FieldResistance_echo').textContent = data.FieldResistance;
+          }
+          if ('maxPoints' in data) {
+            document.getElementById('maxPoints_echo').textContent = data.maxPoints;
           }
 
           // Initialize RPM/Amps fields once on page load
@@ -2698,7 +2786,8 @@ Contact me at mark@xengineering.net       -->
             currentTempData[3].push(fieldCurrent);
             currentTempData[4].push(altTemp);
 
-            if (currentTempData[0].length > maxPoints) {
+            const currentMaxPoints = data.maxPoints || 40;
+            if (currentTempData[0].length > currentMaxPoints) {
               currentTempData[0].shift();
               currentTempData[1].shift();
               currentTempData[2].shift();
@@ -2718,7 +2807,8 @@ Contact me at mark@xengineering.net       -->
             voltageData[2].push(victronBattV);
             voltageData[3].push(inaBattV);
 
-            if (voltageData[0].length > maxPoints) {
+            const currentMaxPoints = data.maxPoints || 40;
+            if (voltageData[0].length > currentMaxPoints) {
               voltageData[0].shift();
               voltageData[1].shift();
               voltageData[2].shift();
@@ -2733,7 +2823,8 @@ Contact me at mark@xengineering.net       -->
             rpmData[0].push(now);
             rpmData[1].push(rpmValue);
 
-            if (rpmData[0].length > maxPoints) {
+            const currentMaxPoints = data.maxPoints || 40;
+            if (rpmData[0].length > currentMaxPoints) {
               rpmData[0].shift();
               rpmData[1].shift();
             }
@@ -2965,6 +3056,10 @@ Contact me at mark@xengineering.net       -->
     <span id="ShuntResistanceMicroOhm_echo" style="display:none;">0</span>
     <span id="InvertAltAmps_echo" style="display:none;">0</span>
     <span id="InvertBattAmps_echo" style="display:none;">0</span>
+    <span id="MaxDuty_echo" style="display:none;">0</span>
+    <span id="MinDuty_echo" style="display:none;">0</span>
+    <span id="FieldResistance_echo" style="display:none;">0</span>
+    <span id="maxPoints_echo" style="display:none;">0</span>
 
 
     <!-- Input values for settings -->
@@ -3033,6 +3128,11 @@ Contact me at mark@xengineering.net       -->
     <input id="ShuntResistanceMicroOhm" style="display:none;" value="0" />
     <input id="InvertAltAmps" style="display:none;" value="0" />
     <input id="InvertBattAmps" style="display:none;" value="0" />
+    <input id="MaxDuty" style="display:none;" value="0" />
+    <input id="MinDuty" style="display:none;" value="0" />
+    <input id="FieldResistance" style="display:none;" value="0" />
+    <input id="maxPoints" style="display:none;" value="0" />
+
 
 
 
