@@ -117,8 +117,8 @@ int TargetAmps = 40;   //Normal alternator output, for best performance, set to 
 int TargetAmpLA = 25;  //Alternator output in Lo mode
 int uTargetAmps = 0;   // the one that gets set to either the normal setting or the low setting then used.
 
-float TargetFloatVoltage = 13.9;
-float TargetBulkVoltage = 14.5;
+float TargetFloatVoltage = 13.4;
+float TargetBulkVoltage = 13.9;
 float ChargingVoltageTarget = 0;  // This is what the code really uses. It gets set to TargetFloatVoltage or TargetBulkVoltage later on
 
 float dutyCycle = 5;
@@ -136,8 +136,10 @@ int ManualFieldToggle = 1;                // set to 1 to enable manual control o
 int SwitchControlOverride = 1;  // set to 1 for web interface switches to override physical switch panel
 int ForceFloat = 0;             // set to 1 to force the float voltage to be the charging target
 int OnOff = 0;                  // 0 is charger off, 1 is charger On (corresponds to Alternator Enable in Basic Settings)
-int Ignition = 1;               // This will eventually be an over-rideable digital input
+int Ignition = 0;               // Digital Input
+int IgnitionOverride = 0;       // to fake the ignition signal w/ software
 int HiLow = 1;                  // 0 will be a low setting, 1 a high setting
+int AmpSrc = 0;                 // 0=Alt Hall Effect, 1=Battery Shunt, 2=NMEA2K Batt, 3=NMEA2K Alt, 4=NMEA0183 Batt, 5=NMEA0183 Alt, 6=Victron Batt, 7=Other
 int LimpHome = 0;               // 1 will set to limp home mode, whatever that gets set up to be
 int resolution = 12;            // for OneWire temp sensor measurement
 int VeData = 0;                 // Set to 1 if VE serial data exists
@@ -152,11 +154,12 @@ const int pwmResolution = 16;  // 16-bit resolution (0–65535)
 float fffr = 500;              // this is the switching frequency in Hz, uses Float for wifi reasons
 int InvertAltAmps = 1;         // change sign of alternator amp reading
 int InvertBattAmps = 0;        // change sign of battery amp reading
-uint32_t Freq = 0;  // ESP32 switching Frequency in case we want to report it for debugging
+uint32_t Freq = 0;             // ESP32 switching Frequency in case we want to report it for debugging
 
 //Variables to store measurements
 float ShuntVoltage_mV;                  // Battery shunt voltage from INA228
 float Bcur;                             // battery shunt current from INA228
+float targetCurrent;                    // This is used in the field adjustment loop, gets set to the desired source of current info (ie battery shunt, alt hall sensor, victron, etc.)
 float IBV;                              // Ina 228 battery voltage
 float IBVMax = NAN;                     // used to track maximum battery voltage
 float DutyCycle;                        // Field outout %--- this is just what's transmitted over Wifi (case sensitive)
@@ -165,9 +168,18 @@ float vvout;                            // Calculated field volts (approximate)
 float iiout;                            // Calculated field amps (approximate)
 float AlternatorTemperatureF = NAN;     // alternator temperature
 float MaxAlternatorTemperatureF = NAN;  // maximum alternator temperature
-TaskHandle_t tempTaskHandle = NULL;     // make a separate cpu task for temp reading because it's so slow
-float VictronVoltage = 0;               // battery reading from VeDirect
-float HeadingNMEA = 0;                  // Just here to test NMEA functionality
+// === Thermistor Stuff
+float R_fixed = 10000.0;                                           // Series resistor in ohms
+float Beta = 3950.0;                                               // Thermistor Beta constant (e.g. 3950K)
+float R0 = 10000.0;                                                // Thermistor resistance at T0
+float T0_C = 25.0;                                                 // Reference temp in Celsius
+int TempSource = 0;                                                // 0 for OneWire default, 1 for Thermistor
+int temperatureThermistor = -999 ;                                // thermistor reading
+int MaxTemperatureThermistor = -999;                              // maximum thermistor temperature (on alternator)
+int TempToUse;                       // gets set to temperatureThermistor or AlternatorTemperatureF
+TaskHandle_t tempTaskHandle = NULL;  // make a separate cpu task for temp reading because it's so slow
+float VictronVoltage = 0;            // battery reading from VeDirect
+float HeadingNMEA = 0;               // Just here to test NMEA functionality
 
 // ADS1115
 int16_t Raw = 0;
@@ -208,9 +220,9 @@ int CurrentThreshold_scaled = 100;  // Ignore currents below this (A × 100)
 int PeukertExponent_scaled = 105;   // Peukert exponent × 100 (112 = 1.12)
 int ChargeEfficiency_scaled = 99;   // Charging efficiency % (0-100)
 int ChargedVoltage_scaled = 1450;   // Voltage threshold for "charged" (V × 100)
-int TailCurrent_scaled = 2000;      // Current threshold for "charged" (% of capacity × 100)
+int TailCurrent_scaled = 200;       // Current threshold for "charged" (% of capacity × 100 so 200 = 2%)
 int ShuntResistanceMicroOhm = 100;  // Shunt resistance in microohms
-int ChargedDetectionTime = 3600;    // Time at charged state to consider 100% (seconds)
+int ChargedDetectionTime = 1000;    // Time at charged state to consider 100% (seconds)
 int IgnoreTemperature = 0;          // If no temp sensor, set to 1
 int BMSlogic = 0;                   // if BMS is asked to turn the alternator on and off
 int BMSLogicLevelOff = 0;           // set to 0 if the BMS gives a low signal (<3V?) when no charging is desired
@@ -224,8 +236,8 @@ int CurrentAlarmHigh = 0;           // above this value, sound alarm
 int MaximumAllowedBatteryAmps;      // safety for battery, optional
 int FourWay = 0;                    // 0 voltage data source = INA228 , 1 voltage source = ADS1115, 2 voltage source = NMEA2k, 3 voltage source = Victron VeDirect
 int RPMScalingFactor = 2000;        // self explanatory, adjust until it matches your trusted tachometer
-float AlternatorCOffset = 0;          // tare for alt current
-float BatteryCOffset=0;               // tare or batt current
+float AlternatorCOffset = 0;        // tare for alt current
+float BatteryCOffset = 0;           // tare or batt current
 
 //Pointless Flags delete later
 int ResetTemp;              // reset the maximum alternator temperature tracker
@@ -239,6 +251,8 @@ int ResetFuelUsed;          // fuel used by alternator
 int ResetAlternatorChargedEnergy;
 int ResetEngineCycles;
 int ResetRPMMax;
+int ResetThermTemp = 0;  // Max thermistor temp reset 
+
 
 int Voltage_scaled = 0;            // Battery voltage scaled (V × 100)
 int BatteryCurrent_scaled = 0;     // A × 100
@@ -291,24 +305,22 @@ int BatteryVoltageSource = 0;  // select  "0">INA228    value="1">ADS1115     va
 int AmpControlByRPM = 0;       // this is the toggle
 // In lieu of a table for RPM based charging....
 int RPM1 = 0;
-int RPM2 = 0;
-int RPM3 = 0;
-int RPM4 = 0;
+int RPM2 = 500;
+int RPM3 = 800;
+int RPM4 = 1000;
 int Amps1 = 0;
-int Amps2 = 0;
-int Amps3 = 0;
-int Amps4 = 0;
-int RPM5 = 0;
-int RPM6 = 0;
-int RPM7 = 0;
-int Amps5 = 0;
-int Amps6 = 0;
-int Amps7 = 0;
+int Amps2 = 20;
+int Amps3 = 30;
+int Amps4 = 40;
+int RPM5 = 1200;
+int RPM6 = 1500;
+int RPM7 = 4000;
+int Amps5 = 40;
+int Amps6 = 50;
+int Amps7 = 30;
 int RPMThreshold = -20000;  //below this, there will be no field output in auto mode (Update this if we have RPM at low speeds and no field, otherwise, depend on Ignition)
 
 int maxPoints;  //number of points plotted per plot (X axis length)
-
-
 
 // pre-setup stuff
 // onewire    Data wire is connetec to the Arduino digital pin 13
@@ -497,14 +509,12 @@ void setup() {
   queueConsoleMessage("System starting up...");
   setCpuFrequencyMhz(240);
   Serial.begin(115200);
-  delay(500);  // not sure if this is needed
-
+  delay(50);           // not sure if this is needed
   pinMode(4, OUTPUT);  // This pin is used to provide a high signal to Field Enable pin
   pinMode(2, OUTPUT);  // This pin is used to provide a heartbeat (pin 2 of ESP32 is the LED)
+  pinMode(39, INPUT);  // Ignition
   // In ESP32 v3.x, this single function replaces both ledcSetup and ledcAttachPin
   ledcAttach(pwmPin, fffr, pwmResolution);
-
-
   // Initialize LittleFS first
   if (!LittleFS.begin(true)) {
     Serial.println("An Error has occurred while mounting LittleFS");
@@ -676,6 +686,10 @@ void loop() {
     AdjustField();  // This may need to get moved if it takes any power, but have to be careful we don't get stuck with Field On!
 
     // Handle ignition-based power management for saving power
+    Ignition = digitalRead(39);  // see if ignition is on
+    if (IgnitionOverride == 1) {
+      Ignition = 1;
+    }
     if (Ignition == 0) {
       setCpuFrequencyMhz(10);
       WiFi.mode(WIFI_OFF);
