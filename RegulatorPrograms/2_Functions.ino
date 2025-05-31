@@ -60,17 +60,27 @@ void AdjustField() {
             uTargetAmps = rpmBasedAmps;
           }
         }
+
+        // Step 2.5, figure out the actual amps reading of whichever value we are controlling on
+        targetCurrent = getTargetAmps();
+        //Step 2.6 figure out the actual temp reading o whichever value we are controlling on
+        if (TempSource == 0) {
+          TempToUse = AlternatorTemperatureF;
+        }
+        if (TempSource == 1) {
+          TempToUse = temperatureThermistor;
+        }
         // Step 3: Apply control logic to adjust duty cycle
         // Increase duty cycle if below target and not at maximum
-        if (MeasuredAmps < uTargetAmps && dutyCycle < (MaxDuty - dutyStep)) {
+        if (targetCurrent < uTargetAmps && dutyCycle < (MaxDuty - dutyStep)) {
           dutyCycle += dutyStep;
         }
         // Decrease duty cycle if above target and not at minimum
-        if (MeasuredAmps > uTargetAmps && dutyCycle > (MinDuty + dutyStep)) {
+        if (targetCurrent > uTargetAmps && dutyCycle > (MinDuty + dutyStep)) {
           dutyCycle -= dutyStep;
         }
         // Temperature protection (more aggressive reduction)
-        if (!IgnoreTemperature && AlternatorTemperatureF > AlternatorTemperatureLimitF && dutyCycle > (MinDuty + 2 * dutyStep)) {
+        if (!IgnoreTemperature && TempToUse > AlternatorTemperatureLimitF && dutyCycle > (MinDuty + 2 * dutyStep)) {
           dutyCycle -= 2 * dutyStep;
         }
         // Voltage protection (most aggressive reduction)
@@ -179,9 +189,13 @@ void ReadAnalogInputs() {
           case 2:
             Channel2V = Raw / 32767.0 * 6.144 * RPMScalingFactor;  // voltage divider is 1:1,  Guess and check to develop RPMScaingFactor
             RPM = Channel2V;
+            if (RPM < 100) {
+              RPM = 0;
+            }
             break;
           case 3:
             Channel3V = Raw / 32767.0 * 6.144 * 833;  // Does nothing right now, thermistor someday?
+            temperatureThermistor = thermistorTempC(Channel3V);
             break;
         }
 
@@ -200,6 +214,9 @@ void ReadAnalogInputs() {
   if (MeasuredAmps > MeasuredAmpsMax) MeasuredAmpsMax = MeasuredAmps;
   if (RPM > RPMMax) RPMMax = RPM;
   if (!isnan(MaxAlternatorTemperatureF) && AlternatorTemperatureF > MaxAlternatorTemperatureF) MaxAlternatorTemperatureF = AlternatorTemperatureF;
+  if (!isnan(MaxTemperatureThermistor) && temperatureThermistor > MaxTemperatureThermistor) {
+    MaxTemperatureThermistor = temperatureThermistor;
+  }
 }
 void TempTask(void *parameter) {
 
@@ -652,15 +669,15 @@ void SendWifiData() {
                                   // Build CSV string with all data as integers
                                   // Format: multiply floats by 10, 100 or 1000 to preserve decimal precision as needed
                                   // CSV field order: see index.html -> fields[] mapping
-      char payload[1024];         // >1400 the wifi transmission won't fit in 1 packet
+      char payload[1400];         // >1400 the wifi transmission won't fit in 1 packet
       snprintf(payload, sizeof(payload),
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                // Readings
@@ -765,8 +782,17 @@ void SendWifiData() {
                SafeInt(FieldResistance),            //94
                SafeInt(maxPoints),                  //95
                SafeInt(AlternatorCOffset, 100),     //96
-               SafeInt(BatteryCOffset, 100)         //97
-
+               SafeInt(BatteryCOffset, 100),        //97
+               SafeInt(BatteryCapacity_Ah),
+               SafeInt(AmpSrc),
+               SafeInt(R_fixed, 100),  //100
+               SafeInt(Beta, 100),
+               SafeInt(T0_C, 100),         //102
+               SafeInt(TempSource),        //103
+               SafeInt(IgnitionOverride),  //104
+               // More Readings
+               SafeInt(temperatureThermistor),    // 105
+               SafeInt(MaxTemperatureThermistor)  // 106
 
       );
 
@@ -928,6 +954,58 @@ void setupWiFiConfigServer() {
   server.begin();
 }
 void setupServer() {
+
+  //Factory Reset Logic
+  server.on("/factoryReset", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (!request->hasParam("password", true)) {
+      request->send(400, "text/plain", "Missing password");
+      return;
+    }
+
+    String password = request->getParam("password", true)->value();
+    if (!validatePassword(password.c_str())) {
+      request->send(403, "text/plain", "FAIL");
+      return;
+    }
+
+    queueConsoleMessage("FACTORY RESET: Restoring all defaults...");
+
+    // Delete ALL settings files - let InitSystemSettings() recreate with defaults
+    const char *settingsFiles[] = {
+      "/TemperatureLimitF.txt", "/ManualDuty.txt", "/FullChargeVoltage.txt",
+      "/TargetAmps.txt", "/SwitchingFrequency.txt", "/TargetFloatVoltage.txt", "/R_fixed.txt", "/Beta.txt", "/T0_C.txt", "/TempSource.txt", "/interval.txt",
+      "/FieldAdjustmentinterval.txt", "/ManualFieldToggle.txt",
+      "/SwitchControlOverride.txt", "/OnOff.txt", "/HiLow.txt", "/LimpHome.txt", "/AmpSrc.txt", "/IgnitionOverride.txt",
+      "/VeData.txt", "/NMEA0183Data.txt", "/NMEA2KData.txt", "/TargetAmpL.txt",
+      "/CurrentThreshold.txt", "/PeukertExponent.txt", "/ChargeEfficiency.txt",
+      "/ChargedVoltage.txt", "/TailCurrent.txt", "/ChargedDetectionTime.txt",
+      "/IgnoreTemperature.txt", "/BMSLogic.txt", "/BMSLogicLevelOff.txt",
+      "/AlarmActivate.txt", "/TempAlarm.txt", "/VoltageAlarmHigh.txt",
+      "/VoltageAlarmLow.txt", "/CurrentAlarmHigh.txt", "/RPMScalingFactor.txt",
+      "/MaximumAllowedBatteryAmps.txt", "/ManualSOCPoint.txt", "/BatteryVoltageSource.txt",
+      "/AmpControlByRPM.txt", "/RPM1.txt", "/RPM2.txt", "/RPM3.txt", "/RPM4.txt",
+      "/RPM5.txt", "/RPM6.txt", "/RPM7.txt", "/Amps1.txt", "/Amps2.txt",
+      "/Amps3.txt", "/Amps4.txt", "/Amps5.txt", "/Amps6.txt", "/Amps7.txt",
+      "/ShuntResistanceMicroOhm.txt", "/InvertAltAmps.txt", "/InvertBattAmps.txt",
+      "/MaxDuty.txt", "/MinDuty.txt", "/FieldResistance.txt", "/maxPoints.txt",
+      "/AlternatorCOffset.txt", "/BatteryCOffset.txt"
+    };
+
+    // Delete all settings files
+    for (int i = 0; i < sizeof(settingsFiles) / sizeof(settingsFiles[0]); i++) {
+      if (LittleFS.exists(settingsFiles[i])) {
+        LittleFS.remove(settingsFiles[i]);
+      }
+    }
+
+    // Reinitialize with defaults
+    InitSystemSettings();
+
+    queueConsoleMessage("FACTORY RESET: Complete! All settings restored to defaults.");
+    request->send(200, "text/plain", "OK");
+  });
+
+
   //This code handles web requests when a user changes settings on the web interface. In plain English:
   //First, it checks if the request includes a valid password. If not, it rejects the request with a "Forbidden" message.
   //If the password is correct, it looks at which setting the user is trying to change by checking which form field was submitted.
@@ -965,45 +1043,45 @@ void setupServer() {
         inputMessage = request->getParam("FullChargeVoltage")->value();
         writeFile(LittleFS, "/FullChargeVoltage.txt", inputMessage.c_str());
         ChargingVoltageTarget = inputMessage.toFloat();
-      } else if (request->hasParam("TargetAmpz")) {
-        inputMessage = request->getParam("TargetAmpz")->value();
-        writeFile(LittleFS, "/TargetAmpz.txt", inputMessage.c_str());
+      } else if (request->hasParam("TargetAmps")) {
+        inputMessage = request->getParam("TargetAmps")->value();
+        writeFile(LittleFS, "/TargetAmps.txt", inputMessage.c_str());
         TargetAmps = inputMessage.toInt();
       } else if (request->hasParam("SwitchingFrequency")) {
         inputMessage = request->getParam("SwitchingFrequency")->value();
         writeFile(LittleFS, "/SwitchingFrequency.txt", inputMessage.c_str());
         fffr = inputMessage.toInt();
-      } else if (request->hasParam("TargetFloatVoltage1")) {
-        inputMessage = request->getParam("TargetFloatVoltage1")->value();
-        writeFile(LittleFS, "/TargetFloatVoltage1.txt", inputMessage.c_str());
+      } else if (request->hasParam("TargetFloatVoltage")) {
+        inputMessage = request->getParam("TargetFloatVoltage")->value();
+        writeFile(LittleFS, "/TargetFloatVoltage.txt", inputMessage.c_str());
         TargetFloatVoltage = inputMessage.toFloat();
-      } else if (request->hasParam("interval1")) {
-        inputMessage = request->getParam("interval1")->value();
-        writeFile(LittleFS, "/interval1.txt", inputMessage.c_str());
+      } else if (request->hasParam("interval")) {
+        inputMessage = request->getParam("interval")->value();
+        writeFile(LittleFS, "/interval.txt", inputMessage.c_str());
         interval = inputMessage.toFloat();
-      } else if (request->hasParam("FieldAdjustmentInterval1")) {
-        inputMessage = request->getParam("FieldAdjustmentInterval1")->value();
-        writeFile(LittleFS, "/FieldAdjustmentInterval1.txt", inputMessage.c_str());
+      } else if (request->hasParam("FieldAdjustmentinterval")) {
+        inputMessage = request->getParam("FieldAdjustmentinterval")->value();
+        writeFile(LittleFS, "/FieldAdjustmentinterval.txt", inputMessage.c_str());
         FieldAdjustmentInterval = inputMessage.toFloat();
-      } else if (request->hasParam("ManualFieldToggle1")) {
-        inputMessage = request->getParam("ManualFieldToggle1")->value();
-        writeFile(LittleFS, "/ManualFieldToggle1.txt", inputMessage.c_str());
+      } else if (request->hasParam("ManualFieldToggle")) {
+        inputMessage = request->getParam("ManualFieldToggle")->value();
+        writeFile(LittleFS, "/ManualFieldToggle.txt", inputMessage.c_str());
         ManualFieldToggle = inputMessage.toInt();
-      } else if (request->hasParam("SwitchControlOverride1")) {
-        inputMessage = request->getParam("SwitchControlOverride1")->value();
-        writeFile(LittleFS, "/SwitchControlOverride1.txt", inputMessage.c_str());
+      } else if (request->hasParam("SwitchControlOverride")) {
+        inputMessage = request->getParam("SwitchControlOverride")->value();
+        writeFile(LittleFS, "/SwitchControlOverride.txt", inputMessage.c_str());
         SwitchControlOverride = inputMessage.toInt();
       } else if (request->hasParam("ForceFloat1")) {
         inputMessage = request->getParam("ForceFloat1")->value();
         writeFile(LittleFS, "/ForceFloat1.txt", inputMessage.c_str());
         ForceFloat = inputMessage.toInt();
-      } else if (request->hasParam("OnOff1")) {
-        inputMessage = request->getParam("OnOff1")->value();
-        writeFile(LittleFS, "/OnOff1.txt", inputMessage.c_str());
+      } else if (request->hasParam("OnOff")) {
+        inputMessage = request->getParam("OnOff")->value();
+        writeFile(LittleFS, "/OnOff.txt", inputMessage.c_str());
         OnOff = inputMessage.toInt();
-      } else if (request->hasParam("HiLow1")) {
-        inputMessage = request->getParam("HiLow1")->value();
-        writeFile(LittleFS, "/HiLow1.txt", inputMessage.c_str());
+      } else if (request->hasParam("HiLow")) {
+        inputMessage = request->getParam("HiLow")->value();
+        writeFile(LittleFS, "/HiLow.txt", inputMessage.c_str());
         HiLow = inputMessage.toInt();
       } else if (request->hasParam("InvertAltAmps")) {
         inputMessage = request->getParam("InvertAltAmps")->value();
@@ -1021,21 +1099,21 @@ void setupServer() {
         inputMessage = request->getParam("MinDuty")->value();
         writeFile(LittleFS, "/MinDuty.txt", inputMessage.c_str());
         MinDuty = inputMessage.toInt();
-      } else if (request->hasParam("LimpHome1")) {
-        inputMessage = request->getParam("LimpHome1")->value();
-        writeFile(LittleFS, "/LimpHome1.txt", inputMessage.c_str());
+      } else if (request->hasParam("LimpHome")) {
+        inputMessage = request->getParam("LimpHome")->value();
+        writeFile(LittleFS, "/LimpHome.txt", inputMessage.c_str());
         LimpHome = inputMessage.toInt();
-      } else if (request->hasParam("VeData1")) {
-        inputMessage = request->getParam("VeData1")->value();
-        writeFile(LittleFS, "/VeData1.txt", inputMessage.c_str());
+      } else if (request->hasParam("VeData")) {
+        inputMessage = request->getParam("VeData")->value();
+        writeFile(LittleFS, "/VeData.txt", inputMessage.c_str());
         VeData = inputMessage.toInt();
-      } else if (request->hasParam("NMEA0183Data1")) {
-        inputMessage = request->getParam("NMEA0183Data1")->value();
-        writeFile(LittleFS, "/NMEA0183Data1.txt", inputMessage.c_str());
+      } else if (request->hasParam("NMEA0183Data")) {
+        inputMessage = request->getParam("NMEA0183Data")->value();
+        writeFile(LittleFS, "/NMEA0183Data.txt", inputMessage.c_str());
         NMEA0183Data = inputMessage.toInt();
-      } else if (request->hasParam("NMEA2KData1")) {
-        inputMessage = request->getParam("NMEA2KData1")->value();
-        writeFile(LittleFS, "/NMEA2KData1.txt", inputMessage.c_str());
+      } else if (request->hasParam("NMEA2KData")) {
+        inputMessage = request->getParam("NMEA2KData")->value();
+        writeFile(LittleFS, "/NMEA2KData.txt", inputMessage.c_str());
         NMEA2KData = inputMessage.toInt();
       } else if (request->hasParam("TargetAmpL")) {
         inputMessage = request->getParam("TargetAmpL")->value();
@@ -1112,11 +1190,35 @@ void setupServer() {
       } else if (request->hasParam("AlternatorCOffset")) {
         inputMessage = request->getParam("AlternatorCOffset")->value();
         writeFile(LittleFS, "/AlternatorCOffset.txt", inputMessage.c_str());
-        AlternatorCOffset = inputMessage.toInt();
+        AlternatorCOffset = inputMessage.toFloat();
       } else if (request->hasParam("BatteryCOffset")) {
         inputMessage = request->getParam("BatteryCOffset")->value();
         writeFile(LittleFS, "/BatteryCOffset.txt", inputMessage.c_str());
-        BatteryCOffset = inputMessage.toInt();
+        BatteryCOffset = inputMessage.toFloat();
+      } else if (request->hasParam("AmpSrc")) {
+        inputMessage = request->getParam("AmpSrc")->value();
+        writeFile(LittleFS, "/AmpSrc.txt", inputMessage.c_str());
+        AmpSrc = inputMessage.toInt();
+      } else if (request->hasParam("R_fixed")) {
+        inputMessage = request->getParam("R_fixed")->value();
+        writeFile(LittleFS, "/R_fixed.txt", inputMessage.c_str());
+        R_fixed = inputMessage.toFloat();
+      } else if (request->hasParam("Beta")) {
+        inputMessage = request->getParam("Beta")->value();
+        writeFile(LittleFS, "/Beta.txt", inputMessage.c_str());
+        Beta = inputMessage.toFloat();
+      } else if (request->hasParam("T0_C")) {
+        inputMessage = request->getParam("T0_C")->value();
+        writeFile(LittleFS, "/T0_C.txt", inputMessage.c_str());
+        T0_C = inputMessage.toFloat();
+      } else if (request->hasParam("TempSource")) {
+        inputMessage = request->getParam("TempSource")->value();
+        writeFile(LittleFS, "/TempSource.txt", inputMessage.c_str());
+        TempSource = inputMessage.toInt();
+      } else if (request->hasParam("IgnitionOverride")) {
+        inputMessage = request->getParam("IgnitionOverride")->value();
+        writeFile(LittleFS, "/IgnitionOverride.txt", inputMessage.c_str());
+        IgnitionOverride = inputMessage.toInt();
       } else if (request->hasParam("ResetTemp")) {
         inputMessage = request->getParam("ResetTemp")->value();       // pointless
         writeFile(LittleFS, "/ResetTemp.txt", inputMessage.c_str());  // pointless
@@ -1193,6 +1295,12 @@ void setupServer() {
         ManualSOCPoint = inputMessage.toInt();                                 //pointless
         SoC_percent = ManualSOCPoint * 100;                                    // Convert user input to internal scaling//pointless
         writeFile(LittleFS, "/SoC_percent.txt", String(SoC_percent).c_str());  //pointless
+      } else if (request->hasParam("ResetThermTemp")) {
+        inputMessage = request->getParam("ResetThermTemp")->value();
+        writeFile(LittleFS, "/ResetThermTemp.txt", inputMessage.c_str());
+        ResetThermTemp = inputMessage.toInt();
+        MaxTemperatureThermistor = 0;
+        writeFile(LittleFS, "/MaxTemperatureThermistor.txt", "0");
       } else if (request->hasParam("BatteryVoltageSource")) {
         inputMessage = request->getParam("BatteryVoltageSource")->value();
         writeFile(LittleFS, "/BatteryVoltageSource.txt", inputMessage.c_str());
@@ -1687,6 +1795,8 @@ void SaveAllData() {
   writeFile(LittleFS, "/DischargedEnergy.txt", String(DischargedEnergy).c_str());
   writeFile(LittleFS, "/AlternatorChargedEnergy.txt", String(AlternatorChargedEnergy).c_str());
   writeFile(LittleFS, "/MaxAlternatorTemperatureF.txt", String(MaxAlternatorTemperatureF).c_str());
+  writeFile(LittleFS, "/MaxTemperatureThermistor.txt", String(MaxTemperatureThermistor).c_str());
+
 }
 
 void ResetRuntimeCounters() {
@@ -1843,55 +1953,65 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   } else {
     ChargingVoltageTarget = readFile(LittleFS, "/FullChargeVoltage.txt").toFloat();
   }
-  if (!LittleFS.exists("/TargetAmpz.txt")) {
-    writeFile(LittleFS, "/TargetAmpz.txt", String(TargetAmps).c_str());
+  if (!LittleFS.exists("/TargetAmps.txt")) {
+    writeFile(LittleFS, "/TargetAmps.txt", String(TargetAmps).c_str());
   } else {
-    TargetAmps = readFile(LittleFS, "/TargetAmpz.txt").toInt();
+    TargetAmps = readFile(LittleFS, "/TargetAmps.txt").toInt();
   }
   if (!LittleFS.exists("/SwitchingFrequency.txt")) {
     writeFile(LittleFS, "/SwitchingFrequency.txt", String(fffr).c_str());
   } else {
     fffr = readFile(LittleFS, "/SwitchingFrequency.txt").toInt();
   }
-  if (!LittleFS.exists("/TargetFloatVoltage1.txt")) {
-    writeFile(LittleFS, "/TargetFloatVoltage1.txt", String(TargetFloatVoltage).c_str());
+  if (!LittleFS.exists("/TargetFloatVoltage.txt")) {
+    writeFile(LittleFS, "/TargetFloatVoltage.txt", String(TargetFloatVoltage).c_str());
   } else {
-    TargetFloatVoltage = readFile(LittleFS, "/TargetFloatVoltage1.txt").toFloat();
+    TargetFloatVoltage = readFile(LittleFS, "/TargetFloatVoltage.txt").toFloat();
   }
-  if (!LittleFS.exists("/interval1.txt")) {
-    writeFile(LittleFS, "/interval1.txt", String(interval).c_str());
+  if (!LittleFS.exists("/interval.txt")) {
+    writeFile(LittleFS, "/interval.txt", String(interval).c_str());
   } else {
-    interval = readFile(LittleFS, "/interval1.txt").toFloat();
+    interval = readFile(LittleFS, "/interval.txt").toFloat();
   }
-  if (!LittleFS.exists("/FieldAdjustmentInterval1.txt")) {
-    writeFile(LittleFS, "/FieldAdjustmentInterval1.txt", String(FieldAdjustmentInterval).c_str());
+  if (!LittleFS.exists("/FieldAdjustmentinterval.txt")) {
+    writeFile(LittleFS, "/FieldAdjustmentinterval.txt", String(FieldAdjustmentInterval).c_str());
   } else {
-    FieldAdjustmentInterval = readFile(LittleFS, "/FieldAdjustmentInterval1.txt").toFloat();
+    FieldAdjustmentInterval = readFile(LittleFS, "/FieldAdjustmentinterval.txt").toFloat();
   }
-  if (!LittleFS.exists("/ManualFieldToggle1.txt")) {
-    writeFile(LittleFS, "/ManualFieldToggle1.txt", String(ManualFieldToggle).c_str());
+  if (!LittleFS.exists("/ManualFieldToggle.txt")) {
+    writeFile(LittleFS, "/ManualFieldToggle.txt", String(ManualFieldToggle).c_str());
   } else {
-    ManualFieldToggle = readFile(LittleFS, "/ManualFieldToggle1.txt").toInt();
+    ManualFieldToggle = readFile(LittleFS, "/ManualFieldToggle.txt").toInt();
   }
-  if (!LittleFS.exists("/SwitchControlOverride1.txt")) {
-    writeFile(LittleFS, "/SwitchControlOverride1.txt", String(SwitchControlOverride).c_str());
+  if (!LittleFS.exists("/SwitchControlOverride.txt")) {
+    writeFile(LittleFS, "/SwitchControlOverride.txt", String(SwitchControlOverride).c_str());
   } else {
-    SwitchControlOverride = readFile(LittleFS, "/SwitchControlOverride1.txt").toInt();
+    SwitchControlOverride = readFile(LittleFS, "/SwitchControlOverride.txt").toInt();
+  }
+  if (!LittleFS.exists("/IgnitionOverride.txt")) {
+    writeFile(LittleFS, "/IgnitionOverride.txt", String(IgnitionOverride).c_str());
+  } else {
+    IgnitionOverride = readFile(LittleFS, "/IgnitionOverride.txt").toInt();
   }
   if (!LittleFS.exists("/ForceFloat1.txt")) {
     writeFile(LittleFS, "/ForceFloat1.txt", String(ForceFloat).c_str());
   } else {
     ForceFloat = readFile(LittleFS, "/ForceFloat1.txt").toInt();
   }
-  if (!LittleFS.exists("/OnOff1.txt")) {
-    writeFile(LittleFS, "/OnOff1.txt", String(OnOff).c_str());
+  if (!LittleFS.exists("/OnOff.txt")) {
+    writeFile(LittleFS, "/OnOff.txt", String(OnOff).c_str());
   } else {
-    OnOff = readFile(LittleFS, "/OnOff1.txt").toInt();
+    OnOff = readFile(LittleFS, "/OnOff.txt").toInt();
   }
-  if (!LittleFS.exists("/HiLow1.txt")) {
-    writeFile(LittleFS, "/HiLow1.txt", String(HiLow).c_str());
+  if (!LittleFS.exists("/HiLow.txt")) {
+    writeFile(LittleFS, "/HiLow.txt", String(HiLow).c_str());
   } else {
-    HiLow = readFile(LittleFS, "/HiLow1.txt").toInt();
+    HiLow = readFile(LittleFS, "/HiLow.txt").toInt();
+  }
+  if (!LittleFS.exists("/AmpSrc.txt")) {
+    writeFile(LittleFS, "/AmpSrc.txt", String(AmpSrc).c_str());
+  } else {
+    AmpSrc = readFile(LittleFS, "/AmpSrc.txt").toInt();
   }
   if (!LittleFS.exists("/InvertAltAmps.txt")) {
     writeFile(LittleFS, "/InvertAltAmps.txt", String(InvertAltAmps).c_str());
@@ -1903,25 +2023,25 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   } else {
     InvertBattAmps = readFile(LittleFS, "/InvertBattAmps.txt").toInt();
   }
-  if (!LittleFS.exists("/LimpHome1.txt")) {
-    writeFile(LittleFS, "/LimpHome1.txt", String(LimpHome).c_str());
+  if (!LittleFS.exists("/LimpHome.txt")) {
+    writeFile(LittleFS, "/LimpHome.txt", String(LimpHome).c_str());
   } else {
-    LimpHome = readFile(LittleFS, "/LimpHome1.txt").toInt();
+    LimpHome = readFile(LittleFS, "/LimpHome.txt").toInt();
   }
-  if (!LittleFS.exists("/VeData1.txt")) {
-    writeFile(LittleFS, "/VeData1.txt", String(VeData).c_str());
+  if (!LittleFS.exists("/VeData.txt")) {
+    writeFile(LittleFS, "/VeData.txt", String(VeData).c_str());
   } else {
-    VeData = readFile(LittleFS, "/VeData1.txt").toInt();
+    VeData = readFile(LittleFS, "/VeData.txt").toInt();
   }
-  if (!LittleFS.exists("/NMEA0183Data1.txt")) {
-    writeFile(LittleFS, "/NMEA0183Data1.txt", String(NMEA0183Data).c_str());
+  if (!LittleFS.exists("/NMEA0183Data.txt")) {
+    writeFile(LittleFS, "/NMEA0183Data.txt", String(NMEA0183Data).c_str());
   } else {
-    NMEA0183Data = readFile(LittleFS, "/NMEA0183Data1.txt").toInt();
+    NMEA0183Data = readFile(LittleFS, "/NMEA0183Data.txt").toInt();
   }
-  if (!LittleFS.exists("/NMEA2KData1.txt")) {
-    writeFile(LittleFS, "/NMEA2KData1.txt", String(NMEA2KData).c_str());
+  if (!LittleFS.exists("/NMEA2KData.txt")) {
+    writeFile(LittleFS, "/NMEA2KData.txt", String(NMEA2KData).c_str());
   } else {
-    NMEA2KData = readFile(LittleFS, "/NMEA2KData1.txt").toInt();
+    NMEA2KData = readFile(LittleFS, "/NMEA2KData.txt").toInt();
   }
   if (!LittleFS.exists("/TargetAmpL.txt")) {
     writeFile(LittleFS, "/TargetAmpL.txt", String(TargetAmpLA).c_str());
@@ -2174,8 +2294,26 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   } else {
     MinDuty = readFile(LittleFS, "/MinDuty.txt").toInt();
   }
-
-
+  if (!LittleFS.exists("/R_fixed.txt")) {
+    writeFile(LittleFS, "/R_fixed.txt", String(R_fixed).c_str());
+  } else {
+    R_fixed = readFile(LittleFS, "/R_fixed.txt").toFloat();
+  }
+  if (!LittleFS.exists("/Beta.txt")) {
+    writeFile(LittleFS, "/Beta.txt", String(Beta).c_str());
+  } else {
+    Beta = readFile(LittleFS, "/Beta.txt").toFloat();
+  }
+  if (!LittleFS.exists("/T0_C.txt")) {
+    writeFile(LittleFS, "/T0_C.txt", String(T0_C).c_str());
+  } else {
+    T0_C = readFile(LittleFS, "/T0_C.txt").toFloat();
+  }
+  if (!LittleFS.exists("/TempSource.txt")) {
+    writeFile(LittleFS, "/TempSource.txt", String(TempSource).c_str());
+  } else {
+    TempSource = readFile(LittleFS, "/TempSource.txt").toInt();
+  }
   if (!LittleFS.exists("/AlternatorCOffset.txt")) {
     writeFile(LittleFS, "/AlternatorCOffset.txt", String(AlternatorCOffset).c_str());
   } else {
@@ -2187,6 +2325,13 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   } else {
     BatteryCOffset = readFile(LittleFS, "/BatteryCOffset.txt").toInt();
   }
+
+if (!LittleFS.exists("/MaxTemperatureThermistor.txt")) {
+  writeFile(LittleFS, "/MaxTemperatureThermistor.txt", String(MaxTemperatureThermistor).c_str());
+} else {
+  MaxTemperatureThermistor = readFile(LittleFS, "/MaxTemperatureThermistor.txt").toInt();  // Use toInt()
+}
+
 }
 
 void InitPersistentVariables() {
@@ -2465,14 +2610,47 @@ float getBatteryVoltage() {
   return selectedVoltage;  // ✅ Return local variable
 }
 
+// In your AdjustField() function or wherever you determine target amps
+float getTargetAmps() {
+  switch (AmpSrc) {
+    case 0:                 // Alt Hall Effect Sensor
+      return MeasuredAmps;  // Use alternator current from hall sensor
+    case 1:                 // Battery Shunt
+      return (Bcur);        // Use battery current from shunt
+    case 2:                 // NMEA2K Batt
+      // Add NMEA2K battery current reading when implemented
+      return (Bcur);  // Fallback to shunt for now
+    case 3:           // NMEA2K Alt
+      // Add NMEA2K alternator current reading when implemented
+      return MeasuredAmps;  // Fallback to hall sensor for now
+    case 4:                 // NMEA0183 Batt
+      // Add NMEA0183 battery current reading when implemented
+      return (Bcur);  // Fallback to shunt for now
+    case 5:           // NMEA0183 Alt
+      // Add NMEA0183 alternator current reading when implemented
+      return MeasuredAmps;  // Fallback to hall sensor for now
+    case 6:                 // Victron Batt
+      // Add Victron current reading when implemented
+      return (Bcur);        // Fallback to shunt for now
+    case 7:                 // Other
+      return MeasuredAmps;  // Default fallback
+    default:
+      return MeasuredAmps;  // Safe default
+  }
+}
+
+int thermistorTempC(float V_thermistor) {
+  float Vcc = 5.0;
+  float R_thermistor = R_fixed * (V_thermistor / (Vcc - V_thermistor));
+  float T0_K = T0_C + 273.15;
+  float tempK = 1.0 / ((1.0 / T0_K) + (1.0 / Beta) * log(R_thermistor / R0));
+  return (int)(tempK - 273.15);  // Cast to int for whole degrees
+}
+
 void StuffToDoAtSomePoint() {
   //every reset button has a pointless flag and an echo.  I did not delete them for fear of breaking the payload and they hardly cost anything to keep
-  //Factory reset
-  //Save settings files
   //Battery Voltage Source drop down menu- make this text update on page re-load instead of just an echo number
   //Ask AI to go through and add many more relevent Console messages- make sure none of them come in too rapidly
   // Is it possible to power up if the igniton is off?  A bunch of setup functions may fail?
-  //Read ignition and other Digital Inputs somewhere
-  //Add an option to control off battery current rather than Alternator current
   // What happens when rpm table is screwed up by an idiot
 }
