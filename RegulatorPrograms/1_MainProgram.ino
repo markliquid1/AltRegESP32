@@ -48,6 +48,8 @@ INA228 INA(0x40);
 #include <String>                        // Console message queue system
 #include "esp_task_wdt.h"                //Watch dog to prevent hung up code from wreaking havoc
 #include "esp_log.h"                     // get rid of spam in serial monitor
+#include <TinyGPSPlus.h>                 // used for NMEA0183
+
 
 
 // Settings - these will be moved to LittleFS
@@ -112,10 +114,14 @@ int SendWifiTime = 0;
 int AnalogReadTime = 0;   // this is the present
 int AnalogReadTime2 = 0;  // this is the maximum ever
 
+
+int FlipFlopper = 0;   // delete
+int FlipFlopper2 = 0;  // delete
+
 //Input Settings
 int TargetAmps = 40;   //Normal alternator output, for best performance, set to something that just barely won't overheat
 int TargetAmpLA = 25;  //Alternator output in Lo mode
-int uTargetAmps = 0;   // the one that gets set to either the normal setting or the low setting then used.
+int uTargetAmps = 3;   // the one that gets used as the real target
 
 float TargetFloatVoltage = 13.4;
 float TargetBulkVoltage = 13.9;
@@ -136,8 +142,8 @@ int ManualFieldToggle = 1;                // set to 1 to enable manual control o
 int SwitchControlOverride = 1;  // set to 1 for web interface switches to override physical switch panel
 int ForceFloat = 0;             // set to 1 to force the float voltage to be the charging target
 int OnOff = 0;                  // 0 is charger off, 1 is charger On (corresponds to Alternator Enable in Basic Settings)
-int Ignition = 0;               // Digital Input
-int IgnitionOverride = 0;       // to fake the ignition signal w/ software
+int Ignition = 1;               // Digital Input      NEED THIS TO HAVE WIFI ON , FOR NOW
+int IgnitionOverride = 1;       // to fake the ignition signal w/ software
 int HiLow = 1;                  // 0 will be a low setting, 1 a high setting
 int AmpSrc = 0;                 // 0=Alt Hall Effect, 1=Battery Shunt, 2=NMEA2K Batt, 3=NMEA2K Alt, 4=NMEA0183 Batt, 5=NMEA0183 Alt, 6=Victron Batt, 7=Other
 int LimpHome = 0;               // 1 will set to limp home mode, whatever that gets set up to be
@@ -169,17 +175,18 @@ float iiout;                            // Calculated field amps (approximate)
 float AlternatorTemperatureF = NAN;     // alternator temperature
 float MaxAlternatorTemperatureF = NAN;  // maximum alternator temperature
 // === Thermistor Stuff
-float R_fixed = 10000.0;                                           // Series resistor in ohms
-float Beta = 3950.0;                                               // Thermistor Beta constant (e.g. 3950K)
-float R0 = 10000.0;                                                // Thermistor resistance at T0
-float T0_C = 25.0;                                                 // Reference temp in Celsius
-int TempSource = 0;                                                // 0 for OneWire default, 1 for Thermistor
-int temperatureThermistor = -999 ;                                // thermistor reading
-int MaxTemperatureThermistor = -999;                              // maximum thermistor temperature (on alternator)
-int TempToUse;                       // gets set to temperatureThermistor or AlternatorTemperatureF
-TaskHandle_t tempTaskHandle = NULL;  // make a separate cpu task for temp reading because it's so slow
-float VictronVoltage = 0;            // battery reading from VeDirect
-float HeadingNMEA = 0;               // Just here to test NMEA functionality
+float R_fixed = 10000.0;              // Series resistor in ohms
+float Beta = 3950.0;                  // Thermistor Beta constant (e.g. 3950K)
+float R0 = 10000.0;                   // Thermistor resistance at T0
+float T0_C = 25.0;                    // Reference temp in Celsius
+int TempSource = 0;                   // 0 for OneWire default, 1 for Thermistor
+int temperatureThermistor = -999;     // thermistor reading
+int MaxTemperatureThermistor = -999;  // maximum thermistor temperature (on alternator)
+int TempToUse;                        // gets set to temperatureThermistor or AlternatorTemperatureF
+TaskHandle_t tempTaskHandle = NULL;   // make a separate cpu task for temp reading because it's so slow
+float VictronVoltage = 0;             // battery V reading from VeDirect
+float VictronCurrent = 0;             // battery Current (careful, can also be solar current if hooked up to solar charge controller not BMV712)
+float HeadingNMEA = 0;                // Just here to test NMEA functionality
 
 // ADS1115
 int16_t Raw = 0;
@@ -233,7 +240,7 @@ int TempAlarm = 0;                  // above this value, sound alarm
 int VoltageAlarmHigh = 0;           // above this value, sound alarm
 int VoltageAlarmLow = 0;            // below this value, sound alarm
 int CurrentAlarmHigh = 0;           // above this value, sound alarm
-int MaximumAllowedBatteryAmps;      // safety for battery, optional
+int MaximumAllowedBatteryAmps = 100;      // safety for battery, optional
 int FourWay = 0;                    // 0 voltage data source = INA228 , 1 voltage source = ADS1115, 2 voltage source = NMEA2k, 3 voltage source = Victron VeDirect
 int RPMScalingFactor = 2000;        // self explanatory, adjust until it matches your trusted tachometer
 float AlternatorCOffset = 0;        // tare for alt current
@@ -251,7 +258,7 @@ int ResetFuelUsed;          // fuel used by alternator
 int ResetAlternatorChargedEnergy;
 int ResetEngineCycles;
 int ResetRPMMax;
-int ResetThermTemp = 0;  // Max thermistor temp reset 
+int ResetThermTemp = 0;  // Max thermistor temp reset
 
 
 int Voltage_scaled = 0;            // Battery voltage scaled (V × 100)
@@ -299,7 +306,7 @@ static unsigned long prev_millis5;     // used to initiate wifi data exchange
 static unsigned long lastINARead = 0;  // don't read the INA228 needlessly often
 // Global variable to track ESP32 restart time
 unsigned long lastRestartTime = 0;
-const unsigned long RESTART_INTERVAL = 3600000;  // 1 hour in milliseconds
+const unsigned long RESTART_INTERVAL = 300000;  // 1 hour in milliseconds = 3600000     
 
 int BatteryVoltageSource = 0;  // select  "0">INA228    value="1">ADS1115     value="2">VictronVeDirect     value="3">NMEA0183     value="4">NMEA2K
 int AmpControlByRPM = 0;       // this is the toggle
@@ -682,14 +689,16 @@ void loop() {
       NMEA2000.ParseMessages();  // read data from NMEA2K
     }
 
-    // UpdateDisplay();   // turn this back on later
-    AdjustField();  // This may need to get moved if it takes any power, but have to be careful we don't get stuck with Field On!
+    UpdateDisplay();  // turn this back on later
+    AdjustField();    // This may need to get moved if it takes any power, but have to be careful we don't get stuck with Field On!
 
-    // Handle ignition-based power management for saving power
-    Ignition = digitalRead(39);  // see if ignition is on
+    // Ignition = !digitalRead(39);  // see if ignition is on    (fix this later)
+
+
     if (IgnitionOverride == 1) {
       Ignition = 1;
     }
+
     if (Ignition == 0) {
       setCpuFrequencyMhz(10);
       WiFi.mode(WIFI_OFF);
