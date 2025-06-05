@@ -1272,6 +1272,7 @@ Contact me at mark@xengineering.net       -->
             </form>
           </div>
         </div>
+        
         <hr />
         <div class="form-row">
           <div class="form-label">NMEA 0183 Data (<span id="NMEA0183Data_echo">0</span>):</div>
@@ -1286,6 +1287,24 @@ Contact me at mark@xengineering.net       -->
               </label>
               <span class="toggle-label">On</span>
               <input id="NMEA0183Data" name="NMEA0183Data" type="number" value="" style="display:none;" />
+            </form>
+          </div>
+        </div>
+
+        <hr />
+        <div class="form-row">
+          <div class="form-label">NMEA2K Data (<span id="NMEA2KData_echo">0</span>):</div>
+          <div class="form-input">
+            <form action="/get" method="GET" target="hidden-form">
+              <input type="hidden" name="password" class="password_field">
+              <span class="toggle-label">Off</span>
+              <label class="switch">
+                <input id="NMEA2KData_checkbox" type="checkbox"
+                  onchange="if(handleUserToggle('NMEA2KData_checkbox', 'NMEA2KData', 'NMEA2KData')) { this.form.submit(); submitMessage(); }" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">On</span>
+              <input id="NMEA2KData" name="NMEA2KData" type="number" value="" style="display:none;" />
             </form>
           </div>
         </div>
@@ -1459,11 +1478,6 @@ Contact me at mark@xengineering.net       -->
           </div>
         </div>
 
-
-
-
-
-
         <div class="card">
           <p>State of Charge</p>
           <p class="reading"><span id="SoC_percentID">0</span> %</p>
@@ -1499,6 +1513,13 @@ Contact me at mark@xengineering.net       -->
           <p>Battery Current</p>
           <p class="reading"><span id="BCurrID">0</span> A</p>
         </div>
+
+        <div class="card">
+          <p>Victron Battery Current</p>
+          <p class="reading"><span id="VictronCurrentID">0</span> A</p>
+        </div>
+
+
       </div>
     </div>
 
@@ -1868,7 +1889,8 @@ Contact me at mark@xengineering.net       -->
       TempSource: 103,
       IgnitionOverride: 104,
       temperatureThermistor: 105,
-      MaxTemperatureThermistor: 106
+      MaxTemperatureThermistor: 106,
+      VictronCurrent: 107
 
     };
 
@@ -2533,7 +2555,9 @@ Contact me at mark@xengineering.net       -->
           ["AlternatorChargedEnergyID", "AlternatorChargedEnergy"], // 30
           ["MaxAlternatorTemperatureF_ID", "MaxAlternatorTemperatureF"], // 31
           ["temperatureThermistorID", "temperatureThermistor"], //32
-          ["MaxTemperatureThermistorID", "MaxTemperatureThermistor"] //33
+          ["MaxTemperatureThermistorID", "MaxTemperatureThermistor"], //33
+          ["VictronCurrentID", "VictronCurrent"]          // 34
+
 
         ];
 
@@ -2697,9 +2721,8 @@ Contact me at mark@xengineering.net       -->
             TempSource: values[fieldIndexes.TempSource],
             IgnitionOverride: values[fieldIndexes.IgnitionOverride],
             temperatureThermistor: values[fieldIndexes.temperatureThermistor],
-            MaxTemperatureThermistor: values[fieldIndexes.MaxTemperatureThermistor]
-
-
+            MaxTemperatureThermistor: values[fieldIndexes.MaxTemperatureThermistor],
+            VictronCurrent: values[fieldIndexes.VictronCurrent]
 
           };
 
@@ -2714,7 +2737,7 @@ Contact me at mark@xengineering.net       -->
                 continue;
               }
               // Values scaled by 100 on server (transmitted as integer × 100)
-              if (["BatteryV", "Channel3V", "IBV", "VictronVoltage", "vvout", "FullChargeVoltage",
+              if (["BatteryV", "Channel3V", "IBV", "VictronVoltage", "vvout", "FullChargeVoltage","VictronCurrent",
                 "TargetFloatVoltage", "IBVMax", "Bcur", "MeasuredAmps", "MeasuredAmpsMax", "SoC_percent", "AlternatorCOffset", "BatteryCOffset", "R_fixed", "Beta", "T0_C"].includes(key)) {
                 el.textContent = (value / 100).toFixed(2);
               }
@@ -2972,18 +2995,9 @@ Contact me at mark@xengineering.net       -->
           if ('IgnitionOverride' in data) {
             document.getElementById('IgnitionOverride_echo').textContent = data.IgnitionOverride;
           }
-
-
-
           if ('AmpSrc' in data) {
             document.getElementById('AmpSrc_echo').textContent = data.AmpSrc;
-            // Add dropdown selection update
-            const ampSrcSelect = document.querySelector('select[name="AmpSrc"]');
-            if (ampSrcSelect) {
-              ampSrcSelect.value = data.AmpSrc;
-            }
           }
-
 
 
           // Initialize RPM/Amps fields once on page load
@@ -3346,6 +3360,7 @@ Contact me at mark@xengineering.net       -->
     <input id="MaximumAllowedBatteryAmps" style="display:none;" value="0" />
     <input id="ManualSOCPoint" style="display:none;" value="0" />
     <input id="BatteryVoltageSource" style="display:none;" value="0" />
+    <input id="AmpSrc" style="display:none;" value="0" />
     <input id="AmpControlByRPM" style="display:none;" value="0" />
     <input id="RPM1" style="display:none;" value="0" />
     <input id="RPM2" style="display:none;" value="0" />
