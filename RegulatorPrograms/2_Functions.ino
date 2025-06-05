@@ -29,7 +29,7 @@ void AdjustField() {
     // Check BMS override if BMS logic is enabled--- this is a manual human setting in the user interface
     if (BMSlogic == 1) {
       // If BMS signal is active (based on BMSLogicLevelOff setting)
-      bmsSignalActive = digitalRead(36);  // this is the signal from the BMS itself
+      bmsSignalActive = !digitalRead(36);  // this is the signal from the BMS itself (need "!"" because of optocouplers)
       if (BMSLogicLevelOff == 0) {
         // BMS gives LOW signal when charging NOT desired
         chargingEnabled = chargingEnabled && bmsSignalActive;
@@ -82,22 +82,26 @@ void AdjustField() {
         // Temperature protection (more aggressive reduction)
         if (!IgnoreTemperature && TempToUse > AlternatorTemperatureLimitF && dutyCycle > (MinDuty + 2 * dutyStep)) {
           dutyCycle -= 2 * dutyStep;
+          queueConsoleMessage("Temp limit reached, backing off...");
         }
         // Voltage protection (most aggressive reduction)
-        float currentBatteryVoltage = getBatteryVoltage();
+        // float currentBatteryVoltage = getBatteryVoltage();  // was this not redundant?  delete later
         if (currentBatteryVoltage > ChargingVoltageTarget && dutyCycle > (MinDuty + 3 * dutyStep)) {
           dutyCycle -= 3 * dutyStep;
+          queueConsoleMessage("Voltage limit reached, backing off...");
         }
         // Battery current protection (safety limit)
-        if (MaximumAllowedBatteryAmps > 0 && abs(Bcur) > MaximumAllowedBatteryAmps && dutyCycle > (MinDuty + dutyStep)) {
+        if (Bcur > MaximumAllowedBatteryAmps && dutyCycle > (MinDuty + dutyStep)) {
           dutyCycle -= dutyStep;
+          queueConsoleMessage("Battery current limit reached, backing off...");
         }
         // Ensure duty cycle stays within bounds
-        dutyCycle = constrain(dutyCycle, MinDuty, MaxDuty);
+        dutyCycle = constrain(dutyCycle, MinDuty, MaxDuty);  //Critical that no charging can happen at MinDuty!!
       }
 
       else {  // Manual override mode
         dutyCycle = ManualDutyTarget;
+        uTargetAmps = -999;  // just useful for debugging, delete later
         // Ensure duty cycle stays within bounds
         dutyCycle = constrain(dutyCycle, MinDuty, MaxDuty);
       }
@@ -105,6 +109,7 @@ void AdjustField() {
       // Charging disabled: shut down field and reset for next enable
       digitalWrite(4, 0);  // Disable the Field (FieldEnable)
       dutyCycle = MinDuty;
+      uTargetAmps = -888;  // just useful for debugging, delete later
     }
     // Apply the calculated duty cycle
     setDutyPercent((int)dutyCycle);
@@ -113,18 +118,34 @@ void AdjustField() {
     iiout = vvout / FieldResistance;
     // Update timer (only once)
     prev_millis22 = millis();
+
+
+/// delete this whole thing later
+    static unsigned long lastRunTime2g = 0;
+    const unsigned long interval2g = 10000;  // 10 seconds
+
+    if (millis() - lastRunTime2g >= interval2g) {
+      lastRunTime2g = millis();
+
+      if (dutyCycle <= (MinDuty + 1.0)) {
+        Serial.println();
+        String msg = " utargetAmps=" + String((float)uTargetAmps, 1)
+                     + " targetCurrent=" + String(targetCurrent, 1)
+                     + " currentBatteryVoltage=" + String(currentBatteryVoltage, 2) + "V"
+                     + " TempToUse=" + String((float)TempToUse, 1) + "F"
+                     + " dutyCycle=" + String(dutyCycle, 1);
+        queueConsoleMessage(msg);
+      }
+    }
   }
 }
 
 void ReadAnalogInputs() {
   if (millis() - lastINARead >= 900) {  // could go down to 600 here, but this logic belongs in Loop anyway
     if (INADisconnected == 0) {
-      Serial.println();
       int start33 = micros();  // Start timing analog input reading
       lastINARead = millis();
       IBV = INA.getBusVoltage();
-      //Serial.print("INA228 Battery Voltage (Volts): ");
-      // Serial.println(IBV);
       ShuntVoltage_mV = INA.getShuntVoltage_mV();
       //Bcur = (ShuntVoltage_mV * 1000.0) / ShuntResistance_uOhm;
       //Example:
@@ -136,8 +157,6 @@ void ReadAnalogInputs() {
       }
       Bcur = Bcur + BatteryCOffset;
       BatteryCurrent_scaled = Bcur * 100;
-      Serial.print("INA228 Battery Bcur (Amps): ");
-      Serial.println(Bcur);
       int end33 = micros();               // End timing
       AnalogReadTime2 = end33 - start33;  // Store elapsed time
       if (AnalogReadTime2 > AnalogReadTime) {
@@ -148,7 +167,8 @@ void ReadAnalogInputs() {
 
   //ADS1115 reading is based on trigger→wait→read   so as to not waste time.  That is way the below is so complicated
   if (ADS1115Disconnected != 0) {
-    Serial.println("theADS1115 was not connected and triggered a return");
+    queueConsoleMessage("theADS1115 was not connected and triggered a return");
+
     return;
   }
   unsigned long now = millis();
@@ -178,7 +198,7 @@ void ReadAnalogInputs() {
             }
             break;
           case 1:
-            Channel1V = Raw / 32767.0 * 6.144;  // voltage divider is 1:1, so this gets us to volts
+            Channel1V = Raw / 32767.0 * 6.144 * 2;  // voltage divider is 2:1, so this gets us to volts
             // Amps=100×(Vin−2.5)
             MeasuredAmps = (Channel1V - 2.5) * 100;  // alternator current
             if (InvertAltAmps == 1) {
@@ -187,14 +207,14 @@ void ReadAnalogInputs() {
             MeasuredAmps = MeasuredAmps - AlternatorCOffset;
             break;
           case 2:
-            Channel2V = Raw / 32767.0 * 6.144 * RPMScalingFactor;  // voltage divider is 1:1,  Guess and check to develop RPMScaingFactor
+            Channel2V = Raw / 32767.0 * 2 * 6.144 * RPMScalingFactor;  // voltage divider is 2:1,  Guess and check to develop RPMScaingFactor
             RPM = Channel2V;
             if (RPM < 100) {
               RPM = 0;
             }
             break;
           case 3:
-            Channel3V = Raw / 32767.0 * 6.144 * 833;  // Does nothing right now, thermistor someday?
+            Channel3V = Raw / 32767.0 * 6.144 * 833 * 2;  // Does nothing right now, thermistor someday?     The /2 is because of voltage divider
             temperatureThermistor = thermistorTempC(Channel3V);
             break;
         }
@@ -240,11 +260,8 @@ void TempTask(void *parameter) {
       AlternatorTemperatureF = tempC * 1.8 + 32.0;
     } else {
       AlternatorTemperatureF = NAN;
-      Serial.println("Temp read failed");
       queueConsoleMessage("WARNING: Temp sensor read failed");
     }
-    //Serial.printf("Temp: %.2f °F at %lu ms\n", AlternatorTemperatureF, millis());
-    // Immediately loop again — next conversion starts right now
   }
 }
 void UpdateDisplay() {
@@ -308,7 +325,7 @@ void UpdateDisplay() {
 void ReadVEData() {
   if (VeData == 1) {
 
-    if (millis() - prev_millis33 > 1000) {  // read VE data every 1 second
+    if (millis() - prev_millis33 > 2000) {  // read VE data every 2 second
 
       int start1 = micros();  // Start timing VeData
       while (Serial2.available()) {
@@ -317,11 +334,11 @@ void ReadVEData() {
           if (strcmp(myve.veName[i], "V") == 0) {
             VictronVoltage = (atof(myve.veValue[i]) / 1000);
           }
-          // if (strcmp(myve.veName[i], "I") == 0) {
-          //   VictronCurrent = (atof(myve.veValue[i]) / 1000);
-          // }
+          if (strcmp(myve.veName[i], "I") == 0) {
+            VictronCurrent = (atof(myve.veValue[i]) / 1000);
+          }
         }
-        yield();
+        yield();  // not sure what this does
       }
       //PrintData(); //This prints all victron data received to the serial monitor, put this in "Loop" for debugging if needed
       int end1 = micros();     // End timing
@@ -677,7 +694,7 @@ void SendWifiData() {
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                // Readings
@@ -791,8 +808,10 @@ void SendWifiData() {
                SafeInt(TempSource),        //103
                SafeInt(IgnitionOverride),  //104
                // More Readings
-               SafeInt(temperatureThermistor),    // 105
-               SafeInt(MaxTemperatureThermistor)  // 106
+               SafeInt(temperatureThermistor),     // 105
+               SafeInt(MaxTemperatureThermistor),  // 106
+               SafeInt(VictronCurrent, 100)        // 107
+
 
       );
 
@@ -1199,6 +1218,12 @@ void setupServer() {
         inputMessage = request->getParam("AmpSrc")->value();
         writeFile(LittleFS, "/AmpSrc.txt", inputMessage.c_str());
         AmpSrc = inputMessage.toInt();
+        queueConsoleMessage("AmpSrc changed to: " + String(AmpSrc));  // Add this debug line
+      } else if (request->hasParam("BatteryVoltageSource")) {
+        inputMessage = request->getParam("BatteryVoltageSource")->value();
+        writeFile(LittleFS, "/BatteryVoltageSource.txt", inputMessage.c_str());
+        BatteryVoltageSource = inputMessage.toInt();
+        queueConsoleMessage("Battery voltage source changed to: " + String(BatteryVoltageSource));  // Debug line
       } else if (request->hasParam("R_fixed")) {
         inputMessage = request->getParam("R_fixed")->value();
         writeFile(LittleFS, "/R_fixed.txt", inputMessage.c_str());
@@ -1796,7 +1821,6 @@ void SaveAllData() {
   writeFile(LittleFS, "/AlternatorChargedEnergy.txt", String(AlternatorChargedEnergy).c_str());
   writeFile(LittleFS, "/MaxAlternatorTemperatureF.txt", String(MaxAlternatorTemperatureF).c_str());
   writeFile(LittleFS, "/MaxTemperatureThermistor.txt", String(MaxTemperatureThermistor).c_str());
-
 }
 
 void ResetRuntimeCounters() {
@@ -2326,12 +2350,11 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
     BatteryCOffset = readFile(LittleFS, "/BatteryCOffset.txt").toInt();
   }
 
-if (!LittleFS.exists("/MaxTemperatureThermistor.txt")) {
-  writeFile(LittleFS, "/MaxTemperatureThermistor.txt", String(MaxTemperatureThermistor).c_str());
-} else {
-  MaxTemperatureThermistor = readFile(LittleFS, "/MaxTemperatureThermistor.txt").toInt();  // Use toInt()
-}
-
+  if (!LittleFS.exists("/MaxTemperatureThermistor.txt")) {
+    writeFile(LittleFS, "/MaxTemperatureThermistor.txt", String(MaxTemperatureThermistor).c_str());
+  } else {
+    MaxTemperatureThermistor = readFile(LittleFS, "/MaxTemperatureThermistor.txt").toInt();  // Use toInt()
+  }
 }
 
 void InitPersistentVariables() {
@@ -2530,113 +2553,162 @@ void processConsoleQueue() {
 
 float getBatteryVoltage() {
   static unsigned long lastWarningTime = 0;
+  static unsigned long lastDebugTime = 0;
   const unsigned long WARNING_INTERVAL = 10000;  // 10 seconds between warnings
+  const unsigned long DEBUG_INTERVAL = 5000;     // 5 seconds between debug messages
 
-  float selectedVoltage = 0;  // ✅ Local variable instead of global
+  float selectedVoltage = 0;
+
+  // Debug current state every 5 seconds
+  if (millis() - lastDebugTime > DEBUG_INTERVAL) {
+    queueConsoleMessage("Voltage Debug - Source:" + String(BatteryVoltageSource) + " INA:" + String(IBV, 2) + "V ADS:" + String(BatteryV, 2) + "V Victron:" + String(VictronVoltage, 2) + "V");
+    lastDebugTime = millis();
+  }
 
   switch (BatteryVoltageSource) {
     case 0:  // INA228
-      if (INADisconnected == 0) {
-        selectedVoltage = IBV;  // ✅ Use local variable
+      if (INADisconnected == 0 && !isnan(IBV) && IBV > 8.0 && IBV < 70.0) {
+        selectedVoltage = IBV;
       } else {
         if (millis() - lastWarningTime > WARNING_INTERVAL) {
-          queueConsoleMessage("WARNING: INA228 disconnected, falling back to ADS1115");
+          queueConsoleMessage("WARNING: INA228 unavailable (disconnected:" + String(INADisconnected) + " value:" + String(IBV, 2) + "), falling back to ADS1115");
           lastWarningTime = millis();
         }
-        selectedVoltage = BatteryV;  // ✅ Fallback to ADS1115
+        selectedVoltage = BatteryV;
       }
       break;
 
     case 1:  // ADS1115
-      if (ADS1115Disconnected == 0) {
-        selectedVoltage = BatteryV;  // ✅ Use local variable
+      if (ADS1115Disconnected == 0 && !isnan(BatteryV) && BatteryV > 8.0 && BatteryV < 70.0) {
+        selectedVoltage = BatteryV;
       } else {
         if (millis() - lastWarningTime > WARNING_INTERVAL) {
-          queueConsoleMessage("WARNING: ADS1115 disconnected, falling back to INA228");
+          queueConsoleMessage("WARNING: ADS1115 unavailable (disconnected:" + String(ADS1115Disconnected) + " value:" + String(BatteryV, 2) + "), falling back to INA228");
           lastWarningTime = millis();
         }
-        selectedVoltage = IBV;  // ✅ Fallback to INA228
+        selectedVoltage = IBV;
       }
       break;
 
-    case 2:                                                 // VictronVeDirect
-      if (VictronVoltage > 8.0 && VictronVoltage < 70.0) {  // Sanity check
-        selectedVoltage = VictronVoltage;                   // ✅ Use local variable
+    case 2:  // VictronVeDirect
+      if (VictronVoltage > 8.0 && VictronVoltage < 70.0) {
+        selectedVoltage = VictronVoltage;
       } else {
         if (millis() - lastWarningTime > WARNING_INTERVAL) {
-          queueConsoleMessage("WARNING: Invalid Victron voltage, falling back to INA228");
+          queueConsoleMessage("WARNING: Invalid Victron voltage (" + String(VictronVoltage, 2) + "V), falling back to INA228");
           lastWarningTime = millis();
         }
-        selectedVoltage = IBV;  // ✅ Fallback
+        selectedVoltage = IBV;
       }
       break;
 
     case 3:  // NMEA0183
-      // Add NMEA0183 voltage reading when implemented
       if (millis() - lastWarningTime > WARNING_INTERVAL) {
-        queueConsoleMessage("NMEA0183 voltage source not yet implemented, using INA228");
+        queueConsoleMessage("NMEA0183 voltage source not implemented, using INA228");
         lastWarningTime = millis();
       }
-      selectedVoltage = IBV;  // ✅ Use local variable
+      selectedVoltage = IBV;
       break;
 
     case 4:  // NMEA2K
-      // Add NMEA2K voltage reading when implemented
       if (millis() - lastWarningTime > WARNING_INTERVAL) {
-        queueConsoleMessage("NMEA2K voltage source not yet implemented, using INA228");
+        queueConsoleMessage("NMEA2K voltage source not implemented, using INA228");
         lastWarningTime = millis();
       }
-      selectedVoltage = IBV;  // ✅ Use local variable
+      selectedVoltage = IBV;
       break;
 
     default:
       if (millis() - lastWarningTime > WARNING_INTERVAL) {
-        queueConsoleMessage("Invalid battery voltage source, using INA228");
+        queueConsoleMessage("Invalid battery voltage source (" + String(BatteryVoltageSource) + "), using INA228");
         lastWarningTime = millis();
       }
-      selectedVoltage = IBV;  // ✅ Use local variable
+      selectedVoltage = IBV;
       break;
   }
 
-  // Final check
+  // Final validation
   if (selectedVoltage < 8.0 || selectedVoltage > 70.0 || isnan(selectedVoltage)) {
     if (millis() - lastWarningTime > WARNING_INTERVAL) {
-      queueConsoleMessage("WARNING: No valid battery measurement detected");
+      queueConsoleMessage("CRITICAL: No valid battery voltage found! Using 999 default.");
       lastWarningTime = millis();
     }
-    selectedVoltage = 12.0;  // ✅ Return safe default instead of invalid value
+    selectedVoltage = 999;  // This is bs, but do something later
   }
 
-  return selectedVoltage;  // ✅ Return local variable
+  // Log successful reads occasionally for debugging
+  if (millis() - lastDebugTime > DEBUG_INTERVAL * 2) {  // Every 10 seconds
+    queueConsoleMessage("Voltage OK: " + String(selectedVoltage, 2));
+  }
+  return selectedVoltage;
 }
 
-// In your AdjustField() function or wherever you determine target amps
 float getTargetAmps() {
-  switch (AmpSrc) {
-    case 0:                 // Alt Hall Effect Sensor
-      return MeasuredAmps;  // Use alternator current from hall sensor
-    case 1:                 // Battery Shunt
-      return (Bcur);        // Use battery current from shunt
-    case 2:                 // NMEA2K Batt
-      // Add NMEA2K battery current reading when implemented
-      return (Bcur);  // Fallback to shunt for now
-    case 3:           // NMEA2K Alt
-      // Add NMEA2K alternator current reading when implemented
-      return MeasuredAmps;  // Fallback to hall sensor for now
-    case 4:                 // NMEA0183 Batt
-      // Add NMEA0183 battery current reading when implemented
-      return (Bcur);  // Fallback to shunt for now
-    case 5:           // NMEA0183 Alt
-      // Add NMEA0183 alternator current reading when implemented
-      return MeasuredAmps;  // Fallback to hall sensor for now
-    case 6:                 // Victron Batt
-      // Add Victron current reading when implemented
-      return (Bcur);        // Fallback to shunt for now
-    case 7:                 // Other
-      return MeasuredAmps;  // Default fallback
-    default:
-      return MeasuredAmps;  // Safe default
+  static unsigned long lastDebugTime = 0;
+  const unsigned long DEBUG_INTERVAL = 5000;  // 5 seconds between debug messages
+
+  float targetValue = 0;
+
+  // Debug current state every 5 seconds
+  if (millis() - lastDebugTime > DEBUG_INTERVAL) {
+    queueConsoleMessage("Amps Debug - Source:" + String(AmpSrc) + " MeasuredAmps:" + String(MeasuredAmps, 2) + " Bcur:" + String(Bcur, 2) + " VictronCurrent:" + String(VictronCurrent, 2));
+    lastDebugTime = millis();
   }
+
+  switch (AmpSrc) {
+    case 0:  // Alt Hall Effect Sensor
+      targetValue = MeasuredAmps;
+      break;
+
+    case 1:  // Battery Shunt
+      targetValue = Bcur;
+      break;
+
+    case 2:  // NMEA2K Batt
+      queueConsoleMessage("NMEA2K Battery current not implemented, using Battery Shunt");
+      targetValue = Bcur;
+      break;
+
+    case 3:  // NMEA2K Alt
+      queueConsoleMessage("NMEA2K Alternator current not implemented, using Alt Hall Sensor");
+      targetValue = MeasuredAmps;
+      break;
+
+    case 4:  // NMEA0183 Batt
+      queueConsoleMessage("NMEA0183 Battery current not implemented, using Battery Shunt");
+      targetValue = Bcur;
+      break;
+
+    case 5:  // NMEA0183 Alt
+      queueConsoleMessage("NMEA0183 Alternator current not implemented, using Alt Hall Sensor");
+      targetValue = MeasuredAmps;
+      break;
+
+    case 6:                             // Victron Batt
+      if (abs(VictronCurrent) > 0.1) {  // Valid reading
+        targetValue = VictronCurrent;
+      } else {
+        queueConsoleMessage("Victron current not available, using Battery Shunt");
+        targetValue = Bcur;
+      }
+      break;
+
+    case 7:  // Other
+      targetValue = MeasuredAmps;
+      break;
+
+    default:
+      queueConsoleMessage("Invalid AmpSrc (" + String(AmpSrc) + "), using Alt Hall Sensor");
+      targetValue = MeasuredAmps;
+      break;
+  }
+
+  // Log the result occasionally for debugging
+  if (millis() - lastDebugTime > DEBUG_INTERVAL) {
+    queueConsoleMessage("Target Amps: " + String(targetValue, 2) + "A from ");
+  }
+
+  return targetValue;
 }
 
 int thermistorTempC(float V_thermistor) {
