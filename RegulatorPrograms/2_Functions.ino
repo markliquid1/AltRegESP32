@@ -118,9 +118,7 @@ void AdjustField() {
     iiout = vvout / FieldResistance;
     // Update timer (only once)
     prev_millis22 = millis();
-
-
-/// delete this whole thing later
+    /// delete this whole thing later
     static unsigned long lastRunTime2g = 0;
     const unsigned long interval2g = 10000;  // 10 seconds
 
@@ -129,12 +127,12 @@ void AdjustField() {
 
       if (dutyCycle <= (MinDuty + 1.0)) {
         Serial.println();
-        String msg = " utargetAmps=" + String((float)uTargetAmps, 1)
-                     + " targetCurrent=" + String(targetCurrent, 1)
-                     + " currentBatteryVoltage=" + String(currentBatteryVoltage, 2) + "V"
-                     + " TempToUse=" + String((float)TempToUse, 1) + "F"
-                     + " dutyCycle=" + String(dutyCycle, 1);
-        queueConsoleMessage(msg);
+       // String msg = " utargetAmps=" + String((float)uTargetAmps, 1)
+          //           + " targetCurrent=" + String(targetCurrent, 1)
+          //           + " currentBatteryVoltage=" + String(currentBatteryVoltage, 2) + "V"
+          //           + " TempToUse=" + String((float)TempToUse, 1) + "F"
+           //          + " dutyCycle=" + String(dutyCycle, 1);
+      //  queueConsoleMessage(msg);      GREAT DEBUG TOOL ADD BACK IN LATER
       }
     }
   }
@@ -216,6 +214,12 @@ void ReadAnalogInputs() {
           case 3:
             Channel3V = Raw / 32767.0 * 6.144 * 833 * 2;  // Does nothing right now, thermistor someday?     The /2 is because of voltage divider
             temperatureThermistor = thermistorTempC(Channel3V);
+            if(temperatureThermistor>500){
+              temperatureThermistor=-99;
+            }
+            if(Channel3V>150){
+              Channel3V=-99;
+            }
             break;
         }
 
@@ -265,63 +269,106 @@ void TempTask(void *parameter) {
   }
 }
 void UpdateDisplay() {
-  if (millis() - prev_millis66 > 3000) {  // update display every 3 seconds
-    //  PrintData(); // this function prints everything available to serial monitor
-    display.clearDisplay();
-    display.setCursor(0, 0);
-    display.println("Vlts: ");
-    display.setCursor(35, 0);
-    display.println(BatteryV, 2);
-
-    display.setCursor(79, 0);
-    display.println("R: ");
-    display.setCursor(90, 0);
-    display.println(RPM, 0);
-
-    display.setCursor(0, 11);
-    display.println("Acur:");
-    display.setCursor(35, 11);
-    display.println(MeasuredAmps, 1);
-
-    display.setCursor(79, 11);
-    display.println("VV: ");
-    display.setCursor(90, 11);
-    display.println(VictronVoltage, 2);
-
-    display.setCursor(0, 22);
-    display.println("Temp: ");
-    display.setCursor(35, 22);
-    display.println(AlternatorTemperatureF, 1);
-
-    display.setCursor(79, 22);
-    display.println("t: ");
-    display.setCursor(90, 22);
-    display.println("extra");
-
-    display.setCursor(0, 33);
-    display.println("PWM%:");
-    display.setCursor(35, 33);
-    display.println(DutyCycle, 1);  //String(val, decimalPlaces)
-
-    display.setCursor(79, 33);
-    display.println("H: ");
-    display.setCursor(90, 33);
-    display.println(HeadingNMEA);
-
-    display.setCursor(0, 44);
-    display.println("Vout:");
-    display.setCursor(35, 44);
-    display.println(vvout, 2);  //String(val, decimalPlaces)
-
-    display.setCursor(0, 55);
-    display.println("Bcur:");
-    display.setCursor(35, 55);
-    display.println(Bcur, 1);  //String(val, decimalPlaces)
-
-    display.display();
+  // Double-check display availability
+  if (!displayAvailable) {
+    return;
+  }
+  
+  // Add a try-catch around all display operations
+  try {
+    if (millis() - prev_millis66 > 3000) {  // update display every 3 seconds
+      unsigned long displayStart = millis();
+      
+      // Try display operations with timeout
+      u8g2.clearBuffer();
+      if (millis() - displayStart > 2000) {
+        Serial.println("Display timeout - disabling display");
+        displayAvailable = false;
+        prev_millis66 = millis();
+        return;
+      }
+      
+      u8g2.setFont(u8g2_font_6x10_tf);
+      
+      // Row 1 (y=10)
+      u8g2.drawStr(0, 10, "Vlts:");
+      u8g2.setCursor(35, 10);
+      u8g2.print(BatteryV, 2);
+      
+      u8g2.drawStr(79, 10, "R:");
+      u8g2.setCursor(90, 10);
+      u8g2.print(RPM, 0);
+      
+      // Row 2 (y=20)
+      u8g2.drawStr(0, 20, "Acur:");
+      u8g2.setCursor(35, 20);
+      u8g2.print(MeasuredAmps, 1);
+      
+      u8g2.drawStr(79, 20, "VV:");
+      u8g2.setCursor(90, 20);
+      u8g2.print(VictronVoltage, 2);
+      
+      // Check timeout partway through
+      if (millis() - displayStart > 2000) {
+        Serial.println("Display timeout during updates - disabling display");
+        displayAvailable = false;
+        prev_millis66 = millis();
+        return;
+      }
+      
+      // Row 3 (y=30)
+      u8g2.drawStr(0, 30, "Temp:");
+      u8g2.setCursor(35, 30);
+      u8g2.print(AlternatorTemperatureF, 1);
+      
+      u8g2.drawStr(79, 30, "t:");
+      u8g2.setCursor(90, 30);
+      u8g2.print("extra");
+      
+      // Row 4 (y=40)
+      u8g2.drawStr(0, 40, "PWM%:");
+      u8g2.setCursor(35, 40);
+      u8g2.print(DutyCycle, 1);
+      
+      u8g2.drawStr(79, 40, "H:");
+      u8g2.setCursor(90, 40);
+      u8g2.print(HeadingNMEA);
+      
+      // Row 5 (y=50)
+      u8g2.drawStr(0, 50, "Vout:");
+      u8g2.setCursor(35, 50);
+      u8g2.print(vvout, 2);
+      
+      // Row 6 (y=60)
+      u8g2.drawStr(0, 60, "Bcur:");
+      u8g2.setCursor(35, 60);
+      u8g2.print(Bcur, 1);
+      
+      // Final timeout check before sendBuffer()
+      if (millis() - displayStart > 2000) {
+        Serial.println("Display timeout before sendBuffer - disabling display");
+        displayAvailable = false;
+        prev_millis66 = millis();
+        return;
+      }
+      
+      u8g2.sendBuffer();
+      
+      // Log if display operations took a long time
+      unsigned long totalTime = millis() - displayStart;
+      if (totalTime > 1000) {
+        Serial.println("Display took: " + String(totalTime) + "ms");
+      }
+      
+      prev_millis66 = millis();
+    }
+  } catch (...) {
+    Serial.println("Display operation failed - disabling display");
+    displayAvailable = false;
     prev_millis66 = millis();
   }
 }
+
 void ReadVEData() {
   if (VeData == 1) {
 
@@ -400,8 +447,7 @@ void Heading(const tN2kMsg &N2kMsg) {
     PrintLabelValWithConversionCheckUnDef("  Heading (deg): ", Heading, &RadToDeg, true);
     PrintLabelValWithConversionCheckUnDef("  Deviation (deg): ", Deviation, &RadToDeg, true);
     PrintLabelValWithConversionCheckUnDef("  Variation (deg): ", Variation, &RadToDeg, true);
-
-    HeadingNMEA = Heading;  //Turn this back on!!
+    HeadingNMEA = Heading; 
   } else {
     OutputStream->print("Failed to parse PGN: ");
     OutputStream->println(N2kMsg.PGN);
@@ -826,27 +872,19 @@ void SendWifiData() {
 void checkAndRestart() {
   //Restart the ESP32 every hour just for maintenance
   unsigned long currentMillis = millis();
-
   // Check if millis() has rolled over (happens after ~49.7 days)
   if (currentMillis < lastRestartTime) {
     lastRestartTime = 0;  // Reset on overflow
   }
-
   // Check if it's time to restart
   if (currentMillis - lastRestartTime >= RESTART_INTERVAL) {
-    queueConsoleMessage("Performing scheduled restart for system maintenance");
-
-    // Optional: send a message to the web client before restarting
+    // Send console message immediately instead of queuing
+    events.send("Performing scheduled restart for system maintenance", "console");
     events.send("Device restarting for maintenance. Will reconnect shortly.", "status");
-
-    // Allow time for the message to be sent
-    delay(500);
-
-    // Restart the ESP32
-    ESP.restart();
-
-    // This line won't be reached, but for clarity:
-    lastRestartTime = currentMillis;
+    // Longer delay to ensure messages are sent
+    delay(2500);
+    ESP.restart();     // Restart the ESP32
+    lastRestartTime = currentMillis;       // This line won't be reached, but for clarity...
   }
 }
 
@@ -889,18 +927,26 @@ bool connectToWiFi(const char *ssid, const char *password, unsigned long timeout
   }
 
   Serial.printf("Attempting to connect to WiFi network: %s\n", ssid);
+  Serial.println("DEBUG: connectToWiFi() started");
 
   WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
+
   WiFi.begin(ssid, password);
 
-  unsigned long startTime = millis();
-
+  // CRITICAL: Feed watchdog during connection with short intervals
   // Wait for connection or timeout
+  unsigned long startTime = millis();
+  unsigned long lastWatchdogReset = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - startTime < timeout) {
-    delay(500);
+    delay(250);
     Serial.print(".");
-  }
 
+    // Feed watchdog every 500ms during connection attempt
+    if (millis() - lastWatchdogReset > 500) {
+      lastWatchdogReset = millis();
+    }
+  }
   Serial.println();
 
   if (WiFi.status() == WL_CONNECTED) {
@@ -908,18 +954,19 @@ bool connectToWiFi(const char *ssid, const char *password, unsigned long timeout
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
 
-    // Initialize mDNS after successful connection
     if (MDNS.begin("alternator")) {
       Serial.println("mDNS responder started");
-      // Add service to mDNS
       MDNS.addService("http", "tcp", 80);
     } else {
       Serial.println("Error setting up mDNS responder!");
     }
+    Serial.println("DEBUG: connectToWiFi() finished - SUCCESS");
 
     return true;
   } else {
     Serial.println("Failed to connect to WiFi within timeout period");
+    Serial.println("DEBUG: connectToWiFi() finished - FAILED");
+
     return false;
   }
 }
@@ -2553,17 +2600,11 @@ void processConsoleQueue() {
 
 float getBatteryVoltage() {
   static unsigned long lastWarningTime = 0;
-  static unsigned long lastDebugTime = 0;
   const unsigned long WARNING_INTERVAL = 10000;  // 10 seconds between warnings
-  const unsigned long DEBUG_INTERVAL = 5000;     // 5 seconds between debug messages
 
   float selectedVoltage = 0;
 
-  // Debug current state every 5 seconds
-  if (millis() - lastDebugTime > DEBUG_INTERVAL) {
-    queueConsoleMessage("Voltage Debug - Source:" + String(BatteryVoltageSource) + " INA:" + String(IBV, 2) + "V ADS:" + String(BatteryV, 2) + "V Victron:" + String(VictronVoltage, 2) + "V");
-    lastDebugTime = millis();
-  }
+
 
   switch (BatteryVoltageSource) {
     case 0:  // INA228
@@ -2636,24 +2677,12 @@ float getBatteryVoltage() {
     selectedVoltage = 999;  // This is bs, but do something later
   }
 
-  // Log successful reads occasionally for debugging
-  if (millis() - lastDebugTime > DEBUG_INTERVAL * 2) {  // Every 10 seconds
-    queueConsoleMessage("Voltage OK: " + String(selectedVoltage, 2));
-  }
   return selectedVoltage;
 }
 
 float getTargetAmps() {
-  static unsigned long lastDebugTime = 0;
-  const unsigned long DEBUG_INTERVAL = 5000;  // 5 seconds between debug messages
 
   float targetValue = 0;
-
-  // Debug current state every 5 seconds
-  if (millis() - lastDebugTime > DEBUG_INTERVAL) {
-    queueConsoleMessage("Amps Debug - Source:" + String(AmpSrc) + " MeasuredAmps:" + String(MeasuredAmps, 2) + " Bcur:" + String(Bcur, 2) + " VictronCurrent:" + String(VictronCurrent, 2));
-    lastDebugTime = millis();
-  }
 
   switch (AmpSrc) {
     case 0:  // Alt Hall Effect Sensor
@@ -2703,11 +2732,6 @@ float getTargetAmps() {
       break;
   }
 
-  // Log the result occasionally for debugging
-  if (millis() - lastDebugTime > DEBUG_INTERVAL) {
-    queueConsoleMessage("Target Amps: " + String(targetValue, 2) + "A from ");
-  }
-
   return targetValue;
 }
 
@@ -2717,6 +2741,68 @@ int thermistorTempC(float V_thermistor) {
   float T0_K = T0_C + 273.15;
   float tempK = 1.0 / ((1.0 / T0_K) + (1.0 / Beta) * log(R_thermistor / R0));
   return (int)(tempK - 273.15);  // Cast to int for whole degrees
+}
+
+void checkWiFiConnection() {
+  static unsigned long lastWiFiCheckTime = 0;
+  static bool reconnecting = false;
+
+  if (currentWiFiMode == AWIFI_MODE_CLIENT && WiFi.status() != WL_CONNECTED) {
+    if (reconnecting) return;  // Prevent overlapping reconnection attempts
+
+    if (millis() - lastWiFiCheckTime > 5000) {  // Check every 5 seconds
+      lastWiFiCheckTime = millis();
+      reconnecting = true;
+
+      Serial.println("WiFi connection lost. Attempting to reconnect...");
+
+      String saved_ssid = readFile(LittleFS, WIFI_SSID_FILE);
+      String saved_password = readFile(LittleFS, WIFI_PASS_FILE);
+
+      if (connectToWiFi(saved_ssid.c_str(), saved_password.c_str(), 2000)) {
+        Serial.println("Reconnected to WiFi!");
+        queueConsoleMessage("Reconnected to WiFi!");
+      } else {
+        Serial.println("Failed to reconnect. Will try again in 5 seconds.");
+      }
+
+      reconnecting = false;
+    }
+  }
+}
+bool setupDisplay() {
+  // Add delay for ESP32 stabilization
+  delay(100);
+  
+  try {
+    // Initialize SPI carefully
+    SPI.begin();
+    delay(50);  // Let SPI settle
+    SPI.setFrequency(1000000);  // Start slow for stability
+    SPI.setDataMode(SPI_MODE0);
+    SPI.setBitOrder(MSBFIRST);
+    
+    // Test if SPI is working by trying a simple transaction
+    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+    SPI.endTransaction();
+    
+    // Initialize U8g2 with error checking
+    u8g2.begin();
+    
+    // Test if display is responding
+    u8g2.clearBuffer();
+    u8g2.sendBuffer();
+    
+    // If we get here without crashing, it's working
+    displayAvailable = true;
+    Serial.println("Display initialized successfully");
+    return true;
+    
+  } catch (...) {
+    Serial.println("Display initialization failed - exception caught");
+    displayAvailable = false;
+    return false;
+  }
 }
 
 void StuffToDoAtSomePoint() {
