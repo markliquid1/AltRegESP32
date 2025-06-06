@@ -435,6 +435,10 @@ Contact me at mark@xengineering.net       -->
 
     let rpmAmpsInitialized = false; // this is for the RPM/AMP speed based charging table
 
+    // for faster wifi reconnects after scheduled shut downs:
+    let reconnectInterval;
+    let reconnectionAttempts = 0;
+    const maxReconnectionAttempts = 15; // Try for 30 seconds (15 attempts × 2 seconds)
 
   </script>
 </head>
@@ -484,7 +488,7 @@ Contact me at mark@xengineering.net       -->
       <!-- Lock Button -->
       <div style="text-align: left; margin-top: 10px;">
         <input type="submit" id="lock-settings-button" onclick="lockSettingsManually(); return false;"
-          value="Lock Settings" style="width: 120px; background-color: #00a19a;" />
+        value="Lock Settings" style="width: 120px;" />
       </div>
 
 
@@ -493,10 +497,12 @@ Contact me at mark@xengineering.net       -->
 
 
   <style>
-    #lock-settings-button:hover {
-      background-color: #b71c1c;
-      /* Darker red on hover for the Lock Settings button */
-    }
+#lock-settings-button {
+  background-color: #555555 !important;
+}
+#lock-settings-button:hover {
+  background-color: var(--accent) !important;
+}
   </style>
 
   <script>
@@ -1272,7 +1278,7 @@ Contact me at mark@xengineering.net       -->
             </form>
           </div>
         </div>
-        
+
         <hr />
         <div class="form-row">
           <div class="form-label">NMEA 0183 Data (<span id="NMEA0183Data_echo">0</span>):</div>
@@ -2577,17 +2583,39 @@ Contact me at mark@xengineering.net       -->
           }
         });
 
+
         source.addEventListener('open', function () {
+          console.log('EventSource connected successfully');
           updateInlineStatus(true);
+
+          // Reset reconnection state on successful connection
+          if (reconnectInterval) {
+            clearInterval(reconnectInterval);
+            reconnectInterval = null;
+          }
+          reconnectionAttempts = 0;
         }, false);
+
+
         source.addEventListener('error', function () {
+          console.log('EventSource error - starting aggressive reconnection');
           updateInlineStatus(false);
-          // Attempt to reconnect after error
-          setTimeout(function () {
-            if (source.readyState === EventSource.CLOSED) {
-              // You might want to reinitialize the source here if needed
-            }
-          }, 5000); // Try to reconnect after 5 seconds
+
+          if (!reconnectInterval && reconnectionAttempts < maxReconnectionAttempts) {
+            reconnectInterval = setInterval(() => {
+              reconnectionAttempts++;
+              console.log(`Reconnection attempt ${reconnectionAttempts}/${maxReconnectionAttempts}`);
+
+              if (reconnectionAttempts >= maxReconnectionAttempts) {
+                clearInterval(reconnectInterval);
+                reconnectInterval = null;
+                console.log('Max reconnection attempts reached');
+                return;
+              }
+
+              window.location.reload(); // Force page reload to establish new connection
+            }, 2000); // Try every 2 seconds
+          }
         }, false);
 
         // Initial status - set to connected if we made it this far
@@ -2737,7 +2765,7 @@ Contact me at mark@xengineering.net       -->
                 continue;
               }
               // Values scaled by 100 on server (transmitted as integer × 100)
-              if (["BatteryV", "Channel3V", "IBV", "VictronVoltage", "vvout", "FullChargeVoltage","VictronCurrent",
+              if (["BatteryV", "Channel3V", "IBV", "VictronVoltage", "vvout", "FullChargeVoltage", "VictronCurrent",
                 "TargetFloatVoltage", "IBVMax", "Bcur", "MeasuredAmps", "MeasuredAmpsMax", "SoC_percent", "AlternatorCOffset", "BatteryCOffset", "R_fixed", "Beta", "T0_C"].includes(key)) {
                 el.textContent = (value / 100).toFixed(2);
               }
