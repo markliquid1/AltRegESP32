@@ -18,9 +18,8 @@
 #include <OneWire.h>            // temp sensors
 #include <DallasTemperature.h>  // temp sensors
 #include <SPI.h>                // display
+#include <U8g2lib.h>            // display
 #include <Wire.h>               // unknown if needed, but probably
-#include <Adafruit_GFX.h>       // display
-#include <Adafruit_SSD1306.h>   // display
 #include <ADS1115_lite.h>       // measuring 4 analog inputs
 ADS1115_lite adc(ADS1115_DEFAULT_ADDRESS);
 #include "VeDirectFrameHandler.h"  // for victron communication
@@ -223,28 +222,28 @@ int AlarmTest = 0;
 
 //More Settings
 // SOC Parameters
-int CurrentThreshold_scaled = 100;  // Ignore currents below this (A × 100)
-int PeukertExponent_scaled = 105;   // Peukert exponent × 100 (112 = 1.12)
-int ChargeEfficiency_scaled = 99;   // Charging efficiency % (0-100)
-int ChargedVoltage_scaled = 1450;   // Voltage threshold for "charged" (V × 100)
-int TailCurrent_scaled = 200;       // Current threshold for "charged" (% of capacity × 100 so 200 = 2%)
-int ShuntResistanceMicroOhm = 100;  // Shunt resistance in microohms
-int ChargedDetectionTime = 1000;    // Time at charged state to consider 100% (seconds)
-int IgnoreTemperature = 0;          // If no temp sensor, set to 1
-int BMSlogic = 0;                   // if BMS is asked to turn the alternator on and off
-int BMSLogicLevelOff = 0;           // set to 0 if the BMS gives a low signal (<3V?) when no charging is desired
-bool chargingEnabled;               // defined from other variables
-bool bmsSignalActive;               // Read from digital input pin 36
-int AlarmActivate = 0;              // set to 1 to enable alarm conditions
-int TempAlarm = 0;                  // above this value, sound alarm
-int VoltageAlarmHigh = 0;           // above this value, sound alarm
-int VoltageAlarmLow = 0;            // below this value, sound alarm
-int CurrentAlarmHigh = 0;           // above this value, sound alarm
-int MaximumAllowedBatteryAmps = 100;      // safety for battery, optional
-int FourWay = 0;                    // 0 voltage data source = INA228 , 1 voltage source = ADS1115, 2 voltage source = NMEA2k, 3 voltage source = Victron VeDirect
-int RPMScalingFactor = 2000;        // self explanatory, adjust until it matches your trusted tachometer
-float AlternatorCOffset = 0;        // tare for alt current
-float BatteryCOffset = 0;           // tare or batt current
+int CurrentThreshold_scaled = 100;    // Ignore currents below this (A × 100)
+int PeukertExponent_scaled = 105;     // Peukert exponent × 100 (112 = 1.12)
+int ChargeEfficiency_scaled = 99;     // Charging efficiency % (0-100)
+int ChargedVoltage_scaled = 1450;     // Voltage threshold for "charged" (V × 100)
+int TailCurrent_scaled = 200;         // Current threshold for "charged" (% of capacity × 100 so 200 = 2%)
+int ShuntResistanceMicroOhm = 100;    // Shunt resistance in microohms
+int ChargedDetectionTime = 1000;      // Time at charged state to consider 100% (seconds)
+int IgnoreTemperature = 0;            // If no temp sensor, set to 1
+int BMSlogic = 0;                     // if BMS is asked to turn the alternator on and off
+int BMSLogicLevelOff = 0;             // set to 0 if the BMS gives a low signal (<3V?) when no charging is desired
+bool chargingEnabled;                 // defined from other variables
+bool bmsSignalActive;                 // Read from digital input pin 36
+int AlarmActivate = 0;                // set to 1 to enable alarm conditions
+int TempAlarm = 0;                    // above this value, sound alarm
+int VoltageAlarmHigh = 0;             // above this value, sound alarm
+int VoltageAlarmLow = 0;              // below this value, sound alarm
+int CurrentAlarmHigh = 0;             // above this value, sound alarm
+int MaximumAllowedBatteryAmps = 100;  // safety for battery, optional
+int FourWay = 0;                      // 0 voltage data source = INA228 , 1 voltage source = ADS1115, 2 voltage source = NMEA2k, 3 voltage source = Victron VeDirect
+int RPMScalingFactor = 2000;          // self explanatory, adjust until it matches your trusted tachometer
+float AlternatorCOffset = 0;          // tare for alt current
+float BatteryCOffset = 0;             // tare or batt current
 
 //Pointless Flags delete later
 int ResetTemp;              // reset the maximum alternator temperature tracker
@@ -306,7 +305,7 @@ static unsigned long prev_millis5;     // used to initiate wifi data exchange
 static unsigned long lastINARead = 0;  // don't read the INA228 needlessly often
 // Global variable to track ESP32 restart time
 unsigned long lastRestartTime = 0;
-const unsigned long RESTART_INTERVAL = 300000;  // 1 hour in milliseconds = 3600000     
+const unsigned long RESTART_INTERVAL = 900000;  // 1 hour in milliseconds = 3600000 so this is 15 mins
 
 int BatteryVoltageSource = 0;  // select  "0">INA228    value="1">ADS1115     value="2">VictronVeDirect     value="3">NMEA0183     value="4">NMEA2K
 int AmpControlByRPM = 0;       // this is the toggle
@@ -338,9 +337,14 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 DeviceAddress tempDeviceAddress;
 
-
-//Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
-Adafruit_SSD1306 display(128, 64, 23, 18, 19, -1, 5);
+//Display
+// OLED pin mapping from RJ45 → ESP32
+#define OLED_CS 5      // RJ45 Pin 15
+#define OLED_DC 19     // RJ45 Pin 14
+#define OLED_RESET 27  // RJ45 Pin 13
+// SSD1306 OLED using 4-wire SPI, full framebuffer
+U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R0, OLED_CS, OLED_DC, OLED_RESET);
+bool displayAvailable = false;  // Global flag to track if display is working
 
 //VictronEnergy
 VeDirectFrameHandler myve;
@@ -510,31 +514,33 @@ const char WIFI_CONFIG_HTML[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
-
 void setup() {
-  esp_log_level_set("esp32-hal-i2c-ng", ESP_LOG_WARN);  // get rid of spam in serial monitor
-  queueConsoleMessage("System starting up...");
+  // Essential hardware setup first
   setCpuFrequencyMhz(240);
   Serial.begin(115200);
-  delay(50);           // not sure if this is needed
   pinMode(4, OUTPUT);  // This pin is used to provide a high signal to Field Enable pin
   pinMode(2, OUTPUT);  // This pin is used to provide a heartbeat (pin 2 of ESP32 is the LED)
   pinMode(39, INPUT);  // Ignition
-  // In ESP32 v3.x, this single function replaces both ledcSetup and ledcAttachPin
+
+  // PWM setup (needed for basic operation)
   ledcAttach(pwmPin, fffr, pwmResolution);
-  // Initialize LittleFS first
+
+  // Get WiFi connected ASAP - before file system operations
+  setupWiFi();
+  setupServer();
+
+  // Now do file system operations while WiFi is already connected
+  esp_log_level_set("esp32-hal-i2c-ng", ESP_LOG_WARN);  // get rid of spam in serial monitor
+  queueConsoleMessage("System starting up...");
+
+  // Initialize LittleFS
   if (!LittleFS.begin(true)) {
     Serial.println("An Error has occurred while mounting LittleFS");
     queueConsoleMessage("WARNING: An Error has occurred while mounting LittleFS");
     // Continue anyway since we might be able to format and use it later (?)
   }
-
   InitPersistentVariables();  // load all persistent variables from LittleFS.  If no files exist, create them.
   InitSystemSettings();       // load all settings from LittleFS.  If no files exist, create them.
-
-  // Setup WiFi (this will either connect to a saved network or create an AP)
-  setupWiFi();
-  setupServer();
   loadPasswordHash();
 
   //NMEA2K
@@ -559,39 +565,28 @@ void setup() {
   if (!INA.begin()) {
     Serial.println("Could not connect INA. Fix and Reboot");
     queueConsoleMessage("WARNING: Could not connect INA228 Battery Voltage/Amp measuring chip");
-
-
     INADisconnected = 1;
     // while (1)
     ;
   } else {
     INADisconnected = 0;
   }
-
   // at least 529ms for an update with these settings for average and conversion time
   INA.setMode(11);                       // Bh = Continuous shunt and bus voltage
   INA.setAverage(4);                     //0h = 1, 1h = 4, 2h = 16, 3h = 64, 4h = 128, 5h = 256, 6h = 512, 7h = 1024     Applies to all channels
   INA.setBusVoltageConversionTime(7);    // Sets the conversion time of the bus voltage measurement: 0h = 50 µs, 1h = 84 µs, 2h = 150 µs, 3h = 280 µs, 4h = 540 µs, 5h = 1052 µs, 6h = 2074 µs, 7h = 4120 µs
   INA.setShuntVoltageConversionTime(7);  // Sets the conversion time of the bus voltage measurement: 0h = 50 µs, 1h = 84 µs, 2h = 150 µs, 3h = 280 µs, 4h = 540 µs, 5h = 1052 µs, 6h = 2074 µs, 7h = 4120 µs
-
-  if (!display.begin(SSD1306_SWITCHCAPVCC)) {
-    Serial.println(F("SSD1306 dipslay allocation failed"));
-    queueConsoleMessage("WARNING: SSD1306 OLED display allocation failed");
-    for (;;)
-      ;
+  if (setupDisplay()) {
+    Serial.println("Display ready for use");
+  } else {
+    Serial.println("Continuing without display");
   }
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.clearDisplay();
-
   ChargingVoltageTarget = TargetFloatVoltage;
-
   //ADS1115
   //Connection check
   if (!adc.testConnection()) {
     Serial.println("ADS1115 Connection failed and would have triggered a return if it wasn't commented out");
     queueConsoleMessage("WARNING: ADS1115 Analog Input chip failed");
-
     ADS1115Disconnected = 1;
     // return;
   } else {
@@ -615,7 +610,6 @@ void setup() {
   // ADS1115_REG_CONFIG_DR_250SPS(0x00A0)            // 250 SPS, or every 4ms, note that noise free resolution is reduced to ~14.75-16bits, see table 2 in datasheet
   // ADS1115_REG_CONFIG_DR_475SPS(0x00C0)            // 475 SPS, or every 2.1ms, note that noise free resolution is reduced to ~14.3-15.5bits, see table 2 in datasheet
   // ADS1115_REG_CONFIG_DR_860SPS(0x00E0)            // 860 SPS, or every 1.16ms, note that noise free resolution is reduced to ~13.8-15bits, see table 2 in datasheet
-
   //onewire
   sensors.begin();
   sensors.setResolution(12);
@@ -623,20 +617,23 @@ void setup() {
   if (sensors.getDeviceCount() == 0) {
     Serial.println("WARNING: No DS18B20 sensors found on the bus.");
     queueConsoleMessage("WARNING: No DS18B20 sensors found on the bus");
-
     sensors.setWaitForConversion(false);  // this is critical!
   }
-
-
-  // Enable watchdog with new API for ESP32 Arduino 3.x
+  // Simple watchdog setup - don't try to deinit, just reconfigure
   esp_task_wdt_config_t wdt_config = {
-    .timeout_ms = 8000,    // 8 seconds timeout
-    .idle_core_mask = 0,   // Don't watch idle cores
+    .timeout_ms = 5000,    // 5 seconds timeout
+    .idle_core_mask = 0,   // Don't watch idle cores (like original)
     .trigger_panic = true  // Restart on timeout
   };
-  esp_task_wdt_init(&wdt_config);
-  esp_task_wdt_add(NULL);  // Add current task to watchdog
-
+  esp_err_t wdt_result = esp_task_wdt_reconfigure(&wdt_config);
+  if (wdt_result != ESP_OK) {
+    Serial.printf("Watchdog reconfigure failed: %s\n", esp_err_to_name(wdt_result));
+    // Try simple init instead
+    esp_task_wdt_add(NULL);
+  } else {
+    esp_task_wdt_add(NULL);
+    Serial.println("Watchdog reconfigured to 5s timeout");
+  }
   // Check if we recovered from a watchdog reset
   esp_reset_reason_t reset_reason = esp_reset_reason();
   if (reset_reason == ESP_RST_TASK_WDT) {
@@ -656,26 +653,32 @@ void setup() {
   );
 }
 
+
 void loop() {
   starttime = esp_timer_get_time();  // Record start time for Loop
   currentTime = millis();
-  esp_task_wdt_reset();  // Feed the watchdog
 
+  // In your loop(), add this debug info
+  static unsigned long lastNMEADebug = 0;
+  if (millis() - lastNMEADebug > 10000) {  // Every 10 seconds
+    Serial.println("NMEA2KData setting: " + String(NMEA2KData));
+    Serial.println("Current HeadingNMEA: " + String(HeadingNMEA));
+    lastNMEADebug = millis();
+  }
+
+  esp_task_wdt_reset();  // Feed the watchdog
   // SOC and runtime update every 2 seconds
   if (currentTime - lastSOCUpdateTime >= SOCUpdateInterval) {
     elapsedMillis = currentTime - lastSOCUpdateTime;
     lastSOCUpdateTime = currentTime;
-
     UpdateEngineRuntime(elapsedMillis);
     UpdateBatterySOC(elapsedMillis);
   }
-
   // Periodic Data Save Logic - run every DataSaveInterval
   if (currentTime - lastDataSaveTime >= DataSaveInterval) {  // have to figure out an appropriate rate for this to not wear out Flash memory
     lastDataSaveTime = currentTime;
     SaveAllData();
   }
-
   // Handle DNS requests if in AP mode
   if (currentWiFiMode == AWIFI_MODE_AP) {
     dnsHandleRequest();
@@ -683,22 +686,20 @@ void loop() {
     // This is all the normal stuff .... only done in Client Mode
     ReadAnalogInputs();
     if (VeData == 1) {
-      ReadVEData();  //read Data from Victron VeDirect
+      ReadVEData();  //read Data from Victron
     }
     if (NMEA2KData == 1) {
-      NMEA2000.ParseMessages();  // read data from NMEA2K
+      if (millis() - prev_millis743 > 2000) {  // Only parse every 2 seconds
+        NMEA2000.ParseMessages();
+        prev_millis743 = millis();
+      }
     }
-
-    UpdateDisplay();  // turn this back on later
-    AdjustField();    // This may need to get moved if it takes any power, but have to be careful we don't get stuck with Field On!
-
+    UpdateDisplay();
+    AdjustField();  // This may need to get moved if it takes any power, but have to be careful we don't get stuck with Field On!
     // Ignition = !digitalRead(39);  // see if ignition is on    (fix this later)
-
-
     if (IgnitionOverride == 1) {
       Ignition = 1;
     }
-
     if (Ignition == 0) {
       setCpuFrequencyMhz(10);
       WiFi.mode(WIFI_OFF);
@@ -713,27 +714,10 @@ void loop() {
       // Send WiFi data to client
       SendWifiData();
       // Check WiFi connection status if in client mode - only try to reconnect when ignition is on
-      if (currentWiFiMode == AWIFI_MODE_CLIENT && WiFi.status() != WL_CONNECTED) {
-        static unsigned long lastWiFiCheckTime = 0;
-        // Try to reconnect every 5 seconds
-        if (millis() - lastWiFiCheckTime > 5000) {
-          lastWiFiCheckTime = millis();
-          Serial.println("WiFi connection lost. Attempting to reconnect...");
-          String saved_ssid = readFile(LittleFS, WIFI_SSID_FILE);
-          String saved_password = readFile(LittleFS, WIFI_PASS_FILE);
-          if (connectToWiFi(saved_ssid.c_str(), saved_password.c_str(), 3000)) {
-            Serial.println("Reconnected to WiFi!");
-            queueConsoleMessage("Reconnected to WiFi!");
-            // mDNS will be reinitialized in the connectToWiFi function
-          } else {
-            Serial.println("Failed to reconnect. Will try again in 5 seconds.");
-          }
-        }
-      }
+      checkWiFiConnection();
       Freq = getCpuFrequencyMhz();  // unused at this time
     }
   }
-
   //Blink LED on and off every X seconds - works in both power modes for status indication
   // optimize for power consumpiton later
   //AP Mode: Fast triple blink pattern
@@ -767,6 +751,11 @@ void loop() {
   }
   endtime = esp_timer_get_time();  //Record end of Loop
   LoopTime = (endtime - starttime);
+  if (LoopTime > 5000000) {  // 5 seconds in microseconds
+    Serial.print("Loop time was too long: ");
+    Serial.println(LoopTime);
+    queueConsoleMessage("WARNING: Loop took " + String(LoopTime / 1000) + "ms - potential watchdog risk");
+  }
 
   if (LoopTime > MaximumLoopTime) {
     MaximumLoopTime = LoopTime;
