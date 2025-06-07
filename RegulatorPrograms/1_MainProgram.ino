@@ -47,7 +47,7 @@ INA228 INA(0x40);
 #include <String>                        // Console message queue system
 #include "esp_task_wdt.h"                //Watch dog to prevent hung up code from wreaking havoc
 #include "esp_log.h"                     // get rid of spam in serial monitor
-#include <TinyGPSPlus.h>                 // used for NMEA0183
+#include <TinyGPSPlus.h>                 // used for NMEA0183, not currently implemented 
 
 
 
@@ -122,9 +122,15 @@ int TargetAmps = 40;   //Normal alternator output, for best performance, set to 
 int TargetAmpLA = 25;  //Alternator output in Lo mode
 int uTargetAmps = 3;   // the one that gets used as the real target
 
-float TargetFloatVoltage = 13.4;
-float TargetBulkVoltage = 13.9;
-float ChargingVoltageTarget = 0;  // This is what the code really uses. It gets set to TargetFloatVoltage or TargetBulkVoltage later on
+float TargetFloatVoltage = 13.4; // self-explanatory
+float FullChargeVoltage = 13.9; // this could have been called TargetBulkVoltage to be more clear
+float ChargingVoltageTarget = 0;  // This becomes active target
+bool inBulkStage = true;
+unsigned long bulkCompleteTime = 1000;       // milliseconds
+unsigned long bulkCompleteTimer = 0;       // this is a timer, don't change
+
+unsigned long FLOAT_DURATION = 12 * 3600;  // 12 hours in seconds
+unsigned long floatStartTime = 0;
 
 float dutyCycle = 5;
 float dutyStep = 0.8;  // duty step to adjust field target by, each time the loop runs.  Larger numbers = faster response, less stability
@@ -139,7 +145,7 @@ float AlternatorTemperatureLimitF = 150;  // the offset appears to be +40 to +50
 int ManualFieldToggle = 1;                // set to 1 to enable manual control of regulator field output, helpful for debugging
 //float ManualVoltageTarget = 5;            // voltage target corresponding to the toggle above
 int SwitchControlOverride = 1;  // set to 1 for web interface switches to override physical switch panel
-int ForceFloat = 0;             // set to 1 to force the float voltage to be the charging target
+int ForceFloat = 0;  // Set to 1 to target 0 amps at battery (not really "float" charging, but we end up call it it that, sorry)
 int OnOff = 0;                  // 0 is charger off, 1 is charger On (corresponds to Alternator Enable in Basic Settings)
 int Ignition = 1;               // Digital Input      NEED THIS TO HAVE WIFI ON , FOR NOW
 int IgnitionOverride = 1;       // to fake the ignition signal w/ software
@@ -149,7 +155,7 @@ int LimpHome = 0;               // 1 will set to limp home mode, whatever that g
 int resolution = 12;            // for OneWire temp sensor measurement
 int VeData = 0;                 // Set to 1 if VE serial data exists
 int NMEA0183Data = 0;           // Set to 1 if NMEA serial data exists doesn't do anything yet
-int NMEA2KData = 0;             // doesn't do anything yet
+int NMEA2KData = 1;             // doesn't do anything yet
 //Field PWM stuff
 float interval = 0.8;   // larger value = faster response but more unstable
 float vout = 1;         // needs deleting
@@ -179,13 +185,21 @@ float Beta = 3950.0;                  // Thermistor Beta constant (e.g. 3950K)
 float R0 = 10000.0;                   // Thermistor resistance at T0
 float T0_C = 25.0;                    // Reference temp in Celsius
 int TempSource = 0;                   // 0 for OneWire default, 1 for Thermistor
-int temperatureThermistor = -999;     // thermistor reading
-int MaxTemperatureThermistor = -999;  // maximum thermistor temperature (on alternator)
+int temperatureThermistor = -99;     // thermistor reading
+int MaxTemperatureThermistor = -99;  // maximum thermistor temperature (on alternator)
 int TempToUse;                        // gets set to temperatureThermistor or AlternatorTemperatureF
 TaskHandle_t tempTaskHandle = NULL;   // make a separate cpu task for temp reading because it's so slow
 float VictronVoltage = 0;             // battery V reading from VeDirect
 float VictronCurrent = 0;             // battery Current (careful, can also be solar current if hooked up to solar charge controller not BMV712)
 float HeadingNMEA = 0;                // Just here to test NMEA functionality
+double LatitudeNMEA = 0.0;            // GPS Latitude
+double LongitudeNMEA = 0.0;           // GPS Longitude
+int SatelliteCountNMEA = 0;           // Number of satellites
+//Stuff for using AIS instead of GPS if GPS not present
+bool hasValidGNSSData = false;
+unsigned long lastValidGNSSTime = 0;
+const unsigned long GNSS_TIMEOUT = 10000; // 10 seconds - consider GNSS invalid if no update
+
 
 // ADS1115
 int16_t Raw = 0;
@@ -216,9 +230,15 @@ unsigned long engineRunAccumulator = 0;     // Milliseconds accumulator for engi
 unsigned long alternatorOnAccumulator = 0;  // Milliseconds accumulator for alternator runtime
 
 
-//Momentary Buttons
+//Momentary Buttons and alarm logic
 int FactorySettings = 0;  // Reset Button
-int AlarmTest = 0;
+// Add these alarm variables with your other globals
+bool alarmLatch = false;           // Current latched alarm state
+int AlarmLatchEnabled = 0;         // Whether latching is enabled (0/1 for consistency)
+int AlarmTest = 0;                 // Momentary alarm test (1 = test active)
+int ResetAlarmLatch = 0;           // Momentary reset command
+unsigned long alarmTestStartTime = 0;
+const unsigned long ALARM_TEST_DURATION = 2000; // 2 seconds test duration
 
 //More Settings
 // SOC Parameters
@@ -305,7 +325,7 @@ static unsigned long prev_millis5;     // used to initiate wifi data exchange
 static unsigned long lastINARead = 0;  // don't read the INA228 needlessly often
 // Global variable to track ESP32 restart time
 unsigned long lastRestartTime = 0;
-const unsigned long RESTART_INTERVAL = 900000;  // 1 hour in milliseconds = 3600000 so this is 15 mins
+const unsigned long RESTART_INTERVAL = 3600000;  // 1 hour in milliseconds = 3600000 so 900000 this is 15 mins
 
 int BatteryVoltageSource = 0;  // select  "0">INA228    value="1">ADS1115     value="2">VictronVeDirect     value="3">NMEA0183     value="4">NMEA2K
 int AmpControlByRPM = 0;       // this is the toggle
@@ -392,9 +412,6 @@ tNMEA2000Handler NMEA2000Handlers[] = {
 };
 
 Stream *OutputStream;
-
-//suspect i don't need this
-//void HandleNMEA2000Msg(const tN2kMsg &N2kMsg);
 
 //ADS1115 more pre-setup crap
 enum ADS1115_State {
@@ -519,8 +536,12 @@ void setup() {
   setCpuFrequencyMhz(240);
   Serial.begin(115200);
   pinMode(4, OUTPUT);  // This pin is used to provide a high signal to Field Enable pin
+  digitalWrite(4, LOW); // Start with field off
   pinMode(2, OUTPUT);  // This pin is used to provide a heartbeat (pin 2 of ESP32 is the LED)
   pinMode(39, INPUT);  // Ignition
+  pinMode(33, OUTPUT);  // Alarm aka Buzzer output
+  digitalWrite(33, HIGH); // Start with alarm off      FIX later
+
 
   // PWM setup (needed for basic operation)
   ledcAttach(pwmPin, fffr, pwmResolution);
@@ -534,7 +555,7 @@ void setup() {
   queueConsoleMessage("System starting up...");
 
   // Initialize LittleFS
-  if (!LittleFS.begin(true)) {
+if (!LittleFS.begin(true, "/littlefs", 10, "spiffs")) {
     Serial.println("An Error has occurred while mounting LittleFS");
     queueConsoleMessage("WARNING: An Error has occurred while mounting LittleFS");
     // Continue anyway since we might be able to format and use it later (?)
@@ -581,7 +602,6 @@ void setup() {
   } else {
     Serial.println("Continuing without display");
   }
-  ChargingVoltageTarget = TargetFloatVoltage;
   //ADS1115
   //Connection check
   if (!adc.testConnection()) {
@@ -658,14 +678,6 @@ void loop() {
   starttime = esp_timer_get_time();  // Record start time for Loop
   currentTime = millis();
 
-  // In your loop(), add this debug info
-  static unsigned long lastNMEADebug = 0;
-  if (millis() - lastNMEADebug > 10000) {  // Every 10 seconds
-    Serial.println("NMEA2KData setting: " + String(NMEA2KData));
-    Serial.println("Current HeadingNMEA: " + String(HeadingNMEA));
-    lastNMEADebug = millis();
-  }
-
   esp_task_wdt_reset();  // Feed the watchdog
   // SOC and runtime update every 2 seconds
   if (currentTime - lastSOCUpdateTime >= SOCUpdateInterval) {
@@ -694,12 +706,16 @@ void loop() {
         prev_millis743 = millis();
       }
     }
+
+    //CheckAlarms();  // Check alarms every loop cycle, unless it's found to slow things down much.  Turn back on later
+
     UpdateDisplay();
     AdjustField();  // This may need to get moved if it takes any power, but have to be careful we don't get stuck with Field On!
     // Ignition = !digitalRead(39);  // see if ignition is on    (fix this later)
     if (IgnitionOverride == 1) {
       Ignition = 1;
     }
+    logDashboardValues(); // just nice to have some history in the Console
     if (Ignition == 0) {
       setCpuFrequencyMhz(10);
       WiFi.mode(WIFI_OFF);
