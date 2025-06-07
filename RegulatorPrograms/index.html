@@ -59,6 +59,59 @@ Contact me at mark@xengineering.net       -->
       font-size: 14px;
     }
 
+
+    /* Main Tab Navigation */
+    .main-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      background: var(--card-light);
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .main-tab {
+      flex: 1;
+      min-width: 100px;
+      background: transparent;
+      border: none;
+      padding: 12px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      color: var(--text-dark);
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s ease;
+    }
+
+    .main-tab:hover {
+      background-color: var(--bg-light);
+    }
+
+    .main-tab.active {
+      background: linear-gradient(135deg, var(--accent), #008a85);
+      /* Gradient */
+      color: var(--text-light);
+      border-bottom: 3px solid var(--primary);
+      box-shadow: 0 3px 8px rgba(0, 161, 154, 0.4);
+      /* Teal shadow */
+      transform: translateY(-2px);
+      /* More lift */
+      font-weight: bold;
+      border-radius: var(--radius) var(--radius) 0 0;
+      /* Rounded top only */
+    }
+
+    /* Tab Content */
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
     h2 {
       color: var(--text-dark);
       border-bottom: 2px solid var(--accent);
@@ -66,6 +119,129 @@ Contact me at mark@xengineering.net       -->
       margin-top: 1rem;
       margin-bottom: 0.75rem;
       font-size: 18px;
+    }
+
+    /* Sub Tab Navigation */
+    .sub-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      background: var(--card-light);
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .sub-tab {
+      flex: 1;
+      min-width: 120px;
+      background: transparent;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text-dark);
+      border-bottom: 2px solid transparent;
+      transition: all 0.3s ease;
+    }
+
+    .sub-tab:hover {
+      background-color: var(--bg-light);
+    }
+
+    .sub-tab.active {
+      background-color: var(--bg-light);
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      font-weight: bold;
+    }
+
+    .sub-tab-content {
+      display: none;
+    }
+
+    .sub-tab-content.active {
+      display: block;
+    }
+
+    /* Dashboard Specific Styles */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .dashboard-card {
+      background: var(--card-light);
+      border-radius: var(--radius);
+      padding: 15px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      border-left: 4px solid var(--accent);
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: var(--text-dark);
+      margin-bottom: 15px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      text-align: center;
+      padding: 10px;
+      background: var(--bg-light);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: var(--text-dark);
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .metric-value {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--reading);
+    }
+
+    .metric-unit {
+      font-size: 12px;
+      color: var(--text-dark);
+      margin-left: 2px;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+    }
+
+    .control-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: var(--bg-light);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .control-label {
+      font-weight: bold;
+      color: var(--text-dark);
     }
 
     /* For fixing plot legend appearance */
@@ -97,7 +273,7 @@ Contact me at mark@xengineering.net       -->
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 4px;
-      width: 80px;
+      width: 50px;
     }
 
     input:focus {
@@ -155,8 +331,13 @@ Contact me at mark@xengineering.net       -->
       padding: 10px;
       margin-bottom: 16px;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      max-width: 600px;
+      /* Limit card width */
+      margin-left: auto;
+      /* Center the card */
+      margin-right: auto;
+      margin-bottom: 16px;
     }
-
 
     .section-title {
       background-color: #f0f0f0;
@@ -192,6 +373,7 @@ Contact me at mark@xengineering.net       -->
       /* Change from space-between to flex-start */
       align-items: center;
       margin-bottom: 8px;
+      max-width: 480px;
     }
 
     .form-label {
@@ -206,18 +388,69 @@ Contact me at mark@xengineering.net       -->
       align-items: center;
     }
 
-    /* Security section forms only - prevent passwords from being too far away */
-    .settings-card:first-child form {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      justify-content: flex-start;
+    /* FIXED: Password form responsive layout */
+    .password-form-container {
+      margin-bottom: 15px;
     }
 
-    /* Fix for Security section layout only */
-    #security-card .form-label {
-      flex: 0 0 auto;
-      min-width: 6em;
+    .password-form {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .password-input-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .password-form input[type="password"].password-input {
+      flex: 1;
+      min-width: 80px;
+      max-width: 160px;
+      /* Increased from 120px */
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 14px;
+      width: auto;
+      /* Override the general 50px width rule */
+    }
+
+    .password-form .password-button {
+      background-color: #555555;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: bold;
+      white-space: nowrap;
+      flex-shrink: 0;
+      min-width: 70px;
+    }
+
+    .password-form .show-checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .password-form .show-checkbox {
+      margin: 0;
+    }
+
+    .password-form .show-label {
+      font-size: 12px;
+      margin: 0;
+      user-select: none;
     }
 
 
@@ -243,6 +476,13 @@ Contact me at mark@xengineering.net       -->
     }
 
     @media (max-width: 768px) {
+
+      .main-tab {
+        font-size: 12px;
+        padding: 8px 12px;
+        min-width: 80px;
+      }
+
       .settings-grid {
         grid-template-columns: 1fr;
       }
@@ -254,6 +494,54 @@ Contact me at mark@xengineering.net       -->
       .grid {
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       }
+    }
+
+    /* Password form responsive breakpoints */
+    @media (max-width: 480px) {
+      .password-form {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+
+      .password-input-group {
+        justify-content: space-between;
+      }
+
+      .password-form .password-input {
+        max-width: none;
+        flex: 1;
+      }
+
+      .password-form .show-checkbox-container {
+        justify-self: flex-end;
+        margin-left: auto;
+      }
+    }
+
+    @media (max-width: 320px) {
+      .password-form .password-input {
+        min-width: 60px;
+      }
+
+      .password-form .password-button {
+        padding: 8px 10px;
+        font-size: 13px;
+      }
+    }
+
+    /* Recovery screen styling */
+
+    #recoveryDialog {
+      background: rgba(0, 0, 0, 0.5);
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
     /* Toggle switch styling */
@@ -377,6 +665,17 @@ Contact me at mark@xengineering.net       -->
       border-color: #444444;
     }
 
+    .dark-mode .password-form .password-input {
+      background-color: #1e1e1e;
+      color: #cccccc;
+      border-color: #444444;
+    }
+
+    .dark-mode .password-form .password-button {
+      background-color: #2a2a2a;
+      color: #aaaaaa;
+    }
+
     .dark-mode .section-title {
       background-color: #222222;
       color: #cccccc;
@@ -427,11 +726,50 @@ Contact me at mark@xengineering.net       -->
     let toggleStates = {}; // Track current toggle states
     let userInitiatedToggles = new Set(); // Track user-initiated changes
 
-
+    // feedback on button clicking etc
     function submitMessage() {
-      // console.log("Form submitted - values will update shortly");    // shut this off because it's "Console log spam" that might cause delay?
-      // setTimeout(function () { document.location.reload(false); }, 500); // not needed anymore because
+      // Just add a CSS class - zero chance of breaking anything
+      if (event && event.target) {
+        event.target.classList.add('button-pulse');
+        setTimeout(() => event.target.classList.remove('button-pulse'), 600);
+      }
     }
+
+
+    // function submitMessage() {
+    //   // Safe visual feedback - just change styling, don't touch disabled state or form submission
+    //   const submitButton = event.target.querySelector('input[type="submit"]') || event.target;
+
+    //   if (submitButton && submitButton.type === 'submit') {
+    //     // Just change the background color briefly
+    //     const originalBg = submitButton.style.backgroundColor;
+    //     submitButton.style.backgroundColor = '#00a19a';
+    //     submitButton.style.transition = 'background-color 0.3s';
+
+    //     setTimeout(() => {
+    //       submitButton.style.backgroundColor = originalBg;
+    //     }, 1000);
+    //   }
+    // }
+
+    // function submitMessage() {
+    //   // Find the submit button that was clicked
+    //   const submitButton = event.target.querySelector('input[type="submit"]') || event.target;
+
+    //   if (submitButton && submitButton.type === 'submit') {
+    //     const originalValue = submitButton.value;
+    //     submitButton.value = 'Saving...';
+    //     submitButton.disabled = true;
+    //     submitButton.style.backgroundColor = '#999';
+
+    //     // Re-enable after timeout
+    //     setTimeout(() => {
+    //       submitButton.value = originalValue;
+    //       submitButton.disabled = false;
+    //       submitButton.style.backgroundColor = '';
+    //     }, 2000);
+    //   }
+    // }
 
     let rpmAmpsInitialized = false; // this is for the RPM/AMP speed based charging table
 
@@ -444,1328 +782,1478 @@ Contact me at mark@xengineering.net       -->
 </head>
 
 <body><iframe name="hidden-form" style="display:none"></iframe>
-  <h2>Security</h2>
-  <div class="settings-grid">
-    <div class="settings-card" id="security-card">
-      <div id="lock-status" style="font-weight:bold; color:#00a19a; margin-bottom:10px;">LOCKED</div>
+  <h2>X Engineering Alternator Regulator</h2>
 
-      <!-- Enter Password Row -->
-      <div class="form-row">
-        <div class="form-label">Enter Password:</div>
-        <div class="form-input">
+  <!-- Main Tab Navigation -->
+  <div class="main-tabs">
+    <button class="main-tab active" onclick="showMainTab('dashboard')">Dashboard</button>
+    <button class="main-tab" onclick="showMainTab('settings')">Settings</button>
+    <button class="main-tab" onclick="showMainTab('livedata')">Live Data</button>
+    <button class="main-tab" onclick="showMainTab('plots')">Plots</button>
+    <button class="main-tab" onclick="showMainTab('console')">Console</button>
+  </div>
+
+  <!-- Dashboard Tab -->
+  <div id="dashboard" class="tab-content active">
+    <div class="dashboard-grid">
+
+      <!-- Sensor Data Card -->
+      <div class="dashboard-card">
+        <div class="card-title">Sensor Data</div>
+        <div class="metrics-grid">
+          <div class="metric">
+            <div class="metric-label">INA Battery Voltage</div>
+            <div class="metric-value"><span id="dash-ibv">0</span><span class="metric-unit">V</span></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">State of Charge</div>
+            <div class="metric-value"><span id="dash-soc">0</span><span class="metric-unit">%</span></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Alternator Current</div>
+            <div class="metric-value"><span id="dash-altcurrent">0</span><span class="metric-unit">A</span></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Battery Current</div>
+            <div class="metric-value"><span id="dash-battcurrent">0</span><span class="metric-unit">A</span></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Alternator Temp</div>
+            <div class="metric-value"><span id="dash-alttemp">0</span><span class="metric-unit">°F</span></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Engine Speed</div>
+            <div class="metric-value"><span id="dash-rpm">0</span><span class="metric-unit">RPM</span></div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Add this as a new card in dashboard-grid -->
+      <div class="dashboard-card">
+        <div class="card-title">Settings Access</div>
+        <div id="lock-status" style="font-weight:bold; color:#00a19a; margin-bottom:15px; text-align:center;">
+          Settings are Locked
+        </div>
+        <!-- Enter Password -->
+        <div class="password-form-container">
           <form action="/get" method="GET" target="hidden-form" onsubmit="setAdminPassword(); return false;">
             <input type="hidden" name="dummy" value="1" />
-            <div style="display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px;">
-              <input type="password" id="admin_password" name="admin_password" autocomplete="current-password" />
-              <input type="submit" id="admin_password_set" value="Enter" style="width: 70px;" />
-              <label style="font-size: 12px; white-space: nowrap;">
-                <input type="checkbox" onclick="togglePassword('admin_password')">Show
-              </label>
-              <span id="admin_password_msg" style="grid-column: 1 / -1; font-size: 12px; color: #00a19a;"></span>
+            <div class="password-form">
+              <div class="password-input-group">
+                <input type="password" id="admin_password" name="admin_password" placeholder="Enter password"
+                  autocomplete="current-password" class="password-input" />
+                <input type="submit" id="admin_password_set" value="Unlock" class="password-button" />
+                <div class="show-checkbox-container">
+                  <input type="checkbox" class="show-checkbox" onclick="togglePassword('admin_password')">
+                  <label class="show-label">Show</label>
+                </div>
+              </div>
             </div>
+            <div id="admin_password_msg" style="font-size: 12px; color: #00a19a; margin-top: 5px;"></div>
           </form>
+        </div>
+
+        <!-- Change Password (only show when unlocked) -->
+        <div id="change-password-section" style="display: none;">
+          <hr style="margin: 10px 0;">
+          <div class="password-form-container">
+            <form action="/setPassword" method="POST" target="hidden-form" onsubmit="return setNewPassword();">
+              <input type="hidden" name="password" class="password_field" />
+              <div class="password-form">
+                <div class="password-input-group">
+                  <input type="password" id="newpassword" name="newpassword" placeholder="New password"
+                    class="password-input" />
+                  <input type="submit" id="newpassword_set" value="Change" class="password-button" />
+                  <div class="show-checkbox-container">
+                    <input type="checkbox" class="show-checkbox" onclick="togglePassword('newpassword')">
+                    <label class="show-label">Show</label>
+                  </div>
+                </div>
+              </div>
+              <div id="newpassword_msg" style="font-size: 12px; color: #00a19a; margin-top: 5px;"></div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Lock Button (only show when unlocked) -->
+        <div id="lock-button-section" style="display: none; text-align: center; margin-top: 15px;">
+          <button onclick="lockSettingsManually(); return false;"
+            style="background-color: #555555; color: white; border: none; padding: 8px 16px; border-radius: var(--radius); cursor: pointer;">
+            Lock Settings
+          </button>
         </div>
       </div>
 
-      <!-- New Password Row -->
-      <div class="form-row">
-        <div class="form-label">New Password:</div>
-        <div class="form-input">
-          <form action="/setPassword" method="POST" target="hidden-form" onsubmit="return setNewPassword();">
-            <input type="hidden" name="password" class="password_field" />
-            <div style="display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px;">
-              <input type="password" id="newpassword" name="newpassword" />
-              <input type="submit" id="newpassword_set" value="Set" style="width: 70px;" />
-              <label style="font-size: 12px; white-space: nowrap;">
-                <input type="checkbox" onclick="togglePassword('newpassword')">Show
-              </label>
-              <span id="newpassword_msg" style="grid-column: 1 / -1; font-size: 12px; color: #00a19a;"></span>
+      <!-- Quick Settings Card -->
+      <div class="dashboard-card">
+        <div class="card-title">Quick Settings</div>
+        <div class="controls-grid">
+          <div class="control-item">
+            <span class="control-label">Alternator Enable</span>
+            <label class="switch">
+              <input type="checkbox" id="dash-alternator-enable" onchange="dashboardToggleAlternator()">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="control-item">
+            <span class="control-label">Force Float Mode</span>
+            <label class="switch">
+              <input type="checkbox" id="dash-force-float" onchange="dashboardToggleForceFloat()">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="control-item">
+            <span class="control-label">Alarm Enable</span>
+            <label class="switch">
+              <input type="checkbox" id="dash-alarm-enable" onchange="dashboardToggleAlarmEnable()">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="control-item">
+            <span class="control-label">Charge Rate Normal (A) (<span id="dash-target-amps-echo">0</span>)</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="number" id="dash-charge-rate" min="0" step="1"
+                style="width: 60px; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius);"
+                placeholder="New" />
+              <button onclick="dashboardSetChargeRate()"
+                style="background-color: #555555; color: white; border: none; padding: 4px 8px; border-radius: var(--radius); cursor: pointer; font-size: 12px;">
+                Set
+              </button>
             </div>
-          </form>
+          </div>
+
+          <div class="control-item">
+            <span class="control-label">Dark Mode</span>
+            <label class="switch">
+              <input type="checkbox" id="dash-dark-mode" onchange="dashboardToggleDarkMode()">
+              <span class="slider"></span>
+            </label>
+          </div>
         </div>
       </div>
-
-      <!-- Lock Button -->
-      <div style="text-align: left; margin-top: 10px;">
-        <input type="submit" id="lock-settings-button" onclick="lockSettingsManually(); return false;"
-        value="Lock Settings" style="width: 120px;" />
-      </div>
-
-
     </div>
   </div>
 
 
-  <style>
-#lock-settings-button {
-  background-color: #555555 !important;
-}
-#lock-settings-button:hover {
-  background-color: var(--accent) !important;
-}
-  </style>
+  <div id="settings" class="tab-content">
+    <h2>Settings</h2>
 
-  <script>
-    function togglePassword(id) {
-      var field = document.getElementById(id);
-      field.type = (field.type === "password") ? "text" : "password";
-    }
+    <!-- Settings Sub-tabs -->
+    <div class="sub-tabs">
+      <button class="sub-tab active" onclick="showSubTab('settings', 'basic')">Basic</button>
+      <button class="sub-tab" onclick="showSubTab('settings', 'thermistor')">Thermistor</button>
+      <button class="sub-tab" onclick="showSubTab('settings', 'advanced')">Advanced</button>
+      <button class="sub-tab" onclick="showSubTab('settings', 'alarms')">Alarms</button>
+      <button class="sub-tab" onclick="showSubTab('settings', 'battery')">Battery Monitor</button>
+      <button class="sub-tab" onclick="showSubTab('settings', 'system')">System</button>
+    </div>
 
+    <div id="settings-section" class="locked">
+      <div class="settings-grid">
 
-    //Reset buttons
-    function resetTemp() {
-      updatePasswordFields();
-      document.getElementById("ResetTemp").value = "1";
-      document.getElementById("ResetTemp_button").form.submit();
-      document.getElementById("MaxAlternatorTemperatureF_ID").textContent = "--";
-    }
-    function resetCurrent() {
-      updatePasswordFields();
-      document.getElementById("ResetCurrent").value = "1";
-      document.getElementById("ResetCurrent_button").form.submit();
-      document.getElementById("MeasuredAmpsMaxID").textContent = "—";
-    }
-    function resetVoltage() {
-      updatePasswordFields();
-      document.getElementById("ResetVoltage").value = "1";
-      document.getElementById("ResetVoltage_button").form.submit();
-      document.getElementById("IBVMaxID").textContent = "--";
-    }
-    function resetEngineRunTime() {
-      updatePasswordFields();
-      document.getElementById("ResetEngineRunTime").value = "1";
-      document.getElementById("ResetEngineRunTime_button").form.submit();
-      document.getElementById("EngineRunTimeID").textContent = "--";
-    }
-    function resetAlternatorOnTime() {
-      updatePasswordFields();
-      document.getElementById("ResetAlternatorOnTime").value = "1";
-      document.getElementById("ResetAlternatorOnTime_button").form.submit();
-      document.getElementById("AlternatorOnTimeID").textContent = "--";
-    }
-    function resetEnergy() {
-      updatePasswordFields();
-      document.getElementById("ResetEnergy").value = "1";
-      document.getElementById("ResetEnergy_button").form.submit();
-      document.getElementById("ChargedEnergyID").textContent = "--";
-    }
-    function resetDischargedEnergy() {
-      updatePasswordFields();
-      document.getElementById("ResetDischargedEnergy").value = "1";
-      document.getElementById("ResetDischargedEnergy_button").form.submit();
-      document.getElementById("DischargedEnergyID").textContent = "--";
-    }
-    function resetFuelUsed() {
-      updatePasswordFields();
-      document.getElementById("ResetFuelUsed").value = "1";
-      document.getElementById("ResetFuelUsed_button").form.submit();
-      document.getElementById("AlternatorFuelUsedID").textContent = "--";
-    }
-    function resetAlternatorChargedEnergy() {
-      updatePasswordFields();
-      document.getElementById("ResetAlternatorChargedEnergy").value = "1";
-      document.getElementById("ResetAlternatorChargedEnergy_button").form.submit();
-      document.getElementById("AlternatorChargedEnergyID").textContent = "--";
-    }
-    function resetEngineCycles() {
-      updatePasswordFields();
-      document.getElementById("ResetEngineCycles").value = "1";
-      document.getElementById("ResetEngineCycles_button").form.submit();
-      document.getElementById("EngineCyclesID").textContent = "--";
-    }
-    function resetRPMMax() {
-      updatePasswordFields();
-      document.getElementById("ResetRPMMax").value = "1";
-      document.getElementById("ResetRPMMax_button").form.submit();
-      document.getElementById("RPMMaxID").textContent = "--";
-    }
-    function resetThermTemp() {
-      updatePasswordFields();
-      document.getElementById("ResetThermTemp").value = "1";
-      document.getElementById("ResetThermTemp_button").form.submit();
-      document.getElementById("MaxTemperatureThermistorID").textContent = "--";
-    }
-  </script>
+        <!-- Basic Settings Sub-tab -->
+        <div id="settings-basic" class="sub-tab-content active">
+          <div class="settings-card">
+            <div class="section-title">Basic</div>
+            <hr />
+            <div class="form-row">
+              <div class="form-label">Alternator Enable (<span id="OnOff_echo">0</span>):</div>
+              <div class="form-input">
+                <form action="/get" method="GET" target="hidden-form">
+                  <input type="hidden" name="password" class="password_field">
+                  <span class="toggle-label">Off</span>
+                  <label class="switch">
+                    <input id="OnOff_checkbox" type="checkbox" onchange="if(handleUserToggle('OnOff_checkbox', 'OnOff', 'OnOff')) { this.form.submit();
+              submitMessage(); }" />
+                    <span class="slider round"></span>
+                  </label>
+                  <span class="toggle-label">On</span>
+                  <input id="OnOff" name="OnOff" type="number" value="" style="display:none;" />
+                </form>
+              </div>
+            </div>
 
 
-  <h2>Settings</h2>
+            <hr />
+            <div class="form-row">
+              <div class="form-label">Charge Rate Normal (A) (<span id="TargetAmps_echo">0</span>):</div>
+              <div class="form-input">
+                <form action="/get" method="GET" target="hidden-form">
+                  <input type="hidden" name="password" class="password_field">
+                  <input name="TargetAmps" type="number" step="1" min="0" />
+                  <input onclick="submitMessage()" type="submit" value="Set" />
+                </form>
+              </div>
+            </div>
 
-  <div id="settings-section" class="locked">
+            <hr />
+            <div class="form-row">
+              <div class="form-label">Charge Rate Low (A) (<span id="TargetAmpL_echo">0</span>):</div>
+              <div class="form-input">
+                <form action="/get" method="GET" target="hidden-form">
+                  <input type="hidden" name="password" class="password_field">
+                  <input name="TargetAmpL" type="number" step="1" min="0" />
+                  <input onclick="submitMessage()" type="submit" value="Set" />
+                </form>
+              </div>
+            </div>
+
+            <hr />
+            <div class="form-row">
+              <div class="form-label">Charge Rate (<span id="HiLow_echo">0</span>):</div>
+              <div class="form-input">
+                <form action="/get" method="GET" target="hidden-form">
+                  <input type="hidden" name="password" class="password_field">
+                  <span class="toggle-label">Low</span>
+                  <label class="switch">
+                    <input id="HiLow_checkbox" type="checkbox" onchange="if(handleUserToggle('HiLow_checkbox', 'HiLow', 'HiLow')) { this.form.submit();
+              submitMessage(); }" />
+                    <span class="slider round"></span>
+                  </label>
+                  <span class="toggle-label">Normal</span>
+                  <input id="HiLow" name="HiLow" type="number" value="" style="display:none;" />
+                </form>
+              </div>
+            </div>
+
+            <hr />
+            <div class="form-row">
+              <div class="form-label">Force Float Mode (<span id="ForceFloat_echo">0</span>):</div>
+              <div class="form-input">
+                <form action="/get" method="GET" target="hidden-form">
+                  <input type="hidden" name="password" class="password_field">
+                  <span class="toggle-label">Off</span>
+                  <label class="switch">
+                    <input id="ForceFloat_checkbox" type="checkbox"
+                      onchange="if(handleUserToggle('ForceFloat_checkbox', 'ForceFloat', 'ForceFloat')) { this.form.submit(); submitMessage(); }" />
+                    <span class="slider round"></span>
+                  </label>
+                  <span class="toggle-label">On</span>
+                  <input id="ForceFloat" name="ForceFloat" type="number" value="" style="display:none;" />
+                </form>
+              </div>
+            </div>
+
+            <hr />
+            <div class="form-row">
+              <div class="form-label">Amp Target Source (<span id="AmpSrc_echo">0</span>):</div>
+              <div class="form-input">
+                <form action="/get" method="GET" target="hidden-form">
+                  <input type="hidden" name="password" class="password_field">
+                  <select name="AmpSrc">
+                    <option value="0">Alt Hall Effect Sensor</option>
+                    <option value="1">Battery Shunt</option>
+                    <option value="2">NMEA2K Batt</option>
+                    <option value="3">NMEA2K Alt</option>
+                    <option value="4">NMEA0183 Batt</option>
+                    <option value="5">NMEA0183 Alt</option>
+                    <option value="6">Victron Batt</option>
+                    <option value="7">Other</option>
+                  </select>
+                  <input onclick="submitMessage()" type="submit" value="Set" />
+                </form>
+              </div>
+            </div>
+
+            <hr />
+            <div class="form-row">
+              <div class="form-label">Alternator Temp Limit (F) (<span id="TemperatureLimitF_echo">0</span>):</div>
+              <div class="form-input">
+                <form action="/get" method="GET" target="hidden-form">
+                  <input type="hidden" name="password" class="password_field">
+                  <input name="TemperatureLimitF" type="number" step="1" min="0" />
+                  <input onclick="submitMessage()" type="submit" value="Set" />
+                </form>
+              </div>
+            </div>
+
+            <hr />
+            <div class="form-row">
+              <div class="form-label">Bulk Voltage (<span id="FullChargeVoltage_echo">0</span>):</div>
+              <div class="form-input">
+                <form action="/get" method="GET" target="hidden-form">
+                  <input type="hidden" name="password" class="password_field">
+                  <input name="FullChargeVoltage" type="number" step="0.01" min="0" />
+                  <input onclick="submitMessage()" type="submit" value="Set" />
+                </form>
+              </div>
+            </div>
+
+            <hr />
+            <div class="form-row">
+              <div class="form-label">Bulk Completion Time (sec) (<span id="bulkCompleteTime_echo">0</span>):</div>
+              <div class="form-input">
+                <form action="/get" method="GET" target="hidden-form">
+                  <input type="hidden" name="password" class="password_field">
+                  <input name="bulkCompleteTime" type="number" step="1" min="0" />
+                  <input onclick="submitMessage()" type="submit" value="Set" />
+                </form>
+              </div>
+            </div>
+
+            <hr />
+            <div class="form-row">
+              <div class="form-label">Float Voltage (<span id="TargetFloatVoltage_echo">0</span>):
+              </div>
+              <div class="form-input">
+                <form action="/get" method="GET" target="hidden-form">
+                  <input type="hidden" name="password" class="password_field">
+                  <input name="TargetFloatVoltage" type="number" step="0.01" min="0" />
+                  <input onclick="submitMessage()" type="submit" value="Set" />
+                </form>
+              </div>
+            </div>
+
+            <hr />
+            <div class="form-row">
+              <div class="form-label">Float Duration (hours) (<span id="FLOAT_DURATION_echo">0</span>):</div>
+              <div class="form-input">
+                <form action="/get" method="GET" target="hidden-form">
+                  <input type="hidden" name="password" class="password_field">
+                  <input name="FLOAT_DURATION" type="number" step="1" min="0" />
+                  <input onclick="submitMessage()" type="submit" value="Set" />
+                </form>
+              </div>
+            </div>
+
+          </div> <!-- CLOSE Basic settings-card ??? -->
+        </div>
+      </div>
+      <!-- Thermistor Settings Sub-tab -->
+      <div id="settings-thermistor" class="sub-tab-content">
+        <div class="settings-card">
+          <div class="section-title">Thermistor</div>
+
+          <div class="form-row">
+            <div class="form-label">Temp Source (<span id="TempSource_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">Digital (default)</span>
+                <label class="switch">
+                  <input id="TempSource_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('TempSource_checkbox', 'TempSource', 'TempSource')) { this.form.submit(); submitMessage(); }">
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">Thermistor</span>
+                <input id="TempSource" name="TempSource" type="number" value="" style="display:none;" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Series Resistor R_fixed Ω (<span id="R_fixed_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="R_fixed" type="number" step="1" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Thermistor Beta (<span id="Beta_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="Beta" type="number" step="1" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Reference Temp T0 °C (<span id="T0_C_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="T0_C" type="number" step="0.1" min="-50" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+
+        </div> <!-- CLOSE Thermistor settings-card -->
+      </div>
+
+      <!-- Advanced Settings Sub-tab -->
+      <div id="settings-advanced" class="sub-tab-content">
+        <div class="settings-card">
+          <div class="section-title">Advanced</div>
+          <div class="form-row">
+            <div class="form-label">Field Switching Freq (hz) (<span id="SwitchingFrequency_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="SwitchingFrequency" type="number" step="1" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Field Adj Step (V) (<span id="interval_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="interval" type="number" step="0.001" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Field Adj. Time Interval (ms) (<span id="FieldAdjustmentinterval_echo">0</span>):
+            </div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="FieldAdjustmentinterval" type="number" step="1" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+          <hr />
+
+          <div class="form-row">
+            <div class="form-label">RPM Scaling Factor (<span id="RPMScalingFactor_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="RPMScalingFactor" type="number" step="0.01" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Ignore Alt Temp (<span id="IgnoreTemperature_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">No</span>
+                <label class="switch">
+                  <input id="IgnoreTemperature_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('IgnoreTemperature_checkbox', 'IgnoreTemperature', 'IgnoreTemperature')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">Yes</span>
+                <input id="IgnoreTemperature" name="IgnoreTemperature" type="number" value="" style="display:none;" />
+              </form>
+            </div>
+          </div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Defer to BMS Control (<span id="BMSLogic_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">No</span>
+                <label class="switch">
+                  <input id="BMSLogic_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('BMSLogic_checkbox', 'BMSLogic', 'BMSLogic')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">Yes</span>
+                <input id="BMSLogic" name="BMSLogic" type="number" value="" style="display:none;" />
+              </form>
+            </div>
+          </div>
+
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Charge on ___ BMS Signal (<span id="BMSLogicLevelOff_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">Low</span>
+                <label class="switch">
+                  <input id="BMSLogicLevelOff_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('BMSLogicLevelOff_checkbox', 'BMSLogicLevelOff', 'BMSLogicLevelOff')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">High</span>
+                <input id="BMSLogicLevelOff" name="BMSLogicLevelOff" type="number" value="" style="display:none;" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Min Field (%) (<span id="MinDuty_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="MinDuty" type="number" step="1" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Max Field (%) (<span id="MaxDuty_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="MaxDuty" type="number" step="1" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Field Resistance (Ohms) (<span id="FieldResistance_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="FieldResistance" type="number" step=".01" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">RPM-Based Charging Curve (<span id="AmpControlByRPM_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">Off</span>
+                <label class="switch">
+                  <input id="AmpControlByRPM_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('AmpControlByRPM_checkbox', 'AmpControlByRPM', 'AmpControlByRPM')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">On</span>
+                <input id="AmpControlByRPM" name="AmpControlByRPM" type="number" value="" style="display:none;" />
+              </form>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-label"></div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <table style="border-collapse: collapse; width: 100%;">
+                  <thead>
+                    <tr>
+                      <th
+                        style="padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: left; font-size: 12px;">
+                        RPM</th>
+                      <th
+                        style="padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: left; font-size: 12px;">
+                        Amps</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style="padding: 2px;"><input name="RPM1" type="number" step="1" min="0" id="RPM1_input"
+                          style="width: 70px;" /></td>
+                      <td style="padding: 2px;"><input name="Amps1" type="number" step="1" min="0" id="Amps1_input"
+                          style="width: 70px;" /></td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 2px;"><input name="RPM2" type="number" step="1" min="0" id="RPM2_input"
+                          style="width: 70px;" /></td>
+                      <td style="padding: 2px;"><input name="Amps2" type="number" step="1" min="0" id="Amps2_input"
+                          style="width: 70px;" /></td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 2px;"><input name="RPM3" type="number" step="1" min="0" id="RPM3_input"
+                          style="width: 70px;" /></td>
+                      <td style="padding: 2px;"><input name="Amps3" type="number" step="1" min="0" id="Amps3_input"
+                          style="width: 70px;" /></td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 2px;"><input name="RPM4" type="number" step="1" min="0" id="RPM4_input"
+                          style="width: 70px;" /></td>
+                      <td style="padding: 2px;"><input name="Amps4" type="number" step="1" min="0" id="Amps4_input"
+                          style="width: 70px;" /></td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 2px;"><input name="RPM5" type="number" step="1" min="0" id="RPM5_input"
+                          style="width: 70px;" /></td>
+                      <td style="padding: 2px;"><input name="Amps5" type="number" step="1" min="0" id="Amps5_input"
+                          style="width: 70px;" /></td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 2px;"><input name="RPM6" type="number" step="1" min="0" id="RPM6_input"
+                          style="width: 70px;" /></td>
+                      <td style="padding: 2px;"><input name="Amps6" type="number" step="1" min="0" id="Amps6_input"
+                          style="width: 70px;" /></td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 2px;"><input name="RPM7" type="number" step="1" min="0" id="RPM7_input"
+                          style="width: 70px;" /></td>
+                      <td style="padding: 2px;"><input name="Amps7" type="number" step="1" min="0" id="Amps7_input"
+                          style="width: 70px;" /></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div style="margin-top: 8px;">
+                  <input onclick="submitMessage()" type="submit" value="Save" />
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Manual Field Enable (<span id="ManualFieldToggle_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">Off</span>
+                <label class="switch">
+                  <input id="ManualFieldToggle_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('ManualFieldToggle_checkbox', 'ManualFieldToggle', 'ManualFieldToggle')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">On</span>
+                <input id="ManualFieldToggle" name="ManualFieldToggle" type="number" value="" style="display:none;" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Manual Field PWM (%) (<span id="ManualDuty_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="ManualDuty" type="number" step="1" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Limp Home Mode (<span id="LimpHome_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">Off</span>
+                <label class="switch">
+                  <input id="LimpHome_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('LimpHome_checkbox', 'LimpHome', 'LimpHome')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">On</span>
+                <input id="LimpHome" name="LimpHome" type="number" value="" style="display:none;" />
+              </form>
+            </div>
+          </div>
+
+        </div> <!-- closes .settings-card for Advanced -->
+      </div>
+
+      <!-- Alarms Settings Sub-tab -->
+      <div id="settings-alarms" class="sub-tab-content">
+        <div class="settings-card">
+          <div class="section-title">Alarm / Emergency</div>
+          <div class="form-row">
+            <div class="form-label">Alarm Enable (<span id="AlarmActivate_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">Off</span>
+                <label class="switch">
+                  <input id="AlarmActivate_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('AlarmActivate_checkbox', 'AlarmActivate', 'AlarmActivate')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">Armed</span>
+                <input id="AlarmActivate" name="AlarmActivate" type="number" value="" style="display:none;" />
+              </form>
+            </div>
+          </div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">High Temp Alarm (F) (<span id="TempAlarm_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="TempAlarm" type="number" step="1" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">High Voltage Alarm (<span id="VoltageAlarmHigh_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="VoltageAlarmHigh" type="number" step="0.1" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Low Voltage Alarm (<span id="VoltageAlarmLow_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="VoltageAlarmLow" type="number" step="0.1" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">High Current Alarm (Alt) (A) (<span id="CurrentAlarmHigh_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="CurrentAlarmHigh" type="number" step="1" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">High Current Alarm (Batt) (A) (<span id="MaximumAllowedBatteryAmps_echo">0</span>):
+            </div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="MaximumAllowedBatteryAmps" type="number" step="1" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+
+          <!-- Add to Alarms sub-tab AFTER existing alarm settings -->
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Alarm Latch Mode (<span id="AlarmLatchEnabled_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">Momentary</span>
+                <label class="switch">
+                  <input id="AlarmLatchEnabled_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('AlarmLatchEnabled_checkbox', 'AlarmLatchEnabled', 'AlarmLatchEnabled')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">Latched</span>
+                <input id="AlarmLatchEnabled" name="AlarmLatchEnabled" type="number" value="" style="display:none;" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Alarm Test (<span id="AlarmTest_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input type="hidden" name="AlarmTest" value="1">
+                <button type="submit"
+                  onclick="this.disabled=true; setTimeout(() => this.disabled=false, 3000); submitMessage();"
+                  style="background-color: #555555; color: white; border: none; padding: 8px 16px; border-radius: var(--radius); cursor: pointer; font-weight: bold;">
+                  Test Buzzer (2s)
+                </button>
+              </form>
+            </div>
+          </div>
+
+
+        </div>
+      </div>
+      <!-- Battery Monitor Settings Sub-tab -->
+      <div id="settings-battery" class="sub-tab-content">
+        <div class="settings-card">
+          <div class="section-title">Battery Monitor</div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Battery Capacity (Amp hr) (<span id="BatteryCapacity_Ah_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="BatteryCapacity_Ah" type="number" step="1" min="0" max="3000" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Current Threshold (A) (<span id="CurrentThreshold_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="CurrentThreshold" type="number" step="0.1" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Tail Current (%) (<span id="TailCurrent_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="TailCurrent" type="number" step="0.1" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Charge Detection Time (s) (<span id="ChargedDetectionTime_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="ChargedDetectionTime" type="number" step="1" min="0" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Peukert Exponent (<span id="PeukertExponent_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="PeukertExponent" type="number" step="0.01" min="1" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Charge Efficiency (%) (<span id="ChargeEfficiency_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="ChargeEfficiency" type="number" step="1" min="50" max="100" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Max Charge Detect Voltage (<span id="ChargedVoltage_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="ChargedVoltage" type="number" step="0.01" min="12" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Shunt Resitance uOhms (micro)(<span id="ShuntResistanceMicroOhm_echo">0</span>):
+            </div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="ShuntResistanceMicroOhm" type="number" step="1" min="12" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Set SoC Manually (%) (<span id="ManualSOCPoint_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="ManualSOCPoint" type="number" step="1" min="0" max="100" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- System Settings Sub-tab -->
+      <div id="settings-system" class="sub-tab-content">
+        <div class="settings-card">
+          <div class="section-title">System</div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Dark Mode:</div>
+            <div class="form-input">
+              <span class="toggle-label">Off</span>
+              <label class="switch">
+                <input id="DarkMode_checkbox" type="checkbox"
+                  onchange="document.body.classList.toggle('dark-mode'); localStorage.setItem('darkMode', this.checked ? '1' : '0'); updateUplotTheme(currentTempPlot); updateUplotTheme(voltagePlot); updateUplotTheme(rpmPlot);" />
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">On</span>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">VE.Direct Data (<span id="VeData_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">Off</span>
+                <label class="switch">
+                  <input id="VeData_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('VeData_checkbox', 'VeData', 'VeData')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">On</span>
+                <input id="VeData" name="VeData" type="number" value="" style="display:none;" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">NMEA 0183 Data (<span id="NMEA0183Data_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">Off</span>
+                <label class="switch">
+                  <input id="NMEA0183Data_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('NMEA0183Data_checkbox', 'NMEA0183Data', 'NMEA0183Data')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">On</span>
+                <input id="NMEA0183Data" name="NMEA0183Data" type="number" value="" style="display:none;" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">NMEA2K Data (<span id="NMEA2KData_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">Off</span>
+                <label class="switch">
+                  <input id="NMEA2KData_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('NMEA2KData_checkbox', 'NMEA2KData', 'NMEA2KData')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">On</span>
+                <input id="NMEA2KData" name="NMEA2KData" type="number" value="" style="display:none;" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Battery Voltage Source (<span id="BatteryVoltageSource_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <select name="BatteryVoltageSource">
+                  <option value="0">0 INA228</option>
+                  <option value="1">1 ADS1115</option>
+                  <option value="2">2 VictronVeDirect</option>
+                  <option value="3">3 NMEA0183</option>
+                  <option value="4">4 NMEA2K</option>
+                </select>
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Invert Battery Amps (<span id="InvertBattAmps_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">No</span>
+                <label class="switch">
+                  <input id="InvertBattAmps_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('InvertBattAmps_checkbox', 'InvertBattAmps', 'InvertBattAmps')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">Yes</span>
+                <input id="InvertBattAmps" name="InvertBattAmps" type="number" value="" style="display:none;" />
+              </form>
+            </div>
+          </div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Invert Alternator Amps (<span id="InvertAltAmps_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">No</span>
+                <label class="switch">
+                  <input id="InvertAltAmps_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('InvertAltAmps_checkbox', 'InvertAltAmps', 'InvertAltAmps')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">Yes</span>
+                <input id="InvertAltAmps" name="InvertAltAmps" type="number" value="" style="display:none;" />
+              </form>
+            </div>
+          </div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Alternator Current Offset (A) (<span id="AlternatorCOffset_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="AlternatorCOffset" type="number" step=".01" min="-100" max="100" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Battery Current Offset (A) (<span id="BatteryCOffset_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="BatteryCOffset" type="number" step=".01" min="-100" max="100" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Plot Points (X axis length) (<span id="maxPoints_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="maxPoints" type="number" step="1" min="5" max="10000" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Switch Panel Override (<span id="SwitchControlOverride_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">Off</span>
+                <label class="switch">
+                  <input id="SwitchControlOverride_checkbox" type="checkbox" onchange="if(handleUserToggle('SwitchControlOverride_checkbox', 'SwitchControlOverride',
+              'SwitchControlOverride')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">On</span>
+                <input id="SwitchControlOverride" name="SwitchControlOverride" type="number" value=""
+                  style="display:none;" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Ignition Override (<span id="IgnitionOverride_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">Off</span>
+                <label class="switch">
+                  <input id="IgnitionOverride_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('IgnitionOverride_checkbox', 'IgnitionOverride', 'IgnitionOverride')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">On</span>
+                <input id="IgnitionOverride" name="IgnitionOverride" type="number" value="" style="display:none;" />
+              </form>
+            </div>
+          </div>
+
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Factory Reset:</div>
+            <div class="form-input">
+              <button type="button" id="factory-reset-btn" onclick="factoryReset()"
+                style="background-color: #555555; color: white; border: none; padding: 8px 16px; border-radius: var(--radius); cursor: pointer; font-weight: bold;">
+                Restore Defaults
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div id="livedata" class="tab-content">
+    <h2>Live Data</h2>
+
+    <!-- Live Data Sub-tabs -->
+    <div class="sub-tabs">
+      <button class="sub-tab active" onclick="showSubTab('livedata', 'battery')">Battery</button>
+      <button class="sub-tab" onclick="showSubTab('livedata', 'alternator')">Alternator</button>
+      <button class="sub-tab" onclick="showSubTab('livedata', 'engine')">Engine</button>
+      <button class="sub-tab" onclick="showSubTab('livedata', 'esp32')">ESP32</button>
+      <button class="sub-tab" onclick="showSubTab('livedata', 'other')">Other</button>
+    </div>
     <div class="settings-grid">
 
-      <div class="settings-card">
-        <div class="section-title">Basic</div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Alternator Enable (<span id="OnOff_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="OnOff_checkbox" type="checkbox" onchange="if(handleUserToggle('OnOff_checkbox', 'OnOff', 'OnOff')) { this.form.submit();
-              submitMessage(); }" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="OnOff" name="OnOff" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
+      <!-- Battery Live Data Sub-tab -->
+      <div id="livedata-battery" class="sub-tab-content active">
+        <div class="settings-card">
+          <div class="section-title">Battery</div>
+          <div class="grid">
+            <div class="card">
+              <p>ADS Battery Voltage</p>
+              <p class="reading"><span id="BatteryVID">0</span> V</p>
+            </div>
+            <div class="card">
+              <p>Victron Battery Voltage</p>
+              <p class="reading"><span id="VictronVoltageID">0</span> V</p>
+            </div>
+            <div class="card">
+              <p>INA Battery Voltage</p>
+              <p class="reading"><span id="IBVID">0</span> V</p>
+            </div>
 
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Charge Rate Normal (A) (<span id="TargetAmps_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="TargetAmps" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Charge Rate Low (A) (<span id="TargetAmpL_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="TargetAmpL" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Charge Rate (<span id="HiLow_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Low</span>
-              <label class="switch">
-                <input id="HiLow_checkbox" type="checkbox" onchange="if(handleUserToggle('HiLow_checkbox', 'HiLow', 'HiLow')) { this.form.submit();
-              submitMessage(); }" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">Normal</span>
-              <input id="HiLow" name="HiLow" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Amp Target Source (<span id="AmpSrc_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <select name="AmpSrc">
-                <option value="0">Alt Hall Effect Sensor</option>
-                <option value="1">Battery Shunt</option>
-                <option value="2">NMEA2K Batt</option>
-                <option value="3">NMEA2K Alt</option>
-                <option value="4">NMEA0183 Batt</option>
-                <option value="5">NMEA0183 Alt</option>
-                <option value="6">Victron Batt</option>
-                <option value="7">Other</option>
-              </select>
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Alternator Temp Limit (F) (<span id="TemperatureLimitF_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="TemperatureLimitF" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Bulk Voltage (<span id="FullChargeVoltage_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="FullChargeVoltage" type="number" step="0.01" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Float Voltage (<span id="TargetFloatVoltage_echo">0</span>):
-          </div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="TargetFloatVoltage" type="number" step="0.01" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-      </div> <!-- CLOSE Basic settings-card ??? -->
-
-      <div class="settings-card">
-        <div class="section-title">Thermistor</div>
-
-        <div class="form-row">
-          <div class="form-label">Temp Source (<span id="TempSource_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Digital</span>
-              <label class="switch">
-                <input id="TempSource_checkbox" type="checkbox"
-                  onchange="if(handleUserToggle('TempSource_checkbox', 'TempSource', 'TempSource')) { this.form.submit(); submitMessage(); }">
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">Thermistor</span>
-              <input id="TempSource" name="TempSource" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Series Resistor R_fixed Ω (<span id="R_fixed_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="R_fixed" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Thermistor Beta (<span id="Beta_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="Beta" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Reference Temp T0 °C (<span id="T0_C_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="T0_C" type="number" step="0.1" min="-50" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-
-
-      </div> <!-- CLOSE Thermistor settings-card -->
-
-
-
-
-      <div class="settings-card">
-        <div class="section-title">Advanced</div>
-        <div class="form-row">
-          <div class="form-label">Field Switching Freq (hz) (<span id="SwitchingFrequency_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="SwitchingFrequency" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Field Adj Step (V) (<span id="interval_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="interval" type="number" step="0.001" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Field Adj. Time Interval (ms) (<span id="FieldAdjustmentinterval_echo">0</span>):
-          </div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="FieldAdjustmentinterval" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">RPM Scaling Factor (<span id="RPMScalingFactor_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="RPMScalingFactor" type="number" step="0.01" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-
-        <div class="form-row">
-          <div class="form-label">Ignore Alt Temp (<span id="IgnoreTemperature_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">No</span>
-              <label class="switch">
-                <input id="IgnoreTemperature_checkbox" type="checkbox"
-                  onchange="if(handleUserToggle('IgnoreTemperature_checkbox', 'IgnoreTemperature', 'IgnoreTemperature')) { this.form.submit(); submitMessage(); }" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">Yes</span>
-              <input id="IgnoreTemperature" name="IgnoreTemperature" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Defer to BMS Control (<span id="BMSLogic_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">No</span>
-              <label class="switch">
-                <input id="BMSLogic_checkbox" type="checkbox"
-                  onchange="if(handleUserToggle('BMSLogic_checkbox', 'BMSLogic', 'BMSLogic')) { this.form.submit(); submitMessage(); }" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">Yes</span>
-              <input id="BMSLogic" name="BMSLogic" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Charge on ___ BMS Signal (<span id="BMSLogicLevelOff_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Low</span>
-              <label class="switch">
-                <input id="BMSLogicLevelOff_checkbox" type="checkbox"
-                  onchange="if(handleUserToggle('BMSLogicLevelOff_checkbox', 'BMSLogicLevelOff', 'BMSLogicLevelOff')) { this.form.submit(); submitMessage(); }" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">High</span>
-              <input id="BMSLogicLevelOff" name="BMSLogicLevelOff" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Min Field (%) (<span id="MinDuty_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="MinDuty" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Max Field (%) (<span id="MaxDuty_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="MaxDuty" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Field Resistance (Ohms) (<span id="FieldResistance_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="FieldResistance" type="number" step=".01" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">RPM-Based Charging Curve (<span id="AmpControlByRPM_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="AmpControlByRPM_checkbox" type="checkbox"
-                  onchange="if(handleUserToggle('AmpControlByRPM_checkbox', 'AmpControlByRPM', 'AmpControlByRPM')) { this.form.submit(); submitMessage(); }" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="AmpControlByRPM" name="AmpControlByRPM" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-label"></div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <table style="border-collapse: collapse; width: 100%;">
-                <thead>
-                  <tr>
-                    <th
-                      style="padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: left; font-size: 12px;">
-                      RPM</th>
-                    <th
-                      style="padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: left; font-size: 12px;">
-                      Amps</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td style="padding: 2px;"><input name="RPM1" type="number" step="1" min="0" id="RPM1_input"
-                        style="width: 70px;" /></td>
-                    <td style="padding: 2px;"><input name="Amps1" type="number" step="1" min="0" id="Amps1_input"
-                        style="width: 70px;" /></td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 2px;"><input name="RPM2" type="number" step="1" min="0" id="RPM2_input"
-                        style="width: 70px;" /></td>
-                    <td style="padding: 2px;"><input name="Amps2" type="number" step="1" min="0" id="Amps2_input"
-                        style="width: 70px;" /></td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 2px;"><input name="RPM3" type="number" step="1" min="0" id="RPM3_input"
-                        style="width: 70px;" /></td>
-                    <td style="padding: 2px;"><input name="Amps3" type="number" step="1" min="0" id="Amps3_input"
-                        style="width: 70px;" /></td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 2px;"><input name="RPM4" type="number" step="1" min="0" id="RPM4_input"
-                        style="width: 70px;" /></td>
-                    <td style="padding: 2px;"><input name="Amps4" type="number" step="1" min="0" id="Amps4_input"
-                        style="width: 70px;" /></td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 2px;"><input name="RPM5" type="number" step="1" min="0" id="RPM5_input"
-                        style="width: 70px;" /></td>
-                    <td style="padding: 2px;"><input name="Amps5" type="number" step="1" min="0" id="Amps5_input"
-                        style="width: 70px;" /></td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 2px;"><input name="RPM6" type="number" step="1" min="0" id="RPM6_input"
-                        style="width: 70px;" /></td>
-                    <td style="padding: 2px;"><input name="Amps6" type="number" step="1" min="0" id="Amps6_input"
-                        style="width: 70px;" /></td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 2px;"><input name="RPM7" type="number" step="1" min="0" id="RPM7_input"
-                        style="width: 70px;" /></td>
-                    <td style="padding: 2px;"><input name="Amps7" type="number" step="1" min="0" id="Amps7_input"
-                        style="width: 70px;" /></td>
-                  </tr>
-                </tbody>
-              </table>
-              <div style="margin-top: 8px;">
-                <input onclick="submitMessage()" type="submit" value="Save" />
+            <div class="card">
+              <p>Max Ever Battery Voltage</p>
+              <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+                <span id="IBVMaxID">0</span><span>V</span>
+                <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+                  <input type="hidden" name="ResetVoltage" id="ResetVoltage" value="0" />
+                  <input type="hidden" name="password" class="password_field" />
+                  <button type="button" class="btn-small" onclick="resetVoltage()"
+                    id="ResetVoltage_button">Reset</button>
+                </form>
               </div>
-            </form>
-          </div>
-        </div>
+            </div>
+
+            <div class="card">
+              <p>State of Charge</p>
+              <p class="reading"><span id="SoC_percentID">0</span> %</p>
+            </div>
+
+            <div class="card">
+              <p>Alternator Output Energy</p>
+              <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+                <span id="AlternatorChargedEnergyID">0</span><span>Wh</span>
+                <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+                  <input type="hidden" name="ResetAlternatorChargedEnergy" id="ResetAlternatorChargedEnergy"
+                    value="0" />
+                  <input type="hidden" name="password" class="password_field" />
+                  <button type="button" class="btn-small" onclick="resetAlternatorChargedEnergy()"
+                    id="ResetAlternatorChargedEnergy_button">Reset</button>
+                </form>
+              </div>
+            </div>
+
+            <div class="card">
+              <p>Batt Discharged Energy</p>
+              <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+                <span id="DischargedEnergyID">0</span><span>Wh</span>
+                <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+                  <input type="hidden" name="ResetDischargedEnergy" id="ResetDischargedEnergy" value="0" />
+                  <input type="hidden" name="password" class="password_field" />
+                  <button type="button" class="btn-small" onclick="resetDischargedEnergy()"
+                    id="ResetDischargedEnergy_button">Reset</button>
+                </form>
+              </div>
+            </div>
+
+            <div class="card">
+              <p>Battery Current</p>
+              <p class="reading"><span id="BCurrID">0</span> A</p>
+            </div>
+
+            <div class="card">
+              <p>Victron Battery Current</p>
+              <p class="reading"><span id="VictronCurrentID">0</span> A</p>
+            </div>
 
 
-
-      </div> <!-- closes .settings-card for Advanced -->
-
-
-      <div class="settings-card">
-        <div class="section-title">Alarm / Emergency</div>
-        <div class="form-row">
-          <div class="form-label">Alarm Enable (<span id="AlarmActivate_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="AlarmActivate_checkbox" type="checkbox"
-                  onchange="if(handleUserToggle('AlarmActivate_checkbox', 'AlarmActivate', 'AlarmActivate')) { this.form.submit(); submitMessage(); }" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">Armed</span>
-              <input id="AlarmActivate" name="AlarmActivate" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">High Temp Alarm (F) (<span id="TempAlarm_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="TempAlarm" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">High Voltage Alarm (<span id="VoltageAlarmHigh_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="VoltageAlarmHigh" type="number" step="0.1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Low Voltage Alarm (<span id="VoltageAlarmLow_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="VoltageAlarmLow" type="number" step="0.1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">High Current Alarm (Alt) (A) (<span id="CurrentAlarmHigh_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="CurrentAlarmHigh" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">High Current Alarm (Batt) (A) (<span id="MaximumAllowedBatteryAmps_echo">0</span>):
-          </div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="MaximumAllowedBatteryAmps" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Manual Field Enable (<span id="ManualFieldToggle_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="ManualFieldToggle_checkbox" type="checkbox"
-                  onchange="if(handleUserToggle('ManualFieldToggle_checkbox', 'ManualFieldToggle', 'ManualFieldToggle')) { this.form.submit(); submitMessage(); }" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="ManualFieldToggle" name="ManualFieldToggle" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Manual Field PWM (%) (<span id="ManualDuty_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="ManualDuty" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Limp Home Mode (<span id="LimpHome_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="LimpHome_checkbox" type="checkbox"
-                  onchange="if(handleUserToggle('LimpHome_checkbox', 'LimpHome', 'LimpHome')) { this.form.submit(); submitMessage(); }" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="LimpHome" name="LimpHome" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-
-      </div>
-
-
-      <div class="settings-card">
-        <div class="section-title">Battery Monitor</div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Battery Capacity (Amp hr) (<span id="BatteryCapacity_Ah_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="BatteryCapacity_Ah" type="number" step="1" min="0" max="3000" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-
-        <div class="form-row">
-          <div class="form-label">Current Threshold (A) (<span id="CurrentThreshold_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="CurrentThreshold" type="number" step="0.1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Tail Current (%) (<span id="TailCurrent_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="TailCurrent" type="number" step="0.1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Charge Detection Time (s) (<span id="ChargedDetectionTime_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="ChargedDetectionTime" type="number" step="1" min="0" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Peukert Exponent (<span id="PeukertExponent_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="PeukertExponent" type="number" step="0.01" min="1" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Charge Efficiency (%) (<span id="ChargeEfficiency_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="ChargeEfficiency" type="number" step="1" min="50" max="100" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Max Charge Detect Voltage (<span id="ChargedVoltage_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="ChargedVoltage" type="number" step="0.01" min="12" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Shunt Resitance uOhms (micro)(<span id="ShuntResistanceMicroOhm_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="ShuntResistanceMicroOhm" type="number" step="1" min="12" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Set SoC Manually (%) (<span id="ManualSOCPoint_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="ManualSOCPoint" type="number" step="1" min="0" max="100" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
           </div>
         </div>
       </div>
-      <div class="settings-card">
-        <div class="section-title">System</div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Dark Mode:</div>
-          <div class="form-input">
-            <span class="toggle-label">Off</span>
-            <label class="switch">
-              <input id="DarkMode_checkbox" type="checkbox"
-                onchange="document.body.classList.toggle('dark-mode'); localStorage.setItem('darkMode', this.checked ? '1' : '0'); updateUplotTheme(currentTempPlot); updateUplotTheme(voltagePlot); updateUplotTheme(rpmPlot);" />
-              <span class="slider round"></span>
-            </label>
-            <span class="toggle-label">On</span>
-          </div>
-        </div>
 
-        <hr />
-        <div class="form-row">
-          <div class="form-label">VE.Direct Data (<span id="VeData_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="VeData_checkbox" type="checkbox"
-                  onchange="if(handleUserToggle('VeData_checkbox', 'VeData', 'VeData')) { this.form.submit(); submitMessage(); }" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="VeData" name="VeData" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
+      <!-- Alternator Live Data Sub-tab -->
+      <div id="livedata-alternator" class="sub-tab-content">
+        <div class="settings-card">
+          <div class="section-title">Alternator</div>
+          <div class="grid">
+            <div class="card">
+              <p>Alternator Current</p>
+              <p class="reading"><span id="MeasAmpsID">0</span> A</p>
+            </div>
+            <div class="card">
+              <p>Alternator Temp</p>
+              <p class="reading"><span id="AltTempID">0</span> °F</p>
+            </div>
+            <div class="card">
+              <p>Command Field Duty Cycle</p>
+              <p class="reading"><span id="DutyCycleID">0</span> %</p>
+            </div>
+            <div class="card">
+              <p>Field Volts (Calc'd)</p>
+              <p class="reading"><span id="FieldVoltsID">0</span> V</p>
+            </div>
+            <div class="card">
+              <p>Field Amps (Calc'd)) </p>
+              <p class="reading"><span id="FieldAmpsID">0</span> A</p>
+            </div>
+            <div class="card">
+              <p>Alternator On Time</p>
+              <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+                <span id="AlternatorOnTimeID">0</span><span>H:M:S</span>
+                <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+                  <input type="hidden" name="ResetAlternatorOnTime" id="ResetAlternatorOnTime" value="0" />
+                  <input type="hidden" name="password" class="password_field" />
+                  <button type="button" class="btn-small" onclick="resetAlternatorOnTime()"
+                    id="ResetAlternatorOnTime_button">Reset</button>
+                </form>
+              </div>
+            </div>
 
-        <hr />
-        <div class="form-row">
-          <div class="form-label">NMEA 0183 Data (<span id="NMEA0183Data_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="NMEA0183Data_checkbox" type="checkbox"
-                  onchange="if(handleUserToggle('NMEA0183Data_checkbox', 'NMEA0183Data', 'NMEA0183Data')) { this.form.submit(); submitMessage(); }" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="NMEA0183Data" name="NMEA0183Data" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
+            <div class="card">
+              <p>Fuel Used by Alt</p>
+              <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+                <span id="AlternatorFuelUsedID">0</span><span>L</span>
+                <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+                  <input type="hidden" name="ResetFuelUsed" id="ResetFuelUsed" value="0" />
+                  <input type="hidden" name="password" class="password_field" />
+                  <button type="button" class="btn-small" onclick="resetFuelUsed()"
+                    id="ResetFuelUsed_button">Reset</button>
+                </form>
+              </div>
+            </div>
 
-        <hr />
-        <div class="form-row">
-          <div class="form-label">NMEA2K Data (<span id="NMEA2KData_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="NMEA2KData_checkbox" type="checkbox"
-                  onchange="if(handleUserToggle('NMEA2KData_checkbox', 'NMEA2KData', 'NMEA2KData')) { this.form.submit(); submitMessage(); }" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="NMEA2KData" name="NMEA2KData" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
+            <div class="card">
+              <p>Batt Charged Energy</p>
+              <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+                <span id="ChargedEnergyID">0</span><span>Wh</span>
+                <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+                  <input type="hidden" name="ResetEnergy" id="ResetEnergy" value="0" />
+                  <input type="hidden" name="password" class="password_field" />
+                  <button type="button" class="btn-small" onclick="resetEnergy()" id="ResetEnergy_button">Reset</button>
+                </form>
+              </div>
+            </div>
 
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Battery Voltage Source (<span id="BatteryVoltageSource_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <select name="BatteryVoltageSource">
-                <option value="0">0 INA228</option>
-                <option value="1">1 ADS1115</option>
-                <option value="2">2 VictronVeDirect</option>
-                <option value="3">3 NMEA0183</option>
-                <option value="4">4 NMEA2K</option>
-              </select>
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Invert Battery Amps (<span id="InvertBattAmps_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">No</span>
-              <label class="switch">
-                <input id="InvertBattAmps_checkbox" type="checkbox"
-                  onchange="if(handleUserToggle('InvertBattAmps_checkbox', 'InvertBattAmps', 'InvertBattAmps')) { this.form.submit(); submitMessage(); }" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">Yes</span>
-              <input id="InvertBattAmps" name="InvertBattAmps" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Invert Alternator Amps (<span id="InvertAltAmps_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">No</span>
-              <label class="switch">
-                <input id="InvertAltAmps_checkbox" type="checkbox"
-                  onchange="if(handleUserToggle('InvertAltAmps_checkbox', 'InvertAltAmps', 'InvertAltAmps')) { this.form.submit(); submitMessage(); }" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">Yes</span>
-              <input id="InvertAltAmps" name="InvertAltAmps" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Alternator Current Offset (A) (<span id="AlternatorCOffset_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="AlternatorCOffset" type="number" step=".01" min="-100" max="100" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Battery Current Offset (A) (<span id="BatteryCOffset_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="BatteryCOffset" type="number" step=".01" min="-100" max="100" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Plot Points (X axis length) (<span id="maxPoints_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <input name="maxPoints" type="number" step="1" min="5" max="10000" />
-              <input onclick="submitMessage()" type="submit" value="Set" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Switch Panel Override (<span id="SwitchControlOverride_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="SwitchControlOverride_checkbox" type="checkbox" onchange="if(handleUserToggle('SwitchControlOverride_checkbox', 'SwitchControlOverride',
-              'SwitchControlOverride')) { this.form.submit(); submitMessage(); }" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="SwitchControlOverride" name="SwitchControlOverride" type="number" value=""
-                style="display:none;" />
-            </form>
-          </div>
-        </div>
-
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Ignition Override (<span id="IgnitionOverride_echo">0</span>):</div>
-          <div class="form-input">
-            <form action="/get" method="GET" target="hidden-form">
-              <input type="hidden" name="password" class="password_field">
-              <span class="toggle-label">Off</span>
-              <label class="switch">
-                <input id="IgnitionOverride_checkbox" type="checkbox"
-                  onchange="if(handleUserToggle('IgnitionOverride_checkbox', 'IgnitionOverride', 'IgnitionOverride')) { this.form.submit(); submitMessage(); }" />
-                <span class="slider round"></span>
-              </label>
-              <span class="toggle-label">On</span>
-              <input id="IgnitionOverride" name="IgnitionOverride" type="number" value="" style="display:none;" />
-            </form>
-          </div>
-        </div>
+            <div class="card">
+              <p>Max Alt Output Current</p>
+              <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+                <span id="MeasuredAmpsMaxID">0</span><span>A</span>
+                <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+                  <input type="hidden" name="ResetCurrent" id="ResetCurrent" value="0" />
+                  <input type="hidden" name="password" class="password_field" />
+                  <button type="button" class="btn-small" onclick="resetCurrent()"
+                    id="ResetCurrent_button">Reset</button>
+                </form>
+              </div>
+            </div>
 
 
-        <hr />
-        <div class="form-row">
-          <div class="form-label">Factory Reset:</div>
-          <div class="form-input">
-            <button type="button" id="factory-reset-btn" onclick="factoryReset()"
-              style="background-color: #555555; color: white; border: none; padding: 8px 16px; border-radius: var(--radius); cursor: pointer; font-weight: bold;">
-              Restore Defaults
-            </button>
+            <div class="card">
+              <p>Max Alternator Temp</p>
+              <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+                <span id="MaxAlternatorTemperatureF_ID">0</span><span>°F</span>
+                <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+                  <input type="hidden" name="ResetTemp" id="ResetTemp" value="0" />
+                  <input type="hidden" name="password" class="password_field" />
+                  <button type="button" class="btn-small" onclick="resetTemp()" id="ResetTemp_button">Reset</button>
+                </form>
+              </div>
+            </div>
+
+            <div class="card">
+              <p>Thermistor Temperature</p>
+              <p class="reading"><span id="temperatureThermistorID">0</span> °C</p>
+            </div>
+
+            <div class="card">
+              <p>Max Thermistor Temp</p>
+              <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+                <span id="MaxTemperatureThermistorID">0</span><span>°C</span>
+                <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+                  <input type="hidden" name="ResetThermTemp" id="ResetThermTemp" value="0" />
+                  <input type="hidden" name="password" class="password_field" />
+                  <button type="button" class="btn-small" onclick="resetThermTemp()"
+                    id="ResetThermTemp_button">Reset</button>
+                </form>
+              </div>
+            </div>
+
+
           </div>
         </div>
-
       </div>
+      <!-- Engine Live Data Sub-tab -->
+      <div id="livedata-engine" class="sub-tab-content">
+        <div class="settings-card">
+          <div class="section-title">Engine</div>
+          <div class="grid">
+            <div class="card">
+              <p>Engine Speed</p>
+              <p class="reading"><span id="RPMID">0</span> rev/min</p>
+            </div>
+            <div class="card">
+              <p>Engine Run Time</p>
+              <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+                <span id="EngineRunTimeID">0</span><span>H:M:S</span>
+                <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+                  <input type="hidden" name="ResetEngineRunTime" id="ResetEngineRunTime" value="0" />
+                  <input type="hidden" name="password" class="password_field" />
+                  <button type="button" class="btn-small" onclick="resetEngineRunTime()"
+                    id="ResetEngineRunTime_button">Reset</button>
+                </form>
+              </div>
+            </div>
+
+            <div class="card">
+              <p>Engine Rev Counter</p>
+              <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+                <span id="EngineCyclesID">0</span><span>rotations</span>
+                <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+                  <input type="hidden" name="ResetEngineCycles" id="ResetEngineCycles" value="0" />
+                  <input type="hidden" name="password" class="password_field" />
+                  <button type="button" class="btn-small" onclick="resetEngineCycles()"
+                    id="ResetEngineCycles_button">Reset</button>
+                </form>
+              </div>
+            </div>
+
+            <div class="card">
+              <p>Max Engine RPM</p>
+              <div class="reading" style="display: flex; align-items: center; gap: 4px;">
+                <span id="RPMMaxID">0</span><span>rev/min</span>
+                <form action="/get" method="GET" target="hidden-form" style="display: inline;">
+                  <input type="hidden" name="ResetRPMMax" id="ResetRPMMax" value="0" />
+                  <input type="hidden" name="password" class="password_field" />
+                  <button type="button" class="btn-small" onclick="resetRPMMax()" id="ResetRPMMax_button">Reset</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div> <!-- ADD THIS: Closes Engine settings-card -->
+      </div>
+
+      <!-- ESP32 Live Data Sub-tab -->
+      <div id="livedata-esp32" class="sub-tab-content">
+        <div class="settings-card">
+          <div class="section-title">ESP32</div>
+          <div class="grid">
+            <div class="card">
+              <p>Loop Time</p>
+              <p class="reading"><span id="LoopTimeID">0</span> μs</p>
+            </div>
+            <div class="card">
+              <p>Maximum Loop Time</p>
+              <p class="reading"><span id="MaximumLoopTimeID">0</span> μs</p>
+            </div>
+            <div class="card">
+              <p>Analog Read Time (Max)</p>
+              <p class="reading"><span id="AnalogReadTimeID">0</span> μs</p>
+            </div>
+            <div class="card">
+              <p>Wifi Send Time</p>
+              <p class="reading"><span id="SendWifiTimeID">0</span> μs</p>
+            </div>
+            <div class="card">
+              <p>VE Dir. Read Time</p>
+              <p class="reading"><span id="VeTimeID">0</span> μs</p>
+            </div>
+            <div class="card">
+              <p>Wifi Strength</p>
+              <p class="reading"><span id="WifiStrengthID">0</span> dB</p>
+            </div>
+            <div class="card">
+              <p>Wifi Heartbeat</p>
+              <p class="reading"><span id="WifiHeartBeatID">0</span> #</p>
+            </div>
+            <div class="card">
+              <p>Free Heap Memory</p>
+              <p class="reading"><span id="FreeHeapID">0</span> kb</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Other Live Data Sub-tab -->
+      <div id="livedata-other" class="sub-tab-content">
+        <div class="settings-card">
+          <div class="section-title">Other</div>
+          <div class="grid">
+            <div class="card">
+              <p>GPS Heading</p>
+              <p class="reading"><span id="GPSHID">0</span> °</p>
+            </div>
+            <div class="card">
+              <p>ADS Ch3 Voltage</p>
+              <p class="reading"><span id="ADS3ID">0</span> V</p>
+            </div>
+            <div class="card">
+              <p>GPS Latitude</p>
+              <p class="reading"><span id="LatitudeNMEA_ID">0</span>°</p>
+            </div>
+            <div class="card">
+              <p>GPS Longitude</p>
+              <p class="reading"><span id="LongitudeNMEA_ID">0</span>°</p>
+            </div>
+            <div class="card">
+              <p>Satellites</p>
+              <p class="reading"><span id="SatelliteCountNMEA_ID">0</span></p>
+            </div>
+          </div> <!-- Closes .grid -->
+        </div> <!-- Closes settings-card (Other) -->
+      </div> <!-- CLOSE settings-grid for Live Data -->
+
     </div>
   </div>
 
-  <h2>Live Data</h2>
-  <div class="settings-grid">
-
+  <div id="plots" class="tab-content">
+    <h2>Plots</h2>
     <div class="settings-card">
-      <div class="section-title">Battery</div>
-      <div class="grid">
-        <div class="card">
-          <p>ADS Battery Voltage</p>
-          <p class="reading"><span id="BatteryVID">0</span> V</p>
-        </div>
-        <div class="card">
-          <p>Victron Battery Voltage</p>
-          <p class="reading"><span id="VictronVoltageID">0</span> V</p>
-        </div>
-        <div class="card">
-          <p>INA Battery Voltage</p>
-          <p class="reading"><span id="IBVID">0</span> V</p>
-        </div>
-
-        <div class="card">
-          <p>Max Ever Battery Voltage</p>
-          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
-            <span id="IBVMaxID">0</span><span>V</span>
-            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
-              <input type="hidden" name="ResetVoltage" id="ResetVoltage" value="0" />
-              <input type="hidden" name="password" class="password_field" />
-              <button type="button" class="btn-small" onclick="resetVoltage()" id="ResetVoltage_button">Reset</button>
-            </form>
-          </div>
-        </div>
-
-        <div class="card">
-          <p>State of Charge</p>
-          <p class="reading"><span id="SoC_percentID">0</span> %</p>
-        </div>
-
-        <div class="card">
-          <p>Alternator Output Energy</p>
-          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
-            <span id="AlternatorChargedEnergyID">0</span><span>Wh</span>
-            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
-              <input type="hidden" name="ResetAlternatorChargedEnergy" id="ResetAlternatorChargedEnergy" value="0" />
-              <input type="hidden" name="password" class="password_field" />
-              <button type="button" class="btn-small" onclick="resetAlternatorChargedEnergy()"
-                id="ResetAlternatorChargedEnergy_button">Reset</button>
-            </form>
-          </div>
-        </div>
-
-        <div class="card">
-          <p>Batt Discharged Energy</p>
-          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
-            <span id="DischargedEnergyID">0</span><span>Wh</span>
-            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
-              <input type="hidden" name="ResetDischargedEnergy" id="ResetDischargedEnergy" value="0" />
-              <input type="hidden" name="password" class="password_field" />
-              <button type="button" class="btn-small" onclick="resetDischargedEnergy()"
-                id="ResetDischargedEnergy_button">Reset</button>
-            </form>
-          </div>
-        </div>
-
-        <div class="card">
-          <p>Battery Current</p>
-          <p class="reading"><span id="BCurrID">0</span> A</p>
-        </div>
-
-        <div class="card">
-          <p>Victron Battery Current</p>
-          <p class="reading"><span id="VictronCurrentID">0</span> A</p>
-        </div>
-
-
-      </div>
+      <div class="plot-container" id="voltage-plot"></div>
+    </div>
+    <div class="settings-card">
+      <div class="plot-container" id="temperature-plot"></div>
+    </div>
+    <div class="settings-card">
+      <div class="plot-container" id="current-temp-plot"></div>
+    </div>
+    <div class="settings-card">
+      <div class="plot-container" id="rpm-plot"></div>
     </div>
 
-    <div class="settings-card">
-      <div class="section-title">Alternator</div>
-      <div class="grid">
-        <div class="card">
-          <p>Alternator Current</p>
-          <p class="reading"><span id="MeasAmpsID">0</span> A</p>
-        </div>
-        <div class="card">
-          <p>Alternator Temp</p>
-          <p class="reading"><span id="AltTempID">0</span> °F</p>
-        </div>
-        <div class="card">
-          <p>Command Field Duty Cycle</p>
-          <p class="reading"><span id="DutyCycleID">0</span> %</p>
-        </div>
-        <div class="card">
-          <p>Field Volts (Calc'd)</p>
-          <p class="reading"><span id="FieldVoltsID">0</span> V</p>
-        </div>
-        <div class="card">
-          <p>Field Amps (Calc'd)) </p>
-          <p class="reading"><span id="FieldAmpsID">0</span> A</p>
-        </div>
-        <div class="card">
-          <p>Alternator On Time</p>
-          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
-            <span id="AlternatorOnTimeID">0</span><span>H:M:S</span>
-            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
-              <input type="hidden" name="ResetAlternatorOnTime" id="ResetAlternatorOnTime" value="0" />
-              <input type="hidden" name="password" class="password_field" />
-              <button type="button" class="btn-small" onclick="resetAlternatorOnTime()"
-                id="ResetAlternatorOnTime_button">Reset</button>
-            </form>
-          </div>
-        </div>
-
-        <div class="card">
-          <p>Fuel Used by Alt</p>
-          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
-            <span id="AlternatorFuelUsedID">0</span><span>L</span>
-            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
-              <input type="hidden" name="ResetFuelUsed" id="ResetFuelUsed" value="0" />
-              <input type="hidden" name="password" class="password_field" />
-              <button type="button" class="btn-small" onclick="resetFuelUsed()" id="ResetFuelUsed_button">Reset</button>
-            </form>
-          </div>
-        </div>
-
-        <div class="card">
-          <p>Batt Charged Energy</p>
-          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
-            <span id="ChargedEnergyID">0</span><span>Wh</span>
-            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
-              <input type="hidden" name="ResetEnergy" id="ResetEnergy" value="0" />
-              <input type="hidden" name="password" class="password_field" />
-              <button type="button" class="btn-small" onclick="resetEnergy()" id="ResetEnergy_button">Reset</button>
-            </form>
-          </div>
-        </div>
-
-        <div class="card">
-          <p>Max Alt Output Current</p>
-          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
-            <span id="MeasuredAmpsMaxID">0</span><span>A</span>
-            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
-              <input type="hidden" name="ResetCurrent" id="ResetCurrent" value="0" />
-              <input type="hidden" name="password" class="password_field" />
-              <button type="button" class="btn-small" onclick="resetCurrent()" id="ResetCurrent_button">Reset</button>
-            </form>
-          </div>
-        </div>
-
-
-        <div class="card">
-          <p>Max Alternator Temp</p>
-          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
-            <span id="MaxAlternatorTemperatureF_ID">0</span><span>°F</span>
-            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
-              <input type="hidden" name="ResetTemp" id="ResetTemp" value="0" />
-              <input type="hidden" name="password" class="password_field" />
-              <button type="button" class="btn-small" onclick="resetTemp()" id="ResetTemp_button">Reset</button>
-            </form>
-          </div>
-        </div>
-
-        <div class="card">
-          <p>Thermistor Temperature</p>
-          <p class="reading"><span id="temperatureThermistorID">0</span> °C</p>
-        </div>
-
-        <div class="card">
-          <p>Max Thermistor Temp</p>
-          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
-            <span id="MaxTemperatureThermistorID">0</span><span>°C</span>
-            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
-              <input type="hidden" name="ResetThermTemp" id="ResetThermTemp" value="0" />
-              <input type="hidden" name="password" class="password_field" />
-              <button type="button" class="btn-small" onclick="resetThermTemp()"
-                id="ResetThermTemp_button">Reset</button>
-            </form>
-          </div>
-        </div>
-
-
-      </div>
-    </div>
-
-    <div class="settings-card">
-      <div class="section-title">Engine</div>
-      <div class="grid">
-        <div class="card">
-          <p>Engine Speed</p>
-          <p class="reading"><span id="RPMID">0</span> rev/min</p>
-        </div>
-        <div class="card">
-          <p>Engine Run Time</p>
-          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
-            <span id="EngineRunTimeID">0</span><span>H:M:S</span>
-            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
-              <input type="hidden" name="ResetEngineRunTime" id="ResetEngineRunTime" value="0" />
-              <input type="hidden" name="password" class="password_field" />
-              <button type="button" class="btn-small" onclick="resetEngineRunTime()"
-                id="ResetEngineRunTime_button">Reset</button>
-            </form>
-          </div>
-        </div>
-
-        <div class="card">
-          <p>Engine Rev Counter</p>
-          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
-            <span id="EngineCyclesID">0</span><span>rotations</span>
-            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
-              <input type="hidden" name="ResetEngineCycles" id="ResetEngineCycles" value="0" />
-              <input type="hidden" name="password" class="password_field" />
-              <button type="button" class="btn-small" onclick="resetEngineCycles()"
-                id="ResetEngineCycles_button">Reset</button>
-            </form>
-          </div>
-        </div>
-
-        <div class="card">
-          <p>Max Engine RPM</p>
-          <div class="reading" style="display: flex; align-items: center; gap: 4px;">
-            <span id="RPMMaxID">0</span><span>rev/min</span>
-            <form action="/get" method="GET" target="hidden-form" style="display: inline;">
-              <input type="hidden" name="ResetRPMMax" id="ResetRPMMax" value="0" />
-              <input type="hidden" name="password" class="password_field" />
-              <button type="button" class="btn-small" onclick="resetRPMMax()" id="ResetRPMMax_button">Reset</button>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div> <!-- ADD THIS: Closes Engine settings-card -->
-
-
-    <div class="settings-card">
-      <div class="section-title">ESP32</div>
-      <div class="grid">
-        <div class="card">
-          <p>Loop Time</p>
-          <p class="reading"><span id="LoopTimeID">0</span> μs</p>
-        </div>
-        <div class="card">
-          <p>Maximum Loop Time</p>
-          <p class="reading"><span id="MaximumLoopTimeID">0</span> μs</p>
-        </div>
-        <div class="card">
-          <p>Analog Read Time (Max)</p>
-          <p class="reading"><span id="AnalogReadTimeID">0</span> μs</p>
-        </div>
-        <div class="card">
-          <p>Wifi Send Time</p>
-          <p class="reading"><span id="SendWifiTimeID">0</span> μs</p>
-        </div>
-        <div class="card">
-          <p>VE Dir. Read Time</p>
-          <p class="reading"><span id="VeTimeID">0</span> μs</p>
-        </div>
-        <div class="card">
-          <p>Wifi Strength</p>
-          <p class="reading"><span id="WifiStrengthID">0</span> dB</p>
-        </div>
-        <div class="card">
-          <p>Wifi Heartbeat</p>
-          <p class="reading"><span id="WifiHeartBeatID">0</span> #</p>
-        </div>
-        <div class="card">
-          <p>Free Heap Memory</p>
-          <p class="reading"><span id="FreeHeapID">0</span> kb</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="settings-card">
-      <div class="section-title">Other</div>
-      <div class="grid">
-        <div class="card">
-          <p>GPS Heading</p>
-          <p class="reading"><span id="GPSHID">0</span> °</p>
-        </div>
-        <div class="card">
-          <p>ADS Ch3 Voltage</p>
-          <p class="reading"><span id="ADS3ID">0</span> V</p>
-        </div>
-      </div> <!-- Closes .grid -->
-    </div> <!-- Closes settings-card (Other) -->
-  </div> <!-- CLOSE settings-grid for Live Data -->
-
-
-
-  <h2>Plots</h2>
-
-  <div class="settings-card">
-    <div class="plot-container" id="current-temp-plot"></div>
   </div>
-  <div class="settings-card">
-    <div class="plot-container" id="voltage-plot"></div>
-  </div>
-
-
-  <div class="settings-card">
-    <div class="plot-container" id="rpm-plot"></div>
-  </div>
-
-
   <!-- Console -->
-  <div class="settings-card">
-    <div class="form-label">
-      Console
-      <button onclick="clearConsole()" style="font-size: 12px; margin-left: 10px;">Clear</button>
+  <div id="console" class="tab-content">
+    <div class="settings-card">
+      <div class="form-label">
+        Console
+        <button onclick="clearConsole()" style="font-size: 12px; margin-left: 10px;">Clear</button>
+      </div>
+      <div id="consoleOutput"
+        style="font-family: monospace; font-size: 13px; background: #111; color: #0f0; padding: 6px; height: 160px; overflow-y: auto; border: 1px solid var(--border); white-space: pre-wrap;">
+      </div>
     </div>
-    <div id="consoleOutput"
-      style="font-family: monospace; font-size: 13px; background: #111; color: #0f0; padding: 6px; height: 160px; overflow-y: auto; border: 1px solid var(--border); white-space: pre-wrap;">
-    </div>
+
   </div>
-
-
   <script>
 
     function debounce(fn, delay) {
@@ -1896,7 +2384,17 @@ Contact me at mark@xengineering.net       -->
       IgnitionOverride: 104,
       temperatureThermistor: 105,
       MaxTemperatureThermistor: 106,
-      VictronCurrent: 107
+      VictronCurrent: 107,
+      AlarmTest: 108,
+      AlarmLatchEnabled: 109,
+      AlarmLatchState: 110,
+      ResetAlarmLatch: 111,
+      ForceFloat: 112,
+      bulkCompleteTime: 113,
+      FLOAT_DURATION: 114,
+      LatitudeNMEA: 115,
+      LongitudeNMEA: 116,
+      SatelliteCountNMEA: 117
 
     };
 
@@ -1963,16 +2461,14 @@ Contact me at mark@xengineering.net       -->
         }
       }
     }
-
-
-    // Current and Temperature Plot Data
-    // [timestamps, battery current, alternator current, field current, alt temp]
-    const currentTempData = [[], [], [], [], []];
+    // Current Plot Data
+    // [timestamps, battery current, alternator current, field current]
+    const currentTempData = [[], [], [], []];
     let currentTempPlot;
 
     // Voltage Plot Data
     // [timestamps, ADS Battery V, Victron Battery V, INA Battery V]
-    const voltageData = [[], [], [], []];
+    const voltageData = [[], [], []];
     let voltagePlot;
 
     // RPM Plot Data
@@ -2017,6 +2513,16 @@ Contact me at mark@xengineering.net       -->
       }
     }
 
+    function scheduleTemperaturePlotUpdate() {
+      if (!window.temperatureUpdateScheduled && temperaturePlot) {
+        window.temperatureUpdateScheduled = true;
+        requestAnimationFrame(() => {
+          temperaturePlot.setData(temperatureData);
+          window.temperatureUpdateScheduled = false;
+        });
+      }
+    }
+
 
 
     function initCurrentTempPlot() {
@@ -2029,7 +2535,7 @@ Contact me at mark@xengineering.net       -->
       const opts = {
         width: Math.min(plotEl.clientWidth, 800),
         height: 300,
-        title: "Current & Temperature History",
+        title: "Current History",
         series: [
           { label: null, points: { show: false }, stroke: "transparent", width: 0 }, // timestamp - hidden
           {
@@ -2049,19 +2555,13 @@ Contact me at mark@xengineering.net       -->
             stroke: "#9C27B0",
             width: 2,
             scale: "current"
-          },
-          {
-            label: "Alt. Temp (°F)",
-            stroke: "#FF5722",
-            width: 2,
-            scale: "current"
           }
         ],
         axes: [
           {},
           {
             scale: "current",
-            label: "Amperes / °F",
+            label: "Amperes",
             grid: { show: true },
             side: 3
           }
@@ -2082,8 +2582,7 @@ Contact me at mark@xengineering.net       -->
                 createCustomLegend('current-temp-plot', [
                   { label: "Battery Current (A)", color: "#4CAF50" },
                   { label: "Alternator Current (A)", color: "#2196F3" },
-                  { label: "Field Current (A)", color: "#9C27B0" },
-                  { label: "Alt. Temp (°F)", color: "#FF5722" }
+                  { label: "Field Current (A)", color: "#9C27B0" }
                 ]);
 
                 const resizePlot = debounce(() => {
@@ -2105,7 +2604,6 @@ Contact me at mark@xengineering.net       -->
       currentTempData[1].push(0);
       currentTempData[2].push(0);
       currentTempData[3].push(0);
-      currentTempData[4].push(100);
       currentTempPlot.setData(currentTempData);
     }
 
@@ -2125,12 +2623,6 @@ Contact me at mark@xengineering.net       -->
           {
             label: "ADS Battery (V)",
             stroke: "#FF9800",
-            width: 2,
-            scale: "voltage"
-          },
-          {
-            label: "Victron Battery (V)",
-            stroke: "#3F51B5",
             width: 2,
             scale: "voltage"
           },
@@ -2164,7 +2656,6 @@ Contact me at mark@xengineering.net       -->
                 // Create custom legend after plot is created
                 createCustomLegend('voltage-plot', [
                   { label: "ADS Battery (V)", color: "#FF9800" },
-                  { label: "Victron Battery (V)", color: "#3F51B5" },
                   { label: "INA Battery (V)", color: "#607D8B" }
                 ]);
 
@@ -2186,7 +2677,6 @@ Contact me at mark@xengineering.net       -->
       voltageData[0].push(startTime);
       voltageData[1].push(0);
       voltageData[2].push(0);
-      voltageData[3].push(0);
       voltagePlot.setData(voltageData);
     }
 
@@ -2255,6 +2745,74 @@ Contact me at mark@xengineering.net       -->
       rpmPlot.setData(rpmData);
     }
 
+
+    // Temperature Plot Data
+    const temperatureData = [[], []];
+    let temperaturePlot;
+
+    function initTemperaturePlot() {
+      const plotEl = document.getElementById('temperature-plot');
+      if (!plotEl) {
+        console.error("Temperature plot element not found");
+        return;
+      }
+
+      const opts = {
+        width: Math.min(plotEl.clientWidth, 800),
+        height: 300,
+        title: "Alternator Temperature History",
+        series: [
+          { label: null, points: { show: false }, stroke: "transparent", width: 0 }, // timestamp - hidden
+          {
+            label: "Alt. Temp (°F)",
+            stroke: "#FF5722",
+            width: 2,
+            scale: "temperature"
+          }
+        ],
+        axes: [
+          {},
+          {
+            scale: "temperature",
+            label: "°Fahrenheit",
+            grid: { show: true }
+          }
+        ],
+        scales: {
+          x: { time: true },
+          temperature: { auto: true }
+        },
+        legend: {
+          show: false
+        },
+        plugins: [{
+          hooks: {
+            init: [
+              (u) => {
+                createCustomLegend('temperature-plot', [
+                  { label: "Alt. Temp (°F)", color: "#FF5722" }
+                ]);
+
+                const resizePlot = debounce(() => {
+                  const plotEl = document.getElementById("temperature-plot");
+                  if (plotEl && temperaturePlot) {
+                    temperaturePlot.setSize({ width: plotEl.clientWidth, height: 300 });
+                  }
+                }, 1000);
+                new ResizeObserver(resizePlot).observe(plotEl);
+              }
+            ]
+          }
+        }]
+      };
+
+      temperaturePlot = new uPlot(opts, temperatureData, plotEl);
+      const startTime = Math.floor(Date.now() / 1000);
+      temperatureData[0].push(startTime);
+      temperatureData[1].push(75);
+      temperaturePlot.setData(temperatureData);
+    }
+
     // Custom legend creation function
     function createCustomLegend(plotId, legendItems) {
       const plotContainer = document.getElementById(plotId);
@@ -2307,7 +2865,6 @@ Contact me at mark@xengineering.net       -->
     }
 
 
-
     function setAdminPassword() {
       const button = document.getElementById('admin_password_set');
       const input = document.getElementById('admin_password');
@@ -2334,18 +2891,20 @@ Contact me at mark@xengineering.net       -->
         .then(text => {
           if (text.trim() === "OK") {
 
-
             currentAdminPassword = password;
             // Unlock settings
             const section = document.getElementById('settings-section');
             if (section) section.classList.remove("locked");
-
 
             const lockStatus = document.getElementById('lock-status');
             if (lockStatus) {
               lockStatus.textContent = "Settings are Unlocked";
               lockStatus.style.color = "#00a19a";
             }
+
+            // Show password change and lock sections
+            document.getElementById('change-password-section').style.display = 'block';
+            document.getElementById('lock-button-section').style.display = 'block';
 
             updatePasswordFields();
             msg.textContent = "Password Accepted";
@@ -2374,14 +2933,16 @@ Contact me at mark@xengineering.net       -->
 
       const lockStatus = document.getElementById('lock-status');
       if (lockStatus) {
-        lockStatus.textContent = "Settings are Locked --- Enter Password to Unlock";
+        lockStatus.textContent = "Settings are Locked";
         lockStatus.style.color = "#00a19a";
       }
+
+      // Hide password change and lock sections
+      document.getElementById('change-password-section').style.display = 'none';
+      document.getElementById('lock-button-section').style.display = 'none';
+
       currentAdminPassword = "";
     }
-
-
-
 
 
     function setNewPassword() {
@@ -2473,7 +3034,8 @@ Contact me at mark@xengineering.net       -->
         updateCheckbox("InvertBattAmps_checkbox", data.InvertBattAmps, "InvertBattAmps");
         updateCheckbox("IgnitionOverride_checkbox", data.IgnitionOverride, "IgnitionOverride");
         updateCheckbox("TempSource_checkbox", data.TempSource, "TempSource");
-
+        updateCheckbox("AlarmLatchEnabled_checkbox", data.AlarmLatchEnabled, "AlarmLatchEnabled");
+        updateCheckbox("ForceFloat_checkbox", data.ForceFloat, "ForceFloat");
 
       } catch (e) {
         console.log("Error updating toggle states: " + e.message);
@@ -2506,6 +3068,11 @@ Contact me at mark@xengineering.net       -->
     }
 
     window.addEventListener("load", function () {
+
+      document.getElementById("AlarmLatchEnabled_checkbox").checked = (document.getElementById("AlarmLatchEnabled").value === "1");
+      document.getElementById("ForceFloat_checkbox").checked = (document.getElementById("ForceFloat").value === "1");
+
+
       //gray out Settings on a reload
       const settingsSection = document.getElementById('settings-section');
       if (settingsSection) {
@@ -2520,11 +3087,17 @@ Contact me at mark@xengineering.net       -->
         document.body.classList.add('dark-mode');
         const darkToggle = document.getElementById("DarkMode_checkbox");
         if (darkToggle) darkToggle.checked = true;
+
+        // Initialize dashboard dark mode toggle
+        if (localStorage.getItem('darkMode') === '1') {
+          document.getElementById('dash-dark-mode').checked = true;
+        }
       }
 
       initCurrentTempPlot();
       initVoltagePlot();
       initRPMPlot();
+      initTemperaturePlot();
 
       if (!!window.EventSource) {
         const telemetryFields = [      //Telemetry: Live sensor data that changes frequently
@@ -2562,7 +3135,10 @@ Contact me at mark@xengineering.net       -->
           ["MaxAlternatorTemperatureF_ID", "MaxAlternatorTemperatureF"], // 31
           ["temperatureThermistorID", "temperatureThermistor"], //32
           ["MaxTemperatureThermistorID", "MaxTemperatureThermistor"], //33
-          ["VictronCurrentID", "VictronCurrent"]          // 34
+          ["VictronCurrentID", "VictronCurrent"],          // 34
+          ["LatitudeNMEA_ID", "LatitudeNMEA"],     // 115
+          ["LongitudeNMEA_ID", "LongitudeNMEA"],   // 116  
+          ["SatelliteCountNMEA_ID", "SatelliteCountNMEA"] // 117
 
 
         ];
@@ -2583,7 +3159,6 @@ Contact me at mark@xengineering.net       -->
           }
         });
 
-
         source.addEventListener('open', function () {
           console.log('EventSource connected successfully');
           updateInlineStatus(true);
@@ -2596,27 +3171,13 @@ Contact me at mark@xengineering.net       -->
           reconnectionAttempts = 0;
         }, false);
 
-
         source.addEventListener('error', function () {
-          console.log('EventSource error - starting aggressive reconnection');
+          console.log('EventSource error - showing recovery options');
           updateInlineStatus(false);
-
-          if (!reconnectInterval && reconnectionAttempts < maxReconnectionAttempts) {
-            reconnectInterval = setInterval(() => {
-              reconnectionAttempts++;
-              console.log(`Reconnection attempt ${reconnectionAttempts}/${maxReconnectionAttempts}`);
-
-              if (reconnectionAttempts >= maxReconnectionAttempts) {
-                clearInterval(reconnectInterval);
-                reconnectInterval = null;
-                console.log('Max reconnection attempts reached');
-                return;
-              }
-
-              window.location.reload(); // Force page reload to establish new connection
-            }, 2000); // Try every 2 seconds
-          }
+          source.close();
+          showRecoveryOptions();
         }, false);
+
 
         // Initial status - set to connected if we made it this far
         updateInlineStatus(true);
@@ -2750,7 +3311,11 @@ Contact me at mark@xengineering.net       -->
             IgnitionOverride: values[fieldIndexes.IgnitionOverride],
             temperatureThermistor: values[fieldIndexes.temperatureThermistor],
             MaxTemperatureThermistor: values[fieldIndexes.MaxTemperatureThermistor],
-            VictronCurrent: values[fieldIndexes.VictronCurrent]
+            VictronCurrent: values[fieldIndexes.VictronCurrent],
+            AlarmLatchEnabled: values[fieldIndexes.AlarmLatchEnabled],
+            ForceFloat: values[fieldIndexes.ForceFloat],
+            bulkCompleteTime: values[fieldIndexes.bulkCompleteTime],
+            FLOAT_DURATION: values[fieldIndexes.FLOAT_DURATION]
 
           };
 
@@ -2783,6 +3348,11 @@ Contact me at mark@xengineering.net       -->
               else if (["AlternatorFuelUsed"].includes(key)) {
                 el.textContent = (value / 1000).toFixed(3);  // Convert mL to L with 3 decimal places
               }
+
+              // GPS coordinates - transmitted as integer × 1000000, display with 6 decimals
+              else if (["LatitudeNMEA", "LongitudeNMEA"].includes(key)) {
+                el.textContent = (value / 1000000).toFixed(6);
+              }
               // Time values - convert seconds to H:M:S format
               else if (["EngineRunTime", "AlternatorOnTime"].includes(key)) {
                 const totalSeconds = value;  // Changed from totalMinutes
@@ -2803,6 +3373,22 @@ Contact me at mark@xengineering.net       -->
           };
 
           updateFields(telemetryFields);  // only visible span updates
+
+          // Update Dashboard displays
+          document.getElementById('dash-ibv').textContent = (data.IBV / 100).toFixed(2);
+          document.getElementById('dash-soc').textContent = Math.round(data.SoC_percent / 100);
+          document.getElementById('dash-altcurrent').textContent = (data.MeasuredAmps / 100).toFixed(1);
+          document.getElementById('dash-battcurrent').textContent = (data.Bcur / 100).toFixed(1);
+          document.getElementById('dash-alttemp').textContent = Math.round(data.AlternatorTemperatureF);
+          document.getElementById('dash-rpm').textContent = Math.round(data.RPM);
+          // document.getElementById('dash-heartbeat').textContent = Math.round(data.WifiHeartBeat); // decided this was TMI
+
+          // Sync dashboard toggles with main toggles
+          document.getElementById('dash-alternator-enable').checked = (data.OnOff === 1);
+          document.getElementById('dash-force-float').checked = (data.ForceFloat === 1);
+          document.getElementById('dash-alarm-enable').checked = (data.AlarmActivate === 1);
+          // Update dashboard echo displays (matching your pattern)
+          document.getElementById('dash-target-amps-echo').textContent = data.TargetAmps || 0;
 
           // Update echo elements
           if ('TemperatureLimitF' in data) {
@@ -3027,6 +3613,40 @@ Contact me at mark@xengineering.net       -->
             document.getElementById('AmpSrc_echo').textContent = data.AmpSrc;
           }
 
+          if ('AlarmLatchEnabled' in data) {
+            document.getElementById('AlarmLatchEnabled_echo').textContent = data.AlarmLatchEnabled;
+          }
+          if ('AlarmTest' in data) {
+            document.getElementById('AlarmTest_echo').textContent = data.AlarmTest;
+          }
+          if ('ResetAlarmLatch' in data) {
+            document.getElementById('ResetAlarmLatch_echo').textContent = data.ResetAlarmLatch;
+          }
+
+          if ('ForceFloat' in data) {
+            document.getElementById('ForceFloat_echo').textContent = data.ForceFloat;
+          }
+          if ('bulkCompleteTime' in data) {
+            document.getElementById('bulkCompleteTime_echo').textContent = data.bulkCompleteTime;
+          }
+          if ('FLOAT_DURATION' in data) {
+            document.getElementById('FLOAT_DURATION_echo').textContent = Math.round(data.FLOAT_DURATION / 3600);
+          }
+
+          if ('AlarmLatchState' in data) {
+            const latchDisplay = document.getElementById('AlarmLatchState_display');
+            if (data.AlarmLatchState === 1) {
+              latchDisplay.textContent = 'LATCHED';
+              latchDisplay.style.color = '#ff0000';
+            } else {
+              latchDisplay.textContent = 'Normal';
+              latchDisplay.style.color = 'var(--accent)';
+            }
+          }
+
+
+
+
 
           // Initialize RPM/Amps fields once on page load
           if (!rpmAmpsInitialized) {
@@ -3077,18 +3697,17 @@ Contact me at mark@xengineering.net       -->
             document.getElementById('settings-section').classList.add("locked");
           }
 
-          // Update Current & Temperature plot data arrays
+          // Update Current plot data arrays
           if (typeof currentTempPlot !== 'undefined') {
             const battCurrent = 'Bcur' in data ? parseFloat(data.Bcur) / 100 : null;
             const altCurrent = 'MeasuredAmps' in data ? parseFloat(data.MeasuredAmps) / 100 : null;
             const fieldCurrent = 'iiout' in data ? parseFloat(data.iiout) / 10 : null;
-            const altTemp = 'AlternatorTemperatureF' in data ? parseFloat(data.AlternatorTemperatureF) : null;
+            // const altTemp = 'AlternatorTemperatureF' in data ? parseFloat(data.AlternatorTemperatureF) : null;
 
             currentTempData[0].push(now);
             currentTempData[1].push(battCurrent);
             currentTempData[2].push(altCurrent);
             currentTempData[3].push(fieldCurrent);
-            currentTempData[4].push(altTemp);
 
             const currentMaxPoints = data.maxPoints || 40;
             if (currentTempData[0].length > currentMaxPoints) {
@@ -3096,27 +3715,23 @@ Contact me at mark@xengineering.net       -->
               currentTempData[1].shift();
               currentTempData[2].shift();
               currentTempData[3].shift();
-              currentTempData[4].shift();
             }
           }
 
           // Update Voltage plot data arrays
           if (typeof voltagePlot !== 'undefined') {
             const adsBattV = 'BatteryV' in data ? parseFloat(data.BatteryV) / 100 : null;
-            const victronBattV = 'VictronVoltage' in data ? parseFloat(data.VictronVoltage) / 100 : null;
             const inaBattV = 'IBV' in data ? parseFloat(data.IBV) / 100 : null;
 
             voltageData[0].push(now);
             voltageData[1].push(adsBattV);
-            voltageData[2].push(victronBattV);
-            voltageData[3].push(inaBattV);
+            voltageData[2].push(inaBattV);
 
             const currentMaxPoints = data.maxPoints || 40;
             if (voltageData[0].length > currentMaxPoints) {
               voltageData[0].shift();
               voltageData[1].shift();
               voltageData[2].shift();
-              voltageData[3].shift();
             }
           }
 
@@ -3134,12 +3749,27 @@ Contact me at mark@xengineering.net       -->
             }
           }
 
+          // Update Temperature plot data arrays
+          if (typeof temperaturePlot !== 'undefined') {
+            const altTemp = 'AlternatorTemperatureF' in data ? parseFloat(data.AlternatorTemperatureF) : null;
+
+            temperatureData[0].push(now);
+            temperatureData[1].push(altTemp);
+
+            const currentMaxPoints = data.maxPoints || 40;
+            if (temperatureData[0].length > currentMaxPoints) {
+              temperatureData[0].shift();
+              temperatureData[1].shift();
+            }
+          }
+
           // Only update the plots if enough time has passed - now update all three plots
           const nowMs = Date.now();
           if (nowMs - lastPlotUpdate > PLOT_UPDATE_INTERVAL_MS) {
             scheduleCurrentTempPlotUpdate();
             scheduleVoltagePlotUpdate();
             scheduleRPMPlotUpdate();
+            scheduleTemperaturePlotUpdate();
 
             // Add connection status check here - it will run once per second with your other updates
             const timeSinceLastEvent = nowMs - lastEventTime;
@@ -3202,16 +3832,20 @@ Contact me at mark@xengineering.net       -->
     border-radius: 1px;
   }
 
-  .plot-container {
-    padding: 10px;
-    box-sizing: border-box;
-  }
+.plot-container {
+  padding: 10px;
+  box-sizing: border-box;
+  max-width: 1000px;     /* NEW: limit width on wide screens */
+  margin: 0 auto;       /* center it */
+}
 
-  @media (max-width: 768px) {
-    .plot-container {
-      padding: 5px;
-    }
+@media (max-width: 768px) {
+  .plot-container {
+    padding: 5px;
+    max-width: 100%;     /* allow full width on mobile */
   }
+}
+
 `;
       document.head.appendChild(style);
 
@@ -3236,6 +3870,270 @@ Contact me at mark@xengineering.net       -->
 
       document.getElementById("admin_password").addEventListener("change", updatePasswordFields);
     }); // ← ADD THIS LINE
+
+    //something to do with tabs
+    function showMainTab(tabName) {
+      // Hide all tab contents
+      const tabContents = document.querySelectorAll('.tab-content');
+      tabContents.forEach(tab => tab.classList.remove('active'));
+
+      // Remove active class from all main tabs
+      const mainTabs = document.querySelectorAll('.main-tab');
+      mainTabs.forEach(tab => tab.classList.remove('active'));
+
+      // Show selected tab content
+      document.getElementById(tabName).classList.add('active');
+
+      // Find and activate the correct button by looking for the one that calls this tab
+      mainTabs.forEach(tab => {
+        if (tab.getAttribute('onclick').includes(tabName)) {
+          tab.classList.add('active');
+        }
+      });
+    }
+
+    function showSubTab(parentTab, subTabName) {
+      // Hide all sub-tab contents for this parent
+      const subTabContents = document.querySelectorAll(`#${parentTab} .sub-tab-content`);
+      subTabContents.forEach(tab => tab.classList.remove('active'));
+
+      // Remove active class from all sub-tabs
+      const subTabs = document.querySelectorAll(`#${parentTab} .sub-tab`);
+      subTabs.forEach(tab => tab.classList.remove('active'));
+
+      // Show selected sub-tab content
+      document.getElementById(`${parentTab}-${subTabName}`).classList.add('active');
+
+      // Add active class to clicked sub-tab
+      event.target.classList.add('active');
+    }
+    function dashboardToggleForceFloat() {
+      if (!currentAdminPassword) {
+        alert("Please unlock settings first in the Security tab");
+        // Reset the toggle
+        document.getElementById('dash-force-float').checked = !document.getElementById('dash-force-float').checked;
+        return;
+      }
+
+      const toggle = document.getElementById('dash-force-float');
+      const mainToggle = document.getElementById('ForceFloat_checkbox');
+      const hiddenInput = document.getElementById('ForceFloat');
+
+      mainToggle.checked = toggle.checked;
+      hiddenInput.value = toggle.checked ? '1' : '0';
+
+      // Make sure password is included
+      updatePasswordFields();
+
+      if (handleUserToggle('ForceFloat_checkbox', 'ForceFloat', 'ForceFloat')) {
+        mainToggle.form.submit();
+        submitMessage();
+      }
+    }
+
+    function dashboardToggleAlarmEnable() {
+      if (!currentAdminPassword) {
+        alert("Please unlock settings first in the Security tab");
+        // Reset the toggle
+        document.getElementById('dash-alarm-enable').checked = !document.getElementById('dash-alarm-enable').checked;
+        return;
+      }
+
+      const toggle = document.getElementById('dash-alarm-enable');
+      const mainToggle = document.getElementById('AlarmActivate_checkbox');
+      const hiddenInput = document.getElementById('AlarmActivate');
+
+      mainToggle.checked = toggle.checked;
+      hiddenInput.value = toggle.checked ? '1' : '0';
+
+      // Make sure password is included
+      updatePasswordFields();
+
+      if (handleUserToggle('AlarmActivate_checkbox', 'AlarmActivate', 'AlarmActivate')) {
+        mainToggle.form.submit();
+        submitMessage();
+      }
+    }
+
+    function dashboardSetChargeRate() {
+      if (!currentAdminPassword) {
+        alert("Please unlock settings first in the Security tab");
+        return;
+      }
+
+      const input = document.getElementById('dash-charge-rate');
+      const value = parseInt(input.value);
+
+      if (!value || value < 0) {
+        alert("Please enter a valid charge rate (positive number)");
+        return;
+      }
+
+      // Use the same method as your existing forms
+      const form = document.createElement('form');
+      form.action = '/get';
+      form.method = 'GET';
+      form.target = 'hidden-form';
+
+      // Add password field (matching your pattern)
+      const passwordField = document.createElement('input');
+      passwordField.type = 'hidden';
+      passwordField.name = 'password';
+      passwordField.className = 'password_field';
+      passwordField.value = currentAdminPassword;
+      form.appendChild(passwordField);
+
+      // Add the target amps field
+      const targetAmpsField = document.createElement('input');
+      targetAmpsField.type = 'hidden';
+      targetAmpsField.name = 'TargetAmps';
+      targetAmpsField.value = value;
+      form.appendChild(targetAmpsField);
+
+      // Submit the form
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+
+      // Visual feedback (matching your submitMessage pattern)
+      const button = event.target;
+      const originalBg = button.style.backgroundColor;
+      button.style.backgroundColor = '#00a19a';
+      button.style.transition = 'background-color 0.3s';
+
+      setTimeout(() => {
+        button.style.backgroundColor = originalBg;
+      }, 1000);
+    }
+
+    function dashboardToggleAlternator() {
+      if (!currentAdminPassword) {
+        alert("Please unlock settings first in the Security tab");
+        // Reset the toggle
+        document.getElementById('dash-alternator-enable').checked = !document.getElementById('dash-alternator-enable').checked;
+        return;
+      }
+
+      const toggle = document.getElementById('dash-alternator-enable');
+      const mainToggle = document.getElementById('OnOff_checkbox');
+      const hiddenInput = document.getElementById('OnOff');
+
+      mainToggle.checked = toggle.checked;
+      hiddenInput.value = toggle.checked ? '1' : '0';
+
+      // Make sure password is included
+      updatePasswordFields();
+
+      if (handleUserToggle('OnOff_checkbox', 'OnOff', 'OnOff')) {
+        mainToggle.form.submit();
+        submitMessage();
+      }
+    }
+
+    function dashboardToggleDarkMode() {
+      const toggle = document.getElementById('dash-dark-mode');
+      const mainToggle = document.getElementById('DarkMode_checkbox');
+
+      // Apply dark mode
+      document.body.classList.toggle('dark-mode', toggle.checked);
+
+      // Sync with main toggle
+      mainToggle.checked = toggle.checked;
+
+      // Save to localStorage
+      localStorage.setItem('darkMode', toggle.checked ? '1' : '0');
+
+      // Update plots if they exist
+      if (typeof updateUplotTheme === 'function') {
+        if (currentTempPlot) updateUplotTheme(currentTempPlot);
+        if (voltagePlot) updateUplotTheme(voltagePlot);
+        if (rpmPlot) updateUplotTheme(rpmPlot);
+        if (temperaturePlot) updateUplotTheme(temperaturePlot);
+      }
+    }
+
+
+    // Frozen page response stuff
+
+    function showRecoveryOptions() {
+      // Don't show multiple recovery dialogs
+      if (document.getElementById('recoveryDialog')) return;
+
+      const recoveryDiv = document.createElement('div');
+      recoveryDiv.id = 'recoveryDialog';
+      recoveryDiv.innerHTML = `
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                background: var(--card-light); padding: 20px; border-radius: var(--radius); 
+                box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 10000; border: 2px solid var(--accent);">
+      <h3 style="margin-top: 0; color: var(--text-dark);">Connection Lost</h3>
+      <p style="color: var(--text-dark);">Lost connection to alternator regulator.</p>
+      <button onclick="retryConnection()" style="background-color: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: var(--radius); cursor: pointer; margin-right: 10px;">Retry Connection</button>
+      <button onclick="enterOfflineMode()" style="background-color: #555555; color: white; border: none; padding: 8px 16px; border-radius: var(--radius); cursor: pointer;">Continue Offline</button>
+      <p style="font-size: 12px; color: var(--text-dark);"><small>If problem persists, the device may need to be power-cycled.</small></p>
+    </div>
+  `;
+      document.body.appendChild(recoveryDiv);
+    }
+
+    function retryConnection() {
+      closeRecovery();
+      location.reload();
+    }
+
+    function closeRecovery() {
+      const dialog = document.getElementById('recoveryDialog');
+      if (dialog) {
+        dialog.remove();
+      }
+    }
+
+    function enterOfflineMode() {
+      closeRecovery();
+
+      // Don't add multiple offline banners
+      if (document.getElementById('offlineBanner')) return;
+
+      // Disable all form controls and buttons except reconnect
+      document.querySelectorAll('input[type="submit"], button, input[type="checkbox"], input[type="number"], input[type="text"], input[type="password"], select').forEach(el => {
+        // Skip the dark mode toggle and other non-setting controls
+        if (!el.id.includes('DarkMode') && !el.onclick?.toString().includes('location.reload')) {
+          el.disabled = true;
+          el.style.opacity = '0.5';
+          el.style.cursor = 'not-allowed';
+        }
+      });
+
+      // Disable dashboard controls
+      document.querySelectorAll('.switch input').forEach(el => {
+        el.disabled = true;
+        el.style.opacity = '0.5';
+      });
+
+      // Add offline banner at the top
+      const offlineBanner = document.createElement('div');
+      offlineBanner.id = 'offlineBanner';
+      offlineBanner.innerHTML = `
+    <div style="background: #ff6600; color: white; padding: 10px; text-align: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+      📱 <strong>OFFLINE MODE</strong> - Showing last known values only. Settings cannot be changed.
+      <button onclick="location.reload()" style="background: white; color: #ff6600; border: none; padding: 6px 12px; border-radius: var(--radius); margin-left: 15px; font-weight: bold; cursor: pointer;">
+        🔄 Reconnect
+      </button>
+    </div>
+  `;
+
+      // Insert at very top of page
+      document.body.insertBefore(offlineBanner, document.body.firstChild);
+
+      // Update corner status to show offline
+      const cornerStatus = document.getElementById('corner-status');
+      if (cornerStatus) {
+        cornerStatus.className = 'corner-status corner-status-disconnected';
+        cornerStatus.textContent = 'OFFLINE MODE';
+        cornerStatus.style.backgroundColor = '#ff6600';
+      }
+
+      console.log('Entered offline mode - controls disabled, showing last known data');
+    }
 
   </script>
 
@@ -3336,7 +4234,14 @@ Contact me at mark@xengineering.net       -->
     <span id="TempSource_echo" style="display:none;">0</span>
     <span id="IgnitionOverride_echo" style="display:none;">0</span>
     <span id="TempSource_echo" style="display:none;">0</span>
-
+    <span id="AlarmLatchEnabled_echo" style="display:none;">0</span>
+    <span id="AlarmTest_echo" style="display:none;">0</span>
+    <span id="ResetAlarmLatch_echo" style="display:none;">0</span>
+    <span id="AlarmLatchState_display" style="display:none;">Normal</span>
+    <span id="ForceFloat_echo" style="display:none;">0</span>
+    <span id="bulkCompleteTime_echo" style="display:none;">0</span>
+    <span id="FLOAT_DURATION_echo" style="display:none;">0</span>
+    <span id="dash-target-amps-echo" style="display:none;">0</span>
 
 
 
@@ -3420,6 +4325,12 @@ Contact me at mark@xengineering.net       -->
     <input id="TempSource" style="display:none;" value="0" />
     <input id="IgnitionOverride" style="display:none;" value="0" />
     <input id="TempSource" style="display:none;" value="0" />
+    <input id="AlarmLatchEnabled" style="display:none;" value="0" />
+    <input id="AlarmTest" style="display:none;" value="0" />
+    <input id="ResetAlarmLatch" style="display:none;" value="0" />
+    <input id="ForceFloat" style="display:none;" value="0" />
+    <input id="bulkCompleteTime" style="display:none;" value="0" />
+    <input id="FLOAT_DURATION" style="display:none;" value="0" />
 
 
 
