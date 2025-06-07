@@ -23,6 +23,8 @@ void setDutyPercent(int percent) {  // Function to set PWM duty cycle by percent
 
 void AdjustField() {
   if (millis() - prev_millis22 > FieldAdjustmentInterval) {  // adjust field every FieldAdjustmentInterval milliseconds
+    // Update charging stage (bulk/float logic)
+    updateChargingStage();
     float currentBatteryVoltage = getBatteryVoltage();
     // Check if charging should be enabled (ignition on, system enabled, BMS allows)
     chargingEnabled = (Ignition == 1 && OnOff == 1);
@@ -61,8 +63,20 @@ void AdjustField() {
           }
         }
 
+        // Step 2.4: Apply ForceFloat override if enabled
+        if (ForceFloat == 1) {
+          // Force float mode: target 0 amps at battery (perfect float charging)
+          uTargetAmps = 0;
+        }
+
         // Step 2.5, figure out the actual amps reading of whichever value we are controlling on
-        targetCurrent = getTargetAmps();
+        if (ForceFloat == 1) {
+          // Force float mode: use battery current (should be ~0)
+          targetCurrent = Bcur;
+        } else {
+          // Normal mode: use configured current source
+          targetCurrent = getTargetAmps();
+        }
         //Step 2.6 figure out the actual temp reading o whichever value we are controlling on
         if (TempSource == 0) {
           TempToUse = AlternatorTemperatureF;
@@ -101,7 +115,7 @@ void AdjustField() {
 
       else {  // Manual override mode
         dutyCycle = ManualDutyTarget;
-        uTargetAmps = -999;  // just useful for debugging, delete later
+        uTargetAmps = -99;  // just useful for debugging, delete later
         // Ensure duty cycle stays within bounds
         dutyCycle = constrain(dutyCycle, MinDuty, MaxDuty);
       }
@@ -127,12 +141,12 @@ void AdjustField() {
 
       if (dutyCycle <= (MinDuty + 1.0)) {
         Serial.println();
-       // String msg = " utargetAmps=" + String((float)uTargetAmps, 1)
-          //           + " targetCurrent=" + String(targetCurrent, 1)
-          //           + " currentBatteryVoltage=" + String(currentBatteryVoltage, 2) + "V"
-          //           + " TempToUse=" + String((float)TempToUse, 1) + "F"
-           //          + " dutyCycle=" + String(dutyCycle, 1);
-      //  queueConsoleMessage(msg);      GREAT DEBUG TOOL ADD BACK IN LATER
+        // String msg = " utargetAmps=" + String((float)uTargetAmps, 1)
+        //           + " targetCurrent=" + String(targetCurrent, 1)
+        //           + " currentBatteryVoltage=" + String(currentBatteryVoltage, 2) + "V"
+        //           + " TempToUse=" + String((float)TempToUse, 1) + "F"
+        //          + " dutyCycle=" + String(dutyCycle, 1);
+        //  queueConsoleMessage(msg);      GREAT DEBUG TOOL ADD BACK IN LATER
       }
     }
   }
@@ -191,9 +205,6 @@ void ReadAnalogInputs() {
           case 0:
             Channel0V = Raw / 32767.0 * 6.144 / 0.0697674419;  // voltage divider is 1,000,000 and 75,000 ohms
             BatteryV = Channel0V;
-            if (BatteryV > 14.5) {
-              ChargingVoltageTarget = TargetFloatVoltage;  // this needs to be placed somewhere else someday
-            }
             break;
           case 1:
             Channel1V = Raw / 32767.0 * 6.144 * 2;  // voltage divider is 2:1, so this gets us to volts
@@ -214,11 +225,11 @@ void ReadAnalogInputs() {
           case 3:
             Channel3V = Raw / 32767.0 * 6.144 * 833 * 2;  // Does nothing right now, thermistor someday?     The /2 is because of voltage divider
             temperatureThermistor = thermistorTempC(Channel3V);
-            if(temperatureThermistor>500){
-              temperatureThermistor=-99;
+            if (temperatureThermistor > 500) {
+              temperatureThermistor = -99;
             }
-            if(Channel3V>150){
-              Channel3V=-99;
+            if (Channel3V > 150) {
+              Channel3V = -99;
             }
             break;
         }
@@ -263,7 +274,7 @@ void TempTask(void *parameter) {
       float tempC = raw / 16.0;
       AlternatorTemperatureF = tempC * 1.8 + 32.0;
     } else {
-      AlternatorTemperatureF = NAN;
+      AlternatorTemperatureF = -99;  // Consistent with your error value pattern
       queueConsoleMessage("WARNING: Temp sensor read failed");
     }
   }
@@ -273,12 +284,12 @@ void UpdateDisplay() {
   if (!displayAvailable) {
     return;
   }
-  
+
   // Add a try-catch around all display operations
   try {
     if (millis() - prev_millis66 > 3000) {  // update display every 3 seconds
       unsigned long displayStart = millis();
-      
+
       // Try display operations with timeout
       u8g2.clearBuffer();
       if (millis() - displayStart > 2000) {
@@ -287,27 +298,27 @@ void UpdateDisplay() {
         prev_millis66 = millis();
         return;
       }
-      
+
       u8g2.setFont(u8g2_font_6x10_tf);
-      
+
       // Row 1 (y=10)
       u8g2.drawStr(0, 10, "Vlts:");
       u8g2.setCursor(35, 10);
       u8g2.print(BatteryV, 2);
-      
+
       u8g2.drawStr(79, 10, "R:");
       u8g2.setCursor(90, 10);
       u8g2.print(RPM, 0);
-      
+
       // Row 2 (y=20)
       u8g2.drawStr(0, 20, "Acur:");
       u8g2.setCursor(35, 20);
       u8g2.print(MeasuredAmps, 1);
-      
+
       u8g2.drawStr(79, 20, "VV:");
       u8g2.setCursor(90, 20);
       u8g2.print(VictronVoltage, 2);
-      
+
       // Check timeout partway through
       if (millis() - displayStart > 2000) {
         Serial.println("Display timeout during updates - disabling display");
@@ -315,35 +326,35 @@ void UpdateDisplay() {
         prev_millis66 = millis();
         return;
       }
-      
+
       // Row 3 (y=30)
       u8g2.drawStr(0, 30, "Temp:");
       u8g2.setCursor(35, 30);
       u8g2.print(AlternatorTemperatureF, 1);
-      
+
       u8g2.drawStr(79, 30, "t:");
       u8g2.setCursor(90, 30);
       u8g2.print("extra");
-      
+
       // Row 4 (y=40)
       u8g2.drawStr(0, 40, "PWM%:");
       u8g2.setCursor(35, 40);
       u8g2.print(DutyCycle, 1);
-      
+
       u8g2.drawStr(79, 40, "H:");
       u8g2.setCursor(90, 40);
       u8g2.print(HeadingNMEA);
-      
+
       // Row 5 (y=50)
       u8g2.drawStr(0, 50, "Vout:");
       u8g2.setCursor(35, 50);
       u8g2.print(vvout, 2);
-      
+
       // Row 6 (y=60)
       u8g2.drawStr(0, 60, "Bcur:");
       u8g2.setCursor(35, 60);
       u8g2.print(Bcur, 1);
-      
+
       // Final timeout check before sendBuffer()
       if (millis() - displayStart > 2000) {
         Serial.println("Display timeout before sendBuffer - disabling display");
@@ -351,15 +362,15 @@ void UpdateDisplay() {
         prev_millis66 = millis();
         return;
       }
-      
+
       u8g2.sendBuffer();
-      
+
       // Log if display operations took a long time
       unsigned long totalTime = millis() - displayStart;
       if (totalTime > 1000) {
         Serial.println("Display took: " + String(totalTime) + "ms");
       }
-      
+
       prev_millis66 = millis();
     }
   } catch (...) {
@@ -421,11 +432,12 @@ void Rudder(const tN2kMsg &N2kMsg) {
   double AngleOrder;
 
   if (ParseN2kRudder(N2kMsg, RudderPosition, Instance, RudderDirectionOrder, AngleOrder)) {
-    PrintLabelValWithConversionCheckUnDef("Rudder: ", Instance, 0, true);
-    PrintLabelValWithConversionCheckUnDef("  position (deg): ", RudderPosition, &RadToDeg, true);
-    OutputStream->print("  direction order: ");
-    PrintN2kEnumType(RudderDirectionOrder, OutputStream);
-    PrintLabelValWithConversionCheckUnDef("  angle order (deg): ", AngleOrder, &RadToDeg, true);
+    //Uncomment below to get serial montior back
+    // PrintLabelValWithConversionCheckUnDef("Rudder: ", Instance, 0, true);
+    // PrintLabelValWithConversionCheckUnDef("  position (deg): ", RudderPosition, &RadToDeg, true);
+    // OutputStream->print("  direction order: ");
+    // PrintN2kEnumType(RudderDirectionOrder, OutputStream);
+    // PrintLabelValWithConversionCheckUnDef("  angle order (deg): ", AngleOrder, &RadToDeg, true);
   } else {
     OutputStream->print("Failed to parse PGN: ");
     OutputStream->println(N2kMsg.PGN);
@@ -440,14 +452,15 @@ void Heading(const tN2kMsg &N2kMsg) {
   double Variation;
 
   if (ParseN2kHeading(N2kMsg, SID, Heading, Deviation, Variation, HeadingReference)) {
-    OutputStream->println("Heading:");
-    PrintLabelValWithConversionCheckUnDef("  SID: ", SID, 0, true);
-    OutputStream->print("  reference: ");
-    PrintN2kEnumType(HeadingReference, OutputStream);
-    PrintLabelValWithConversionCheckUnDef("  Heading (deg): ", Heading, &RadToDeg, true);
-    PrintLabelValWithConversionCheckUnDef("  Deviation (deg): ", Deviation, &RadToDeg, true);
-    PrintLabelValWithConversionCheckUnDef("  Variation (deg): ", Variation, &RadToDeg, true);
-    HeadingNMEA = Heading; 
+    //Uncomment below to get serial montior back
+    // OutputStream->println("Heading:");
+    // PrintLabelValWithConversionCheckUnDef("  SID: ", SID, 0, true);
+    // OutputStream->print("  reference: ");
+    // PrintN2kEnumType(HeadingReference, OutputStream);
+    // PrintLabelValWithConversionCheckUnDef("  Heading (deg): ", Heading, &RadToDeg, true);
+    // PrintLabelValWithConversionCheckUnDef("  Deviation (deg): ", Deviation, &RadToDeg, true);
+    // PrintLabelValWithConversionCheckUnDef("  Variation (deg): ", Variation, &RadToDeg, true);
+    HeadingNMEA = Heading * 180.0 / PI;  // Convert radians to degrees
   } else {
     OutputStream->print("Failed to parse PGN: ");
     OutputStream->println(N2kMsg.PGN);
@@ -473,7 +486,13 @@ void COGSOG(const tN2kMsg &N2kMsg) {
   }
 }
 //*****************************************************************************
+
+
+
 void GNSS(const tN2kMsg &N2kMsg) {
+  Serial.println("=== GNSS function called ===");
+  Serial.printf("PGN: %lu\n", N2kMsg.PGN);
+
   unsigned char SID;
   uint16_t DaysSince1970;
   double SecondsSinceMidnight;
@@ -497,25 +516,45 @@ void GNSS(const tN2kMsg &N2kMsg) {
                    nSatellites, HDOP, PDOP, GeoidalSeparation,
                    nReferenceStations, ReferenceStationType, ReferenceSationID,
                    AgeOfCorrection)) {
-    OutputStream->println("GNSS info:");
-    PrintLabelValWithConversionCheckUnDef("  SID: ", SID, 0, true);
-    PrintLabelValWithConversionCheckUnDef("  days since 1.1.1970: ", DaysSince1970, 0, true);
-    PrintLabelValWithConversionCheckUnDef("  seconds since midnight: ", SecondsSinceMidnight, 0, true);
-    PrintLabelValWithConversionCheckUnDef("  latitude: ", Latitude, 0, true, 9);
-    PrintLabelValWithConversionCheckUnDef("  longitude: ", Longitude, 0, true, 9);
-    PrintLabelValWithConversionCheckUnDef("  altitude: (m): ", Altitude, 0, true);
-    OutputStream->print("  GNSS type: ");
-    PrintN2kEnumType(GNSStype, OutputStream);
-    OutputStream->print("  GNSS method: ");
-    PrintN2kEnumType(GNSSmethod, OutputStream);
-    PrintLabelValWithConversionCheckUnDef("  satellite count: ", nSatellites, 0, true);
-    PrintLabelValWithConversionCheckUnDef("  HDOP: ", HDOP, 0, true);
-    PrintLabelValWithConversionCheckUnDef("  PDOP: ", PDOP, 0, true);
-    PrintLabelValWithConversionCheckUnDef("  geoidal separation: ", GeoidalSeparation, 0, true);
-    PrintLabelValWithConversionCheckUnDef("  reference stations: ", nReferenceStations, 0, true);
+
+    Serial.println("GNSS parsing SUCCESS!");
+    Serial.printf("Raw values - Lat: %f, Lon: %f, Sats: %d\n", Latitude, Longitude, nSatellites);
+
+    // Check if we have valid GPS data (not NaN and reasonable values)
+    if (!isnan(Latitude) && !isnan(Longitude) && Latitude != 0.0 && Longitude != 0.0 && abs(Latitude) <= 90.0 && abs(Longitude) <= 180.0 && nSatellites > 0) {
+
+      // Store values globally for web interface
+      LatitudeNMEA = Latitude;
+      LongitudeNMEA = Longitude;
+      SatelliteCountNMEA = nSatellites;
+      hasValidGNSSData = true;
+      lastValidGNSSTime = millis();
+
+      //Serial.printf("Valid GNSS data stored - LatNMEA: %f, LonNMEA: %f, SatNMEA: %d\n", LatitudeNMEA, LongitudeNMEA, SatelliteCountNMEA);
+    } else {
+      // Serial.println("GNSS data invalid - values are NaN, zero, or out of range");
+    }
+
+    // OutputStream->println("GNSS info:");
+    // PrintLabelValWithConversionCheckUnDef("  SID: ", SID, 0, true);
+    // PrintLabelValWithConversionCheckUnDef("  days since 1.1.1970: ", DaysSince1970, 0, true);
+    // PrintLabelValWithConversionCheckUnDef("  seconds since midnight: ", SecondsSinceMidnight, 0, true);
+    // PrintLabelValWithConversionCheckUnDef("  latitude: ", Latitude, 0, true, 9);
+    // PrintLabelValWithConversionCheckUnDef("  longitude: ", Longitude, 0, true, 9);
+    // PrintLabelValWithConversionCheckUnDef("  altitude: (m): ", Altitude, 0, true);
+    // OutputStream->print("  GNSS type: ");
+    // PrintN2kEnumType(GNSStype, OutputStream);
+    // OutputStream->print("  GNSS method: ");
+    // PrintN2kEnumType(GNSSmethod, OutputStream);
+    // PrintLabelValWithConversionCheckUnDef("  satellite count: ", nSatellites, 0, true);
+    // PrintLabelValWithConversionCheckUnDef("  HDOP: ", HDOP, 0, true);
+    // PrintLabelValWithConversionCheckUnDef("  PDOP: ", PDOP, 0, true);
+    // PrintLabelValWithConversionCheckUnDef("  geoidal separation: ", GeoidalSeparation, 0, true);
+    // PrintLabelValWithConversionCheckUnDef("  reference stations: ", nReferenceStations, 0, true);
   } else {
-    OutputStream->print("Failed to parse PGN: ");
-    OutputStream->println(N2kMsg.PGN);
+    // Serial.println("GNSS parsing FAILED!");
+    // OutputStream->print("Failed to parse PGN: ");
+    // OutputStream->println(N2kMsg.PGN);
   }
 }
 //*****************************************************************************
@@ -735,13 +774,13 @@ void SendWifiData() {
       char payload[1400];         // >1400 the wifi transmission won't fit in 1 packet
       snprintf(payload, sizeof(payload),
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                // Readings
                SafeInt(AlternatorTemperatureF),     // 0
@@ -856,11 +895,20 @@ void SendWifiData() {
                // More Readings
                SafeInt(temperatureThermistor),     // 105
                SafeInt(MaxTemperatureThermistor),  // 106
-               SafeInt(VictronCurrent, 100)        // 107
-
+               SafeInt(VictronCurrent, 100),       // 107
+                                                   //AlarmStuff
+               SafeInt(AlarmTest),                 // New index: 108
+               SafeInt(AlarmLatchEnabled),         // New index: 109
+               SafeInt(alarmLatch ? 1 : 0),        // New index: 110 (current latch state)
+               SafeInt(ResetAlarmLatch),           // New index: 111
+               SafeInt(ForceFloat),                //  112
+               SafeInt(bulkCompleteTime),          // 113
+               SafeInt(FLOAT_DURATION),            // 114
+               SafeInt(LatitudeNMEA * 1000000),    // 115 - Convert to integer with 6 decimal precision
+               SafeInt(LongitudeNMEA * 1000000),   // 116 - Convert to integer with 6 decimal precision
+               SafeInt(SatelliteCountNMEA)         // 117
 
       );
-
 
       events.send(payload, "CSVData");    // Changed event name to reflect new format
       SendWifiTime = micros() - start66;  // Calculate WiFi Send Time
@@ -883,8 +931,8 @@ void checkAndRestart() {
     events.send("Device restarting for maintenance. Will reconnect shortly.", "status");
     // Longer delay to ensure messages are sent
     delay(2500);
-    ESP.restart();     // Restart the ESP32
-    lastRestartTime = currentMillis;       // This line won't be reached, but for clarity...
+    ESP.restart();                    // Restart the ESP32
+    lastRestartTime = currentMillis;  // This line won't be reached, but for clarity...
   }
 }
 
@@ -927,7 +975,6 @@ bool connectToWiFi(const char *ssid, const char *password, unsigned long timeout
   }
 
   Serial.printf("Attempting to connect to WiFi network: %s\n", ssid);
-  Serial.println("DEBUG: connectToWiFi() started");
 
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
@@ -960,13 +1007,9 @@ bool connectToWiFi(const char *ssid, const char *password, unsigned long timeout
     } else {
       Serial.println("Error setting up mDNS responder!");
     }
-    Serial.println("DEBUG: connectToWiFi() finished - SUCCESS");
-
     return true;
   } else {
     Serial.println("Failed to connect to WiFi within timeout period");
-    Serial.println("DEBUG: connectToWiFi() finished - FAILED");
-
     return false;
   }
 }
@@ -1054,7 +1097,7 @@ void setupServer() {
       "/Amps3.txt", "/Amps4.txt", "/Amps5.txt", "/Amps6.txt", "/Amps7.txt",
       "/ShuntResistanceMicroOhm.txt", "/InvertAltAmps.txt", "/InvertBattAmps.txt",
       "/MaxDuty.txt", "/MinDuty.txt", "/FieldResistance.txt", "/maxPoints.txt",
-      "/AlternatorCOffset.txt", "/BatteryCOffset.txt"
+      "/AlternatorCOffset.txt", "/BatteryCOffset.txt", "/bulkCompleteTime.txt", "/FLOAT_DURATION.txt"
     };
 
     // Delete all settings files
@@ -1137,10 +1180,11 @@ void setupServer() {
         inputMessage = request->getParam("SwitchControlOverride")->value();
         writeFile(LittleFS, "/SwitchControlOverride.txt", inputMessage.c_str());
         SwitchControlOverride = inputMessage.toInt();
-      } else if (request->hasParam("ForceFloat1")) {
-        inputMessage = request->getParam("ForceFloat1")->value();
-        writeFile(LittleFS, "/ForceFloat1.txt", inputMessage.c_str());
+      } else if (request->hasParam("ForceFloat")) {
+        inputMessage = request->getParam("ForceFloat")->value();
+        writeFile(LittleFS, "/ForceFloat.txt", inputMessage.c_str());
         ForceFloat = inputMessage.toInt();
+        queueConsoleMessage("ForceFloat mode " + String(ForceFloat ? "enabled" : "disabled"));
       } else if (request->hasParam("OnOff")) {
         inputMessage = request->getParam("OnOff")->value();
         writeFile(LittleFS, "/OnOff.txt", inputMessage.c_str());
@@ -1291,6 +1335,33 @@ void setupServer() {
         inputMessage = request->getParam("IgnitionOverride")->value();
         writeFile(LittleFS, "/IgnitionOverride.txt", inputMessage.c_str());
         IgnitionOverride = inputMessage.toInt();
+      }
+
+      else if (request->hasParam("AlarmLatchEnabled")) {
+        inputMessage = request->getParam("AlarmLatchEnabled")->value();
+        writeFile(LittleFS, "/AlarmLatchEnabled.txt", inputMessage.c_str());
+        AlarmLatchEnabled = inputMessage.toInt();
+      } else if (request->hasParam("AlarmTest")) {
+        inputMessage = request->getParam("AlarmTest")->value();
+        AlarmTest = inputMessage.toInt();  // Don't save to file - momentary action
+        queueConsoleMessage("Alarm test initiated from web interface");
+      } else if (request->hasParam("ResetAlarmLatch")) {
+        inputMessage = request->getParam("ResetAlarmLatch")->value();
+        ResetAlarmLatch = inputMessage.toInt();  // Don't save to file - momentary action
+        resetAlarmLatch();                       // Call the reset function
+      }
+
+      else if (request->hasParam("bulkCompleteTime")) {
+        inputMessage = request->getParam("bulkCompleteTime")->value();
+        writeFile(LittleFS, "/bulkCompleteTime.txt", inputMessage.c_str());
+        bulkCompleteTime = inputMessage.toInt();
+      }  // When sending to ESP32
+      else if (request->hasParam("FLOAT_DURATION")) {
+        inputMessage = request->getParam("FLOAT_DURATION")->value();
+        int hours = inputMessage.toInt();
+        int seconds = hours * 3600;  // Convert to seconds
+        writeFile(LittleFS, "/FLOAT_DURATION.txt", String(seconds).c_str());
+        FLOAT_DURATION = seconds;
       } else if (request->hasParam("ResetTemp")) {
         inputMessage = request->getParam("ResetTemp")->value();       // pointless
         writeFile(LittleFS, "/ResetTemp.txt", inputMessage.c_str());  // pointless
@@ -1361,12 +1432,14 @@ void setupServer() {
         inputMessage = request->getParam("MaximumAllowedBatteryAmps")->value();
         writeFile(LittleFS, "/MaximumAllowedBatteryAmps.txt", inputMessage.c_str());
         MaximumAllowedBatteryAmps = inputMessage.toInt();
-      } else if (request->hasParam("ManualSOCPoint")) {                        //pointless
-        inputMessage = request->getParam("ManualSOCPoint")->value();           //pointless
-        writeFile(LittleFS, "/ManualSOCPoint.txt", inputMessage.c_str());      //pointless
-        ManualSOCPoint = inputMessage.toInt();                                 //pointless
-        SoC_percent = ManualSOCPoint * 100;                                    // Convert user input to internal scaling//pointless
-        writeFile(LittleFS, "/SoC_percent.txt", String(SoC_percent).c_str());  //pointless
+      } else if (request->hasParam("ManualSOCPoint")) {
+        inputMessage = request->getParam("ManualSOCPoint")->value();
+        ManualSOCPoint = inputMessage.toInt();
+
+        SoC_percent = ManualSOCPoint * 100;
+        CoulombCount_Ah_scaled = (ManualSOCPoint * BatteryCapacity_Ah);  // Keep them in sync
+
+        queueConsoleMessage("Manual SoC set to " + String(ManualSOCPoint) + "%");
       } else if (request->hasParam("ResetThermTemp")) {
         inputMessage = request->getParam("ResetThermTemp")->value();
         writeFile(LittleFS, "/ResetThermTemp.txt", inputMessage.c_str());
@@ -1790,9 +1863,10 @@ void UpdateBatterySOC(unsigned long elapsedMillis) {
   } else {
     // Apply Peukert compensation
     float peukertFactor = PeukertExponent_scaled / 100.0f;
-    float batteryDeltaAh = deltaAh / peukertFactor;
+    float batteryDeltaAh = deltaAh * peukertFactor;
     coulombAccumulator_Ah += batteryDeltaAh;
   }
+
 
   // Update the scaled coulomb count when we have accumulated enough change
   if (abs(coulombAccumulator_Ah) >= 0.01f) {
@@ -1814,6 +1888,7 @@ void UpdateBatterySOC(unsigned long elapsedMillis) {
       CoulombCount_Ah_scaled = BatteryCapacity_Ah * 100;
       FullChargeDetected = true;
       coulombAccumulator_Ah = 0.0f;
+      queueConsoleMessage("BATTERY: Full charge detected - SoC reset to 100%");
     }
   } else {
     FullChargeTimer = 0;
@@ -2064,10 +2139,10 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   } else {
     IgnitionOverride = readFile(LittleFS, "/IgnitionOverride.txt").toInt();
   }
-  if (!LittleFS.exists("/ForceFloat1.txt")) {
-    writeFile(LittleFS, "/ForceFloat1.txt", String(ForceFloat).c_str());
+  if (!LittleFS.exists("/ForceFloat.txt")) {
+    writeFile(LittleFS, "/ForceFloat.txt", String(ForceFloat).c_str());
   } else {
-    ForceFloat = readFile(LittleFS, "/ForceFloat1.txt").toInt();
+    ForceFloat = readFile(LittleFS, "/ForceFloat.txt").toInt();
   }
   if (!LittleFS.exists("/OnOff.txt")) {
     writeFile(LittleFS, "/OnOff.txt", String(OnOff).c_str());
@@ -2402,6 +2477,22 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   } else {
     MaxTemperatureThermistor = readFile(LittleFS, "/MaxTemperatureThermistor.txt").toInt();  // Use toInt()
   }
+  if (!LittleFS.exists("/AlarmLatchEnabled.txt")) {
+    writeFile(LittleFS, "/AlarmLatchEnabled.txt", String(AlarmLatchEnabled).c_str());
+  } else {
+    AlarmLatchEnabled = readFile(LittleFS, "/AlarmLatchEnabled.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/bulkCompleteTime.txt")) {
+    writeFile(LittleFS, "/bulkCompleteTime.txt", String(bulkCompleteTime).c_str());
+  } else {
+    bulkCompleteTime = readFile(LittleFS, "/bulkCompleteTime.txt").toInt();
+  }
+  if (!LittleFS.exists("/FLOAT_DURATION.txt")) {
+    writeFile(LittleFS, "/FLOAT_DURATION.txt", String(FLOAT_DURATION).c_str());
+  } else {
+    FLOAT_DURATION = readFile(LittleFS, "/FLOAT_DURATION.txt").toInt();
+  }
 }
 
 void InitPersistentVariables() {
@@ -2608,7 +2699,7 @@ float getBatteryVoltage() {
 
   switch (BatteryVoltageSource) {
     case 0:  // INA228
-      if (INADisconnected == 0 && !isnan(IBV) && IBV > 8.0 && IBV < 70.0) {
+      if (INADisconnected == 0 && !isnan(IBV) && IBV > 8.0 && IBV < 70.0 && millis() > 5000) {
         selectedVoltage = IBV;
       } else {
         if (millis() - lastWarningTime > WARNING_INTERVAL) {
@@ -2773,31 +2864,31 @@ void checkWiFiConnection() {
 bool setupDisplay() {
   // Add delay for ESP32 stabilization
   delay(100);
-  
+
   try {
     // Initialize SPI carefully
     SPI.begin();
-    delay(50);  // Let SPI settle
+    delay(50);                  // Let SPI settle
     SPI.setFrequency(1000000);  // Start slow for stability
     SPI.setDataMode(SPI_MODE0);
     SPI.setBitOrder(MSBFIRST);
-    
+
     // Test if SPI is working by trying a simple transaction
     SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
     SPI.endTransaction();
-    
+
     // Initialize U8g2 with error checking
     u8g2.begin();
-    
+
     // Test if display is responding
     u8g2.clearBuffer();
     u8g2.sendBuffer();
-    
+
     // If we get here without crashing, it's working
     displayAvailable = true;
     Serial.println("Display initialized successfully");
     return true;
-    
+
   } catch (...) {
     Serial.println("Display initialization failed - exception caught");
     displayAvailable = false;
@@ -2805,10 +2896,164 @@ bool setupDisplay() {
   }
 }
 
+void CheckAlarms() {
+  static bool previousAlarmState = false;
+  static unsigned long lastAlarmMessage = 0;
+  bool currentAlarmCondition = false;
+  bool outputAlarmState = false;
+  String alarmReason = "";
+
+  // Handle alarm test - this can trigger regardless of AlarmActivate
+  if (AlarmTest == 1) {
+    if (alarmTestStartTime == 0) {
+      alarmTestStartTime = millis();
+      queueConsoleMessage("ALARM TEST: Testing buzzer for 2 seconds");
+    }
+
+    if (millis() - alarmTestStartTime < ALARM_TEST_DURATION) {
+      currentAlarmCondition = true;  // Treat test as a real alarm condition
+      alarmReason = "Alarm test active";
+    } else {
+      // Test completed, reset
+      AlarmTest = 0;
+      alarmTestStartTime = 0;
+      queueConsoleMessage("ALARM TEST: Complete");
+    }
+  }
+
+  // Normal alarm checking - ONLY when AlarmActivate is enabled
+  if (AlarmActivate == 1) {
+
+    // Temperature alarm
+    if (TempAlarm > 0 && TempToUse > TempAlarm) {
+      currentAlarmCondition = true;
+      alarmReason = "High alternator temperature: " + String(TempToUse) + "°F (limit: " + String(TempAlarm) + "°F)";
+    }
+
+    // Voltage alarms
+    float currentVoltage = getBatteryVoltage();
+    if (VoltageAlarmHigh > 0 && currentVoltage > VoltageAlarmHigh) {
+      currentAlarmCondition = true;
+      alarmReason = "High battery voltage: " + String(currentVoltage, 2) + "V (limit: " + String(VoltageAlarmHigh) + "V)";
+    }
+
+    if (VoltageAlarmLow > 0 && currentVoltage < VoltageAlarmLow && currentVoltage > 8.0) {
+      currentAlarmCondition = true;
+      alarmReason = "Low battery voltage: " + String(currentVoltage, 2) + "V (limit: " + String(VoltageAlarmLow) + "V)";
+    }
+
+    // Current alarm (alternator)
+    if (CurrentAlarmHigh > 0 && MeasuredAmps > CurrentAlarmHigh) {
+      currentAlarmCondition = true;
+      alarmReason = "High alternator current: " + String(MeasuredAmps, 1) + "A (limit: " + String(CurrentAlarmHigh) + "A)";
+    }
+  }
+
+  // Handle latching logic (applies to ALL alarm conditions including test)
+  if (AlarmLatchEnabled == 1) {
+    // Latch mode: Once alarm trips, stays on until manually cleared
+    if (currentAlarmCondition) {
+      alarmLatch = true;  // Set latch
+    }
+    outputAlarmState = alarmLatch;  // Output follows latch state
+  } else {
+    // Non-latch mode: Output follows current conditions
+    outputAlarmState = currentAlarmCondition;
+  }
+
+  // Final output control - respects AlarmActivate EXCEPT for test
+  bool finalOutput = false;
+  if (AlarmTest == 1) {
+    // Test always works regardless of AlarmActivate
+    finalOutput = outputAlarmState;
+  } else if (AlarmActivate == 1) {
+    // Normal alarms only work when AlarmActivate is on
+    finalOutput = outputAlarmState;
+  }
+  // else: AlarmActivate is off and not testing = no output
+
+  digitalWrite(33, finalOutput);
+
+  // Console messaging
+  if (currentAlarmCondition != previousAlarmState) {
+    if (currentAlarmCondition) {
+      queueConsoleMessage("ALARM ACTIVATED: " + alarmReason);
+      if (AlarmLatchEnabled == 1) {
+        queueConsoleMessage("ALARM LATCHED: Manual reset required");
+      }
+    } else if (AlarmLatchEnabled == 0) {
+      queueConsoleMessage("ALARM CLEARED");
+    }
+    previousAlarmState = currentAlarmCondition;
+    lastAlarmMessage = millis();
+  } else if (outputAlarmState && (millis() - lastAlarmMessage > 30000)) {
+    // Repeat alarm message every 30 seconds while active
+    if (AlarmLatchEnabled == 1 && alarmLatch) {
+      queueConsoleMessage("ALARM LATCHED: " + alarmReason + " (manual reset required)");
+    } else {
+      queueConsoleMessage("ALARM ACTIVE: " + alarmReason);
+    }
+    lastAlarmMessage = millis();
+  }
+}
+
+void resetAlarmLatch() {
+  if (alarmLatch) {
+    alarmLatch = false;
+    queueConsoleMessage("ALARM LATCH: Manually reset");
+  }
+}
+
+void logDashboardValues() {
+  static unsigned long lastDashboardLog = 0;
+  if (millis() - lastDashboardLog >= 10000) {  // Every 10 seconds
+    lastDashboardLog = millis();
+    String dashboardLog = "DASHBOARD: ";
+    dashboardLog += "IBV=" + String(IBV, 2) + "V ";
+    dashboardLog += "SoC=" + String(SoC_percent / 100) + "% ";
+    dashboardLog += "AltI=" + String(MeasuredAmps, 1) + "A ";
+    dashboardLog += "BattI=" + String(Bcur, 1) + "A ";
+    dashboardLog += "AltT=" + String((int)AlternatorTemperatureF) + "°F ";
+    dashboardLog += "RPM=" + String((int)RPM);
+    queueConsoleMessage(dashboardLog);
+  }
+}
+
+void updateChargingStage() {
+  float currentVoltage = getBatteryVoltage();
+
+  if (inBulkStage) {
+    // Currently in bulk charging
+    ChargingVoltageTarget = ChargingVoltageTarget;  // Use existing FullChargeVoltage
+
+    if (currentVoltage >= ChargingVoltageTarget) {
+      if (bulkCompleteTimer == 0) {
+        bulkCompleteTimer = millis();                                // Start timer
+      } else if (millis() - bulkCompleteTimer > bulkCompleteTime) {  // 1 second above bulk voltage
+        inBulkStage = false;
+        floatStartTime = millis();
+        queueConsoleMessage("CHARGING: Bulk stage complete, switching to float");
+      }
+    } else {
+      bulkCompleteTimer = 0;  // Reset timer if voltage drops
+    }
+  } else {
+    // Currently in float charging
+    ChargingVoltageTarget = TargetFloatVoltage;
+
+    // Return to bulk after time expires OR if voltage drops significantly
+    if ((millis() - floatStartTime > FLOAT_DURATION * 1000) || (currentVoltage < TargetFloatVoltage - 0.5)) {
+      inBulkStage = true;
+      bulkCompleteTimer = 0;
+      floatStartTime = millis();
+      queueConsoleMessage("CHARGING: Returning to bulk stage");
+    }
+  }
+}
+
 void StuffToDoAtSomePoint() {
   //every reset button has a pointless flag and an echo.  I did not delete them for fear of breaking the payload and they hardly cost anything to keep
   //Battery Voltage Source drop down menu- make this text update on page re-load instead of just an echo number
-  //Ask AI to go through and add many more relevent Console messages- make sure none of them come in too rapidly
   // Is it possible to power up if the igniton is off?  A bunch of setup functions may fail?
   // What happens when rpm table is screwed up by an idiot
 }
