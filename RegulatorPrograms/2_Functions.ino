@@ -21,6 +21,7 @@ void setDutyPercent(int percent) {  // Function to set PWM duty cycle by percent
   ledcWrite(pwmPin, duty);  // In v3.x, first parameter is the pin number
 }
 
+// Function 6: AdjustField() - PWM Field Control with Freshness Tracking
 void AdjustField() {
   if (millis() - prev_millis22 > FieldAdjustmentInterval) {  // adjust field every FieldAdjustmentInterval milliseconds
     // Update charging stage (bulk/float logic)
@@ -130,6 +131,12 @@ void AdjustField() {
     DutyCycle = dutyCycle;                            //shoddy work, oh well
     vvout = dutyCycle / 100 * currentBatteryVoltage;  //
     iiout = vvout / FieldResistance;
+
+    // Mark calculated values as fresh - these are always current when calculated
+    MARK_FRESH(IDX_DUTY_CYCLE);
+    MARK_FRESH(IDX_FIELD_VOLTS);
+    MARK_FRESH(IDX_FIELD_AMPS);
+
     // Update timer (only once)
     prev_millis22 = millis();
     /// delete this whole thing later
@@ -140,7 +147,7 @@ void AdjustField() {
       lastRunTime2g = millis();
 
       if (dutyCycle <= (MinDuty + 1.0)) {
-        Serial.println();
+        //Serial.println();
         // String msg = " utargetAmps=" + String((float)uTargetAmps, 1)
         //           + " targetCurrent=" + String(targetCurrent, 1)
         //           + " currentBatteryVoltage=" + String(currentBatteryVoltage, 2) + "V"
@@ -153,36 +160,49 @@ void AdjustField() {
 }
 
 void ReadAnalogInputs() {
+  // INA228 Battery Monitor
   if (millis() - lastINARead >= 900) {  // could go down to 600 here, but this logic belongs in Loop anyway
     if (INADisconnected == 0) {
       int start33 = micros();  // Start timing analog input reading
       lastINARead = millis();
-      IBV = INA.getBusVoltage();
-      ShuntVoltage_mV = INA.getShuntVoltage_mV();
-      //Bcur = (ShuntVoltage_mV * 1000.0) / ShuntResistance_uOhm;
-      //Example:
-      //For a 100 µΩ shunt and 5 mV reading:
-      // Bcur = (5.0 * 1000.0) / 100.0 = 50.0 Amps
-      Bcur = ShuntVoltage_mV * 1000.0f / ShuntResistanceMicroOhm;  //shunt is 0.1 mΩ or 100uOohms, Bcur is in Amps
-      if (InvertBattAmps == 1) {
-        Bcur = Bcur * -1;  // swap sign if necessary
-      }
-      Bcur = Bcur + BatteryCOffset;
-      BatteryCurrent_scaled = Bcur * 100;
-      int end33 = micros();               // End timing
-      AnalogReadTime2 = end33 - start33;  // Store elapsed time
-      if (AnalogReadTime2 > AnalogReadTime) {
-        AnalogReadTime = AnalogReadTime2;
+
+      try {
+        IBV = INA.getBusVoltage();
+        ShuntVoltage_mV = INA.getShuntVoltage_mV();
+
+        // Sanity check the readings
+        if (!isnan(IBV) && IBV > 5.0 && IBV < 70.0 && !isnan(ShuntVoltage_mV)) {
+          Bcur = ShuntVoltage_mV * 1000.0f / ShuntResistanceMicroOhm;
+          if (InvertBattAmps == 1) {
+            Bcur = Bcur * -1;  // swap sign if necessary
+          }
+          Bcur = Bcur + BatteryCOffset;
+          BatteryCurrent_scaled = Bcur * 100;
+
+          // Only mark fresh on successful, valid readings
+          MARK_FRESH(IDX_IBV);
+          MARK_FRESH(IDX_BCUR);
+        }
+
+        int end33 = micros();               // End timing
+        AnalogReadTime2 = end33 - start33;  // Store elapsed time
+        if (AnalogReadTime2 > AnalogReadTime) {
+          AnalogReadTime = AnalogReadTime2;
+        }
+      } catch (...) {
+        // INA228 read failed - do not call MARK_FRESH
+        Serial.println("INA228 read failed");
+        queueConsoleMessage("INA228 read failed");
       }
     }
   }
 
-  //ADS1115 reading is based on trigger→wait→read   so as to not waste time.  That is way the below is so complicated
+  //ADS1115 reading is based on trigger→wait→read so as to not waste time
   if (ADS1115Disconnected != 0) {
     queueConsoleMessage("theADS1115 was not connected and triggered a return");
-
-    return;
+    return;  // Early exit - no MARK_FRESH calls
   }
+
   unsigned long now = millis();
   switch (adsState) {
     case ADS_IDLE:
@@ -205,31 +225,45 @@ void ReadAnalogInputs() {
           case 0:
             Channel0V = Raw / 32767.0 * 6.144 / 0.0697674419;  // voltage divider is 1,000,000 and 75,000 ohms
             BatteryV = Channel0V;
+            if (BatteryV > 5.0 && BatteryV < 70.0) {  // Sanity check
+              MARK_FRESH(IDX_BATTERY_V);              // Only mark fresh on valid reading
+            }
             break;
           case 1:
-            Channel1V = Raw / 32767.0 * 6.144 * 2;  // voltage divider is 2:1, so this gets us to volts
-            // Amps=100×(Vin−2.5)
+            Channel1V = Raw / 32767.0 * 6.144 * 2;   // voltage divider is 2:1, so this gets us to volts
             MeasuredAmps = (Channel1V - 2.5) * 100;  // alternator current
             if (InvertAltAmps == 1) {
               MeasuredAmps = MeasuredAmps * -1;  // swap sign if necessary
             }
             MeasuredAmps = MeasuredAmps - AlternatorCOffset;
+            if (MeasuredAmps > -500 && MeasuredAmps < 500) {  // Sanity check
+              MARK_FRESH(IDX_MEASURED_AMPS);                  // Only mark fresh on valid reading
+            }
             break;
           case 2:
-            Channel2V = Raw / 32767.0 * 2 * 6.144 * RPMScalingFactor;  // voltage divider is 2:1,  Guess and check to develop RPMScaingFactor
+            Channel2V = Raw / 32767.0 * 2 * 6.144 * RPMScalingFactor;
             RPM = Channel2V;
             if (RPM < 100) {
               RPM = 0;
             }
+            if (RPM >= 0 && RPM < 10000) {  // Sanity check
+              MARK_FRESH(IDX_RPM);          // Only mark fresh on valid reading
+            }
             break;
           case 3:
-            Channel3V = Raw / 32767.0 * 6.144 * 833 * 2;  // Does nothing right now, thermistor someday?     The /2 is because of voltage divider
+            Channel3V = Raw / 32767.0 * 6.144 * 833 * 2;
             temperatureThermistor = thermistorTempC(Channel3V);
             if (temperatureThermistor > 500) {
               temperatureThermistor = -99;
             }
             if (Channel3V > 150) {
               Channel3V = -99;
+            }
+            if (Channel3V > 0 && Channel3V < 100) {  // Sanity check for Channel3V
+              MARK_FRESH(IDX_CHANNEL3V);
+            }
+            if (temperatureThermistor > -50 && temperatureThermistor < 200) {  // Sanity check for temp
+              MARK_FRESH(IDX_THERMISTOR_TEMP);
             }
             break;
         }
@@ -254,25 +288,28 @@ void ReadAnalogInputs() {
   }
 }
 void TempTask(void *parameter) {
-
-  // a placeholder for the temperature measurment- uncomment this and comment out temp measurement for debugging
-  // for (;;) {
-  //   vTaskDelay(pdMS_TO_TICKS(1000));  // sleep for 1 second
-  // }
-
   for (;;) {
     // Step 1: Trigger a conversion
     sensors.requestTemperaturesByAddress(tempDeviceAddress);
 
     // Step 2: Wait for conversion to complete while other things run
-    vTaskDelay(pdMS_TO_TICKS(9000));  // This is the spacing between reads
+    vTaskDelay(pdMS_TO_TICKS(5000));  // This is the spacing between reads
 
     // Step 3: Read the completed result
     uint8_t scratchPad[9];
     if (sensors.readScratchPad(tempDeviceAddress, scratchPad)) {
       int16_t raw = (scratchPad[1] << 8) | scratchPad[0];
       float tempC = raw / 16.0;
-      AlternatorTemperatureF = tempC * 1.8 + 32.0;
+      float tempF = tempC * 1.8 + 32.0;
+
+      // Sanity check the temperature reading
+      if (tempF > -50 && tempF < 300) {  // Reasonable temperature range
+        AlternatorTemperatureF = tempF;
+        MARK_FRESH(IDX_ALTERNATOR_TEMP);  // Only mark fresh on valid reading
+      } else {
+        AlternatorTemperatureF = -99;  // Invalid reading
+        queueConsoleMessage("WARNING: Temp sensor reading out of range");
+      }
     } else {
       AlternatorTemperatureF = -99;  // Consistent with your error value pattern
       queueConsoleMessage("WARNING: Temp sensor read failed");
@@ -294,6 +331,8 @@ void UpdateDisplay() {
       u8g2.clearBuffer();
       if (millis() - displayStart > 2000) {
         Serial.println("Display timeout - disabling display");
+        queueConsoleMessage("Display timeout - disabling display");
+
         displayAvailable = false;
         prev_millis66 = millis();
         return;
@@ -322,6 +361,7 @@ void UpdateDisplay() {
       // Check timeout partway through
       if (millis() - displayStart > 2000) {
         Serial.println("Display timeout during updates - disabling display");
+        queueConsoleMessage("Display timeout during updates - disabling display");
         displayAvailable = false;
         prev_millis66 = millis();
         return;
@@ -358,6 +398,8 @@ void UpdateDisplay() {
       // Final timeout check before sendBuffer()
       if (millis() - displayStart > 2000) {
         Serial.println("Display timeout before sendBuffer - disabling display");
+        queueConsoleMessage("Display timeout before sendBuffer - disabling display");
+
         displayAvailable = false;
         prev_millis66 = millis();
         return;
@@ -375,33 +417,42 @@ void UpdateDisplay() {
     }
   } catch (...) {
     Serial.println("Display operation failed - disabling display");
+    queueConsoleMessage("Display operation failed - disabling display");
     displayAvailable = false;
     prev_millis66 = millis();
   }
 }
-
 void ReadVEData() {
   if (VeData == 1) {
+    if (millis() - prev_millis33 > 2000) {  // read VE data every 2 seconds
 
-    if (millis() - prev_millis33 > 2000) {  // read VE data every 2 second
+      int start1 = micros();      // Start timing VeData
+      bool dataReceived = false;  // Track if we got any valid data
 
-      int start1 = micros();  // Start timing VeData
       while (Serial2.available()) {
         myve.rxData(Serial2.read());
         for (int i = 0; i < myve.veEnd; i++) {
           if (strcmp(myve.veName[i], "V") == 0) {
-            VictronVoltage = (atof(myve.veValue[i]) / 1000);
+            float newVoltage = (atof(myve.veValue[i]) / 1000);
+            if (newVoltage > 0 && newVoltage < 100) {  // Sanity check
+              VictronVoltage = newVoltage;
+              MARK_FRESH(IDX_VICTRON_VOLTAGE);  // Only mark fresh on valid data
+              dataReceived = true;
+            }
           }
           if (strcmp(myve.veName[i], "I") == 0) {
-            VictronCurrent = (atof(myve.veValue[i]) / 1000);
+            float newCurrent = (atof(myve.veValue[i]) / 1000);
+            if (newCurrent > -1000 && newCurrent < 1000) {  // Sanity check
+              VictronCurrent = newCurrent;
+              MARK_FRESH(IDX_VICTRON_CURRENT);  // Only mark fresh on valid data
+              dataReceived = true;
+            }
           }
         }
         yield();  // not sure what this does
       }
-      //PrintData(); //This prints all victron data received to the serial monitor, put this in "Loop" for debugging if needed
       int end1 = micros();     // End timing
       VeTime = end1 - start1;  // Store elapsed time
-
       prev_millis33 = millis();
     }
   }
@@ -452,7 +503,11 @@ void Heading(const tN2kMsg &N2kMsg) {
   double Variation;
 
   if (ParseN2kHeading(N2kMsg, SID, Heading, Deviation, Variation, HeadingReference)) {
-    //Uncomment below to get serial montior back
+    // Parsing succeeded - update variable and mark fresh
+    HeadingNMEA = Heading * 180.0 / PI;  // Convert radians to degrees
+    MARK_FRESH(IDX_HEADING_NMEA);        // Only called on successful parse
+
+    // Uncomment below to get serial monitor output back
     // OutputStream->println("Heading:");
     // PrintLabelValWithConversionCheckUnDef("  SID: ", SID, 0, true);
     // OutputStream->print("  reference: ");
@@ -460,8 +515,8 @@ void Heading(const tN2kMsg &N2kMsg) {
     // PrintLabelValWithConversionCheckUnDef("  Heading (deg): ", Heading, &RadToDeg, true);
     // PrintLabelValWithConversionCheckUnDef("  Deviation (deg): ", Deviation, &RadToDeg, true);
     // PrintLabelValWithConversionCheckUnDef("  Variation (deg): ", Variation, &RadToDeg, true);
-    HeadingNMEA = Heading * 180.0 / PI;  // Convert radians to degrees
   } else {
+    // Parsing failed - do NOT call MARK_FRESH, data will go stale automatically
     OutputStream->print("Failed to parse PGN: ");
     OutputStream->println(N2kMsg.PGN);
   }
@@ -490,8 +545,8 @@ void COGSOG(const tN2kMsg &N2kMsg) {
 
 
 void GNSS(const tN2kMsg &N2kMsg) {
-  Serial.println("=== GNSS function called ===");
-  Serial.printf("PGN: %lu\n", N2kMsg.PGN);
+  //Serial.println("=== GNSS function called ===");
+  //Serial.printf("PGN: %lu\n", N2kMsg.PGN);
 
   unsigned char SID;
   uint16_t DaysSince1970;
@@ -517,8 +572,8 @@ void GNSS(const tN2kMsg &N2kMsg) {
                    nReferenceStations, ReferenceStationType, ReferenceSationID,
                    AgeOfCorrection)) {
 
-    Serial.println("GNSS parsing SUCCESS!");
-    Serial.printf("Raw values - Lat: %f, Lon: %f, Sats: %d\n", Latitude, Longitude, nSatellites);
+    //Serial.println("GNSS parsing SUCCESS!");
+    //Serial.printf("Raw values - Lat: %f, Lon: %f, Sats: %d\n", Latitude, Longitude, nSatellites);
 
     // Check if we have valid GPS data (not NaN and reasonable values)
     if (!isnan(Latitude) && !isnan(Longitude) && Latitude != 0.0 && Longitude != 0.0 && abs(Latitude) <= 90.0 && abs(Longitude) <= 180.0 && nSatellites > 0) {
@@ -527,34 +582,20 @@ void GNSS(const tN2kMsg &N2kMsg) {
       LatitudeNMEA = Latitude;
       LongitudeNMEA = Longitude;
       SatelliteCountNMEA = nSatellites;
-      hasValidGNSSData = true;
-      lastValidGNSSTime = millis();
+
+      // Mark all GPS data as fresh - only called on valid data
+      MARK_FRESH(IDX_LATITUDE_NMEA);
+      MARK_FRESH(IDX_LONGITUDE_NMEA);
+      MARK_FRESH(IDX_SATELLITE_COUNT);
 
       //Serial.printf("Valid GNSS data stored - LatNMEA: %f, LonNMEA: %f, SatNMEA: %d\n", LatitudeNMEA, LongitudeNMEA, SatelliteCountNMEA);
     } else {
-      // Serial.println("GNSS data invalid - values are NaN, zero, or out of range");
+      //Serial.println("GNSS data invalid - values are NaN, zero, or out of range");
+      // Invalid data - do NOT call MARK_FRESH, let data go stale
     }
-
-    // OutputStream->println("GNSS info:");
-    // PrintLabelValWithConversionCheckUnDef("  SID: ", SID, 0, true);
-    // PrintLabelValWithConversionCheckUnDef("  days since 1.1.1970: ", DaysSince1970, 0, true);
-    // PrintLabelValWithConversionCheckUnDef("  seconds since midnight: ", SecondsSinceMidnight, 0, true);
-    // PrintLabelValWithConversionCheckUnDef("  latitude: ", Latitude, 0, true, 9);
-    // PrintLabelValWithConversionCheckUnDef("  longitude: ", Longitude, 0, true, 9);
-    // PrintLabelValWithConversionCheckUnDef("  altitude: (m): ", Altitude, 0, true);
-    // OutputStream->print("  GNSS type: ");
-    // PrintN2kEnumType(GNSStype, OutputStream);
-    // OutputStream->print("  GNSS method: ");
-    // PrintN2kEnumType(GNSSmethod, OutputStream);
-    // PrintLabelValWithConversionCheckUnDef("  satellite count: ", nSatellites, 0, true);
-    // PrintLabelValWithConversionCheckUnDef("  HDOP: ", HDOP, 0, true);
-    // PrintLabelValWithConversionCheckUnDef("  PDOP: ", PDOP, 0, true);
-    // PrintLabelValWithConversionCheckUnDef("  geoidal separation: ", GeoidalSeparation, 0, true);
-    // PrintLabelValWithConversionCheckUnDef("  reference stations: ", nReferenceStations, 0, true);
   } else {
-    // Serial.println("GNSS parsing FAILED!");
-    // OutputStream->print("Failed to parse PGN: ");
-    // OutputStream->println(N2kMsg.PGN);
+    //Serial.println("GNSS parsing FAILED!");
+    // Parse failed - do NOT call MARK_FRESH, let data go stale
   }
 }
 //*****************************************************************************
@@ -711,8 +752,10 @@ void HandleNMEA2000Msg(const tN2kMsg &N2kMsg) {
   int iHandler;
 
   // Find handler
-  OutputStream->print("In Main Handler: ");
-  OutputStream->println(N2kMsg.PGN);
+  if (NMEA2KVerbose == 1) {
+    OutputStream->print("In Main Handler: ");
+    OutputStream->println(N2kMsg.PGN);
+  }
   for (iHandler = 0; NMEA2000Handlers[iHandler].PGN != 0 && !(N2kMsg.PGN == NMEA2000Handlers[iHandler].PGN); iHandler++)
     ;
 
@@ -756,12 +799,18 @@ int SafeInt(float f, int scale = 1) {
   // where this is matters!!   Put utility functions like SafeInt() above setup() and loop() , according to ChatGPT.  And I proved it matters.
   return isnan(f) || isinf(f) ? -1 : (int)(f * scale);
 }
+
 void SendWifiData() {
-  if (millis() - prev_millis5 > webgaugesinterval) {
+  static unsigned long prev_millis5 = 0;
+  static unsigned long lastTimestampSend = 0;
+  unsigned long now = millis();
+  bool sendingPayloadThisCycle = false;
+
+  // ===== Main CSV Payload =====
+  if (now - prev_millis5 > webgaugesinterval) {
     WifiStrength = WiFi.RSSI();
     WifiHeartBeat++;
-    // Process console message queue - send one message per interval
-    processConsoleQueue();
+    processConsoleQueue(); // Process console message queue - send one message per interval
     if (WifiStrength >= -70) {
       int start66 = micros();     // Start timing the wifi section
       printHeapStats();           //   Should be ~25–65 µs with no serial prints
@@ -775,13 +824,16 @@ void SendWifiData() {
       snprintf(payload, sizeof(payload),
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+               // ... ALL YOUR EXISTING SafeInt() calls stay exactly the same ...
+               // I'm not repeating them here since they're already working
+
                // Readings
                SafeInt(AlternatorTemperatureF),     // 0
                SafeInt(DutyCycle),                  // 1
@@ -906,14 +958,42 @@ void SendWifiData() {
                SafeInt(FLOAT_DURATION),            // 114
                SafeInt(LatitudeNMEA * 1000000),    // 115 - Convert to integer with 6 decimal precision
                SafeInt(LongitudeNMEA * 1000000),   // 116 - Convert to integer with 6 decimal precision
-               SafeInt(SatelliteCountNMEA)         // 117
-
+               SafeInt(SatelliteCountNMEA),        // 117
+               SafeInt(GPIO33_Status)              //  118
       );
-
+      // Send main sensor data payload
       events.send(payload, "CSVData");    // Changed event name to reflect new format
       SendWifiTime = micros() - start66;  // Calculate WiFi Send Time
+      sendingPayloadThisCycle = true;     // Flag this as a bad function iteration to also send timestampPayload
     }
-    prev_millis5 = millis();
+    prev_millis5 = now;
+  }
+  //            timestampPayload - NOW SENDS AGES INSTEAD OF TIMESTAMPS
+  if (!sendingPayloadThisCycle && now - lastTimestampSend > 3000) {  // Every 3 seconds
+    char timestampPayload[400];                                      // Smaller buffer for ages
+    // Calculate ages (how long ago each sensor was updated) instead of absolute timestamps
+    snprintf(timestampPayload, sizeof(timestampPayload),
+             "%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu",
+             (dataTimestamps[IDX_HEADING_NMEA] == 0) ? 999999 : (now - dataTimestamps[IDX_HEADING_NMEA]),        // 0 - Age of heading data
+             (dataTimestamps[IDX_LATITUDE_NMEA] == 0) ? 999999 : (now - dataTimestamps[IDX_LATITUDE_NMEA]),      // 1 - Age of latitude data
+             (dataTimestamps[IDX_LONGITUDE_NMEA] == 0) ? 999999 : (now - dataTimestamps[IDX_LONGITUDE_NMEA]),    // 2 - Age of longitude data
+             (dataTimestamps[IDX_SATELLITE_COUNT] == 0) ? 999999 : (now - dataTimestamps[IDX_SATELLITE_COUNT]),  // 3 - Age of satellite count
+             (dataTimestamps[IDX_VICTRON_VOLTAGE] == 0) ? 999999 : (now - dataTimestamps[IDX_VICTRON_VOLTAGE]),  // 4 - Age of Victron voltage
+             (dataTimestamps[IDX_VICTRON_CURRENT] == 0) ? 999999 : (now - dataTimestamps[IDX_VICTRON_CURRENT]),  // 5 - Age of Victron current
+             (dataTimestamps[IDX_ALTERNATOR_TEMP] == 0) ? 999999 : (now - dataTimestamps[IDX_ALTERNATOR_TEMP]),  // 6 - Age of alternator temp
+             (dataTimestamps[IDX_THERMISTOR_TEMP] == 0) ? 999999 : (now - dataTimestamps[IDX_THERMISTOR_TEMP]),  // 7 - Age of thermistor temp
+             (dataTimestamps[IDX_RPM] == 0) ? 999999 : (now - dataTimestamps[IDX_RPM]),                          // 8 - Age of RPM data
+             (dataTimestamps[IDX_MEASURED_AMPS] == 0) ? 999999 : (now - dataTimestamps[IDX_MEASURED_AMPS]),      // 9 - Age of alternator current
+             (dataTimestamps[IDX_BATTERY_V] == 0) ? 999999 : (now - dataTimestamps[IDX_BATTERY_V]),              // 10 - Age of ADS battery voltage
+             (dataTimestamps[IDX_IBV] == 0) ? 999999 : (now - dataTimestamps[IDX_IBV]),                          // 11 - Age of INA battery voltage
+             (dataTimestamps[IDX_BCUR] == 0) ? 999999 : (now - dataTimestamps[IDX_BCUR]),                        // 12 - Age of battery current
+             (dataTimestamps[IDX_CHANNEL3V] == 0) ? 999999 : (now - dataTimestamps[IDX_CHANNEL3V]),              // 13 - Age of ADS Ch3 voltage
+             (dataTimestamps[IDX_DUTY_CYCLE] == 0) ? 999999 : (now - dataTimestamps[IDX_DUTY_CYCLE]),            // 14 - Age of duty cycle calculation
+             (dataTimestamps[IDX_FIELD_VOLTS] == 0) ? 999999 : (now - dataTimestamps[IDX_FIELD_VOLTS]),          // 15 - Age of field voltage calculation
+             (dataTimestamps[IDX_FIELD_AMPS] == 0) ? 999999 : (now - dataTimestamps[IDX_FIELD_AMPS])             // 16 - Age of field current calculation
+    );
+    events.send(timestampPayload, "TimestampData");
+    lastTimestampSend = now;
   }
 }
 
@@ -1341,11 +1421,22 @@ void setupServer() {
         inputMessage = request->getParam("AlarmLatchEnabled")->value();
         writeFile(LittleFS, "/AlarmLatchEnabled.txt", inputMessage.c_str());
         AlarmLatchEnabled = inputMessage.toInt();
-      } else if (request->hasParam("AlarmTest")) {
-        inputMessage = request->getParam("AlarmTest")->value();
-        AlarmTest = inputMessage.toInt();  // Don't save to file - momentary action
-        queueConsoleMessage("Alarm test initiated from web interface");
-      } else if (request->hasParam("ResetAlarmLatch")) {
+      }
+
+      else if (request->hasParam("AlarmTest")) {
+        AlarmTest = 1;  // Set the flag - don't save to file as it's momentary
+        queueConsoleMessage("ALARM TEST: Initiated from web interface");
+        inputMessage = "1";  // Return confirmation
+      }
+
+      else if (request->hasParam("ResetAlarmLatch")) {
+        ResetAlarmLatch = 1;  // Set the flag - don't save to file as it's momentary
+        queueConsoleMessage("ALARM LATCH: Reset requested from web interface");
+        inputMessage = "1";  // Return confirmation
+      }
+
+
+      else if (request->hasParam("ResetAlarmLatch")) {
         inputMessage = request->getParam("ResetAlarmLatch")->value();
         ResetAlarmLatch = inputMessage.toInt();  // Don't save to file - momentary action
         resetAlarmLatch();                       // Call the reset function
@@ -2022,8 +2113,10 @@ void savePasswordHash() {
     file.println(storedPasswordHash);
     file.close();
     Serial.println("Password hash saved to LittleFS");
+    queueConsoleMessage("Password hash saved to LittleFS");
   } else {
     Serial.println("Failed to open password.hash for writing");
+    queueConsoleMessage("Failed to open password.hash for writing");
   }
 }
 
@@ -2033,8 +2126,11 @@ void savePasswordPlaintext(const char *password) {
     file.println(password);
     file.close();
     Serial.println("Password saved to LittleFS");
+    queueConsoleMessage("Password saved");
+
   } else {
     Serial.println("Failed to open password.txt for writing");
+    queueConsoleMessage("Password save failed");
   }
 }
 
@@ -2667,7 +2763,7 @@ int interpolateAmpsFromRPM(float currentRPM) {
 
 void queueConsoleMessage(String message) {
   consoleMessageQueue.push_back(message);
-  Serial.println("Queued: " + message);  // For debugging via serial monitor
+  //Serial.println("Queued: " + message);  // For debugging via serial monitor
 }
 
 void processConsoleQueue() {
@@ -2682,7 +2778,7 @@ void processConsoleQueue() {
       String message = consoleMessageQueue.front();
       consoleMessageQueue.erase(consoleMessageQueue.begin());
       events.send(message.c_str(), "console");
-      Serial.println("Sent to console: " + message);  // For debugging
+      // Serial.println("Sent to console: " + message);  // For debugging
     }
 
     lastConsoleMessageTime = now11;
@@ -2887,18 +2983,24 @@ bool setupDisplay() {
     // If we get here without crashing, it's working
     displayAvailable = true;
     Serial.println("Display initialized successfully");
+    queueConsoleMessage("Display initialized successfully");
+
     return true;
 
   } catch (...) {
     Serial.println("Display initialization failed - exception caught");
+    queueConsoleMessage("Display initialization failed - exception caught");
     displayAvailable = false;
     return false;
   }
 }
 
 void CheckAlarms() {
+  static unsigned long lastRunTime = 0;
+  if (millis() - lastRunTime < 250) return;  // Only run every 250ms
+  lastRunTime = millis();
+
   static bool previousAlarmState = false;
-  static unsigned long lastAlarmMessage = 0;
   bool currentAlarmCondition = false;
   bool outputAlarmState = false;
   String alarmReason = "";
@@ -2923,7 +3025,12 @@ void CheckAlarms() {
 
   // Normal alarm checking - ONLY when AlarmActivate is enabled
   if (AlarmActivate == 1) {
-
+    // Set TempToUse based on source (ADD THIS)
+    if (TempSource == 0) {
+      TempToUse = AlternatorTemperatureF;
+    } else if (TempSource == 1) {
+      TempToUse = temperatureThermistor;
+    }
     // Temperature alarm
     if (TempAlarm > 0 && TempToUse > TempAlarm) {
       currentAlarmCondition = true;
@@ -2947,6 +3054,18 @@ void CheckAlarms() {
       currentAlarmCondition = true;
       alarmReason = "High alternator current: " + String(MeasuredAmps, 1) + "A (limit: " + String(CurrentAlarmHigh) + "A)";
     }
+    // Current alarm (battery)
+    if (MaximumAllowedBatteryAmps > 0 && (Bcur) > MaximumAllowedBatteryAmps) {
+      currentAlarmCondition = true;
+      alarmReason = "High battery current: " + String(abs(Bcur), 1) + "A (limit: " + String(MaximumAllowedBatteryAmps) + "A)";
+    }
+  }
+
+  // Handle manual latch reset
+  if (ResetAlarmLatch == 1) {
+    alarmLatch = false;
+    ResetAlarmLatch = 0;
+    queueConsoleMessage("ALARM LATCH: Manually reset");
   }
 
   // Handle latching logic (applies to ALL alarm conditions including test)
@@ -2972,28 +3091,24 @@ void CheckAlarms() {
   }
   // else: AlarmActivate is off and not testing = no output
 
-  digitalWrite(33, finalOutput);
-
+  digitalWrite(33, finalOutput ? HIGH : LOW);  // get rid of this bs
+  // digitalWrite(33, finalOutput);     // go back to this later
   // Console messaging
   if (currentAlarmCondition != previousAlarmState) {
     if (currentAlarmCondition) {
       queueConsoleMessage("ALARM ACTIVATED: " + alarmReason);
-      if (AlarmLatchEnabled == 1) {
-        queueConsoleMessage("ALARM LATCHED: Manual reset required");
-      }
     } else if (AlarmLatchEnabled == 0) {
       queueConsoleMessage("ALARM CLEARED");
     }
     previousAlarmState = currentAlarmCondition;
-    lastAlarmMessage = millis();
-  } else if (outputAlarmState && (millis() - lastAlarmMessage > 30000)) {
-    // Repeat alarm message every 30 seconds while active
-    if (AlarmLatchEnabled == 1 && alarmLatch) {
-      queueConsoleMessage("ALARM LATCHED: " + alarmReason + " (manual reset required)");
-    } else {
-      queueConsoleMessage("ALARM ACTIVE: " + alarmReason);
+  }
+  // FIX: Add debug output for testing (remove after verification)
+  static unsigned long lastDebugTime = 0;
+  if (millis() - lastDebugTime > 5000) {  // Every 5 seconds
+    lastDebugTime = millis();
+    if (AlarmActivate == 1) {
+     // queueConsoleMessage("ALARM DEBUG: GPIO33=" + String(digitalRead(33)) + ", AlarmActivate=" + String(AlarmActivate) + ", TempAlarm=" + String(TempAlarm) + ", CurrentTemp=" + String(TempSource == 0 ? AlternatorTemperatureF : temperatureThermistor));
     }
-    lastAlarmMessage = millis();
   }
 }
 
@@ -3024,7 +3139,7 @@ void updateChargingStage() {
 
   if (inBulkStage) {
     // Currently in bulk charging
-    ChargingVoltageTarget = ChargingVoltageTarget;  // Use existing FullChargeVoltage
+    ChargingVoltageTarget = FullChargeVoltage;  
 
     if (currentVoltage >= ChargingVoltageTarget) {
       if (bulkCompleteTimer == 0) {
