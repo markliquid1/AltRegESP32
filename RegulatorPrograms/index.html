@@ -453,6 +453,62 @@ Contact me at mark@xengineering.net       -->
       user-select: none;
     }
 
+    /* Let this one card go full width */
+    .wide-card {
+      max-width: 100% !important;
+    }
+
+    /* Console Sizing */
+    .responsive-console {
+      font-family: monospace;
+      font-size: 13px;
+      background: #111;
+      color: #0f0;
+      padding: 6px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      white-space: pre-wrap;
+      border-radius: var(--radius);
+      width: 100%;
+      height: 200px;
+      /* Default for mobile */
+    }
+
+    /* Tablet and up */
+    @media (min-width: 768px) {
+      .responsive-console {
+        height: 300px;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .responsive-console {
+        height: 400px;
+        max-width: 1200px;
+      }
+    }
+
+    @media (min-width: 1440px) {
+      .responsive-console {
+        height: 500px;
+        max-width: 1400px;
+      }
+    }
+
+    @media (min-width: 1920px) {
+      .responsive-console {
+        height: 600px;
+        max-width: 1600px;
+      }
+    }
+
+    /* Dark mode styling for console */
+    .dark-mode .responsive-console {
+      background: #000;
+      color: #0f0;
+      border-color: #333;
+    }
+
 
     /* Locking Settings Capability */
     .locked input,
@@ -1464,6 +1520,7 @@ Contact me at mark@xengineering.net       -->
       <div id="settings-alarms" class="sub-tab-content">
         <div class="settings-card">
           <div class="section-title">Alarm / Emergency</div>
+
           <div class="form-row">
             <div class="form-label">Alarm Enable (<span id="AlarmActivate_echo">0</span>):</div>
             <div class="form-input">
@@ -1538,7 +1595,6 @@ Contact me at mark@xengineering.net       -->
             </div>
           </div>
 
-          <!-- Add to Alarms sub-tab AFTER existing alarm settings -->
           <hr />
           <div class="form-row">
             <div class="form-label">Alarm Latch Mode (<span id="AlarmLatchEnabled_echo">0</span>):</div>
@@ -1557,21 +1613,57 @@ Contact me at mark@xengineering.net       -->
             </div>
           </div>
 
-          <hr />
           <div class="form-row">
             <div class="form-label">Alarm Test (<span id="AlarmTest_echo">0</span>):</div>
             <div class="form-input">
-              <form action="/get" method="GET" target="hidden-form">
+              <form action="/get" method="GET" target="hidden-form" onsubmit="return handleAlarmTest();">
                 <input type="hidden" name="password" class="password_field">
                 <input type="hidden" name="AlarmTest" value="1">
-                <button type="submit"
-                  onclick="this.disabled=true; setTimeout(() => this.disabled=false, 3000); submitMessage();"
+                <button type="submit" id="alarm-test-btn"
                   style="background-color: #555555; color: white; border: none; padding: 8px 16px; border-radius: var(--radius); cursor: pointer; font-weight: bold;">
                   Test Buzzer (2s)
                 </button>
               </form>
             </div>
           </div>
+
+          <div class="form-row">
+            <div class="form-label">Reset Alarm Latch (<span id="ResetAlarmLatch_echo">0</span>):</div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form" onsubmit="return handleResetLatch();">
+                <input type="hidden" name="password" class="password_field">
+                <input type="hidden" name="ResetAlarmLatch" value="1">
+                <button type="submit" id="reset-latch-btn"
+                  style="background-color: #555555; color: white; border: none; padding: 8px 16px; border-radius: var(--radius); cursor: pointer; font-weight: bold;">
+                  Reset Latch
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Alarm Status:</div>
+            <div class="form-input">
+              <div id="alarm-status-indicator" style="display: flex; align-items: center; gap: 10px;">
+                <div id="alarm-led" style="
+                  width: 20px;
+                  height: 20px;
+                  border-radius: 50%;
+                  background-color: #00cc00;
+                  border: 2px solid #333;
+                  box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+                  transition: all 0.3s ease;
+                "></div>
+                <span id="alarm-status-text" style="
+                  font-weight: bold;
+                  color: #00cc00;
+                  transition: color 0.3s ease;
+                ">Silent</span>
+              </div>
+            </div>
+          </div>
+
 
 
         </div>
@@ -2243,17 +2335,22 @@ Contact me at mark@xengineering.net       -->
   </div>
   <!-- Console -->
   <div id="console" class="tab-content">
-    <div class="settings-card">
+    <div class="settings-card wide-card">
       <div class="form-label">
         Console
         <button onclick="clearConsole()" style="font-size: 12px; margin-left: 10px;">Clear</button>
       </div>
-      <div id="consoleOutput"
-        style="font-family: monospace; font-size: 13px; background: #111; color: #0f0; padding: 6px; height: 160px; overflow-y: auto; border: 1px solid var(--border); white-space: pre-wrap;">
-      </div>
+      <div id="consoleOutput" class="responsive-console"></div>
     </div>
-
   </div>
+
+
+
+
+
+
+
+
   <script>
 
     function debounce(fn, delay) {
@@ -2394,8 +2491,8 @@ Contact me at mark@xengineering.net       -->
       FLOAT_DURATION: 114,
       LatitudeNMEA: 115,
       LongitudeNMEA: 116,
-      SatelliteCountNMEA: 117
-
+      SatelliteCountNMEA: 117,
+      GPIO33_Status: 118
     };
 
     //Factory Reset Logic
@@ -2403,6 +2500,35 @@ Contact me at mark@xengineering.net       -->
       if (!currentAdminPassword) {
         alert("You must be logged in to perform a factory reset.");
         return;
+      }
+      //Alarm Momentery Button Logic
+      function handleAlarmTest() {
+        const button = document.getElementById('alarm-test-btn');
+        button.disabled = true;
+        button.textContent = 'Testing...';
+        button.style.backgroundColor = '#6c757d';
+        setTimeout(() => {
+          button.disabled = false;
+          button.textContent = 'Test Buzzer (2s)';
+          button.style.backgroundColor = '#555555';
+        }, 3000);
+        submitMessage();
+        return true; // Allow form submission
+      }
+      function handleResetLatch() {
+        const button = document.getElementById('reset-latch-btn');
+        button.disabled = true;
+        button.textContent = 'Resetting...';
+        button.style.backgroundColor = '#6c757d';
+
+        setTimeout(() => {
+          button.disabled = false;
+          button.textContent = 'Reset Latch';
+          button.style.backgroundColor = '#555555';
+        }, 2000);
+
+        submitMessage();
+        return true; // Allow form submission
       }
 
       const confirmation = confirm(
@@ -2481,6 +2607,30 @@ Contact me at mark@xengineering.net       -->
     //Console
     function clearConsole() {
       document.getElementById("consoleOutput").innerHTML = "";
+    }
+
+    //Mirror for GPIO33 Alarm
+    function updateAlarmStatus(data) {
+      const alarmLed = document.getElementById('alarm-led');
+      const alarmText = document.getElementById('alarm-status-text');
+
+      if (!alarmLed || !alarmText) return;
+
+      const isAlarming = data.GPIO33_Status === 1; // Mirror GPIO33 directly
+
+      if (isAlarming) {
+        // ALARMING: Red light and text
+        alarmLed.style.backgroundColor = '#ff0000';
+        alarmLed.style.boxShadow = '0 0 15px rgba(255, 0, 0, 0.8)';
+        alarmText.textContent = 'Alarming!';
+        alarmText.style.color = '#ff0000';
+      } else {
+        // SILENT: Green light and text (using your theme's green)
+        alarmLed.style.backgroundColor = '#00a19a';
+        alarmLed.style.boxShadow = '0 0 10px rgba(0, 161, 154, 0.5)';
+        alarmText.textContent = 'Silent';
+        alarmText.style.color = '#00a19a';
+      }
     }
 
     function scheduleCurrentTempPlotUpdate() {
@@ -3067,7 +3217,27 @@ Contact me at mark@xengineering.net       -->
       return false;
     }
 
-    window.addEventListener("load", function () {
+    window.addEventListener("load", function () {     //AM I IN
+      //give initial values that will cause graying until proven otherwise
+      window.sensorAges = {
+        heading: 999999,
+        latitude: 999999,
+        longitude: 999999,
+        satellites: 999999,
+        victronVoltage: 999999,
+        victronCurrent: 999999,
+        alternatorTemp: 999999,
+        thermistorTemp: 999999,
+        rpm: 999999,
+        measuredAmps: 999999,
+        batteryV: 999999,
+        ibv: 999999,
+        bcur: 999999,
+        channel3V: 999999,
+        dutyCycle: 999999,
+        fieldVolts: 999999,
+        fieldAmps: 999999
+      };
 
       document.getElementById("AlarmLatchEnabled_checkbox").checked = (document.getElementById("AlarmLatchEnabled").value === "1");
       document.getElementById("ForceFloat_checkbox").checked = (document.getElementById("ForceFloat").value === "1");
@@ -3315,11 +3485,68 @@ Contact me at mark@xengineering.net       -->
             AlarmLatchEnabled: values[fieldIndexes.AlarmLatchEnabled],
             ForceFloat: values[fieldIndexes.ForceFloat],
             bulkCompleteTime: values[fieldIndexes.bulkCompleteTime],
-            FLOAT_DURATION: values[fieldIndexes.FLOAT_DURATION]
+            FLOAT_DURATION: values[fieldIndexes.FLOAT_DURATION],
+            GPIO33_Status: values[fieldIndexes.GPIO33_Status]
 
           };
 
           window._debugData = data;
+
+          // Check for stale data and apply visual effects
+          if (window.sensorAges) {
+
+            // Helper function to apply staleness styling using age directly
+            function applyStaleStyleByAge(elementId, ageMs) {
+              const element = document.getElementById(elementId);
+              if (!element) {
+                console.warn(`Element ${elementId} not found for stale styling`);
+                return;
+              }
+              const staleThreshold = 5100; // 5.1 seconds, don't go lower without making sure digital temp sensor tempTask is going to keep up
+              const isStale = (ageMs > staleThreshold);
+              if (isStale) {
+                element.style.opacity = "0.4";
+                element.style.color = "#999999";
+                element.style.fontStyle = "italic";
+                element.title = `Data is ${Math.round(ageMs / 1000)} seconds old`;
+              } else {
+                element.style.opacity = "1.0";
+                element.style.color = "var(--reading)";
+                element.style.fontStyle = "normal";
+                element.title = "";
+              }
+            }
+
+            // Apply staleness using ages directly - much simpler!
+            applyStaleStyleByAge("GPSHID", window.sensorAges.heading);                      // GPS heading
+            applyStaleStyleByAge("LatitudeNMEA_ID", window.sensorAges.latitude);            // GPS latitude
+            applyStaleStyleByAge("LongitudeNMEA_ID", window.sensorAges.longitude);          // GPS longitude
+            applyStaleStyleByAge("SatelliteCountNMEA_ID", window.sensorAges.satellites);    // GPS satellite count
+            applyStaleStyleByAge("VictronVoltageID", window.sensorAges.victronVoltage);     // Victron voltage
+            applyStaleStyleByAge("VictronCurrentID", window.sensorAges.victronCurrent);     // Victron current
+            applyStaleStyleByAge("AltTempID", window.sensorAges.alternatorTemp);            // Alternator temperature
+            applyStaleStyleByAge("temperatureThermistorID", window.sensorAges.thermistorTemp); // Thermistor temperature
+            applyStaleStyleByAge("RPMID", window.sensorAges.rpm);                           // Engine RPM
+            applyStaleStyleByAge("MeasAmpsID", window.sensorAges.measuredAmps);             // Alternator current
+            applyStaleStyleByAge("BatteryVID", window.sensorAges.batteryV);                 // ADS battery voltage
+            applyStaleStyleByAge("IBVID", window.sensorAges.ibv);                           // INA battery voltage
+            applyStaleStyleByAge("BCurrID", window.sensorAges.bcur);                        // Battery current
+            applyStaleStyleByAge("ADS3ID", window.sensorAges.channel3V);                    // ADS Channel 3 voltage
+            applyStaleStyleByAge("DutyCycleID", window.sensorAges.dutyCycle);               // Field duty cycle
+            applyStaleStyleByAge("FieldVoltsID", window.sensorAges.fieldVolts);             // Field voltage (calculated)
+            applyStaleStyleByAge("FieldAmpsID", window.sensorAges.fieldAmps);               // Field current (calculated)
+
+            // Apply to dashboard displays too
+            applyStaleStyleByAge("dash-ibv", window.sensorAges.ibv);                        // Dashboard INA voltage
+            applyStaleStyleByAge("dash-altcurrent", window.sensorAges.measuredAmps);        // Dashboard alternator current
+            applyStaleStyleByAge("dash-battcurrent", window.sensorAges.bcur);               // Dashboard battery current  
+            applyStaleStyleByAge("dash-alttemp", window.sensorAges.alternatorTemp);         // Dashboard alternator temp
+            applyStaleStyleByAge("dash-rpm", window.sensorAges.rpm);                        // Dashboard RPM
+
+          }
+
+          updateAlarmStatus(data);
+
           const updateFields = (fieldArray) => {
             for (const [elementId, key] of fieldArray) {
               const el = document.getElementById(elementId);
@@ -3348,11 +3575,6 @@ Contact me at mark@xengineering.net       -->
               else if (["AlternatorFuelUsed"].includes(key)) {
                 el.textContent = (value / 1000).toFixed(3);  // Convert mL to L with 3 decimal places
               }
-
-              // GPS coordinates - transmitted as integer × 1000000, display with 6 decimals
-              else if (["LatitudeNMEA", "LongitudeNMEA"].includes(key)) {
-                el.textContent = (value / 1000000).toFixed(6);
-              }
               // Time values - convert seconds to H:M:S format
               else if (["EngineRunTime", "AlternatorOnTime"].includes(key)) {
                 const totalSeconds = value;  // Changed from totalMinutes
@@ -3373,7 +3595,6 @@ Contact me at mark@xengineering.net       -->
           };
 
           updateFields(telemetryFields);  // only visible span updates
-
           // Update Dashboard displays
           document.getElementById('dash-ibv').textContent = (data.IBV / 100).toFixed(2);
           document.getElementById('dash-soc').textContent = Math.round(data.SoC_percent / 100);
@@ -3382,14 +3603,12 @@ Contact me at mark@xengineering.net       -->
           document.getElementById('dash-alttemp').textContent = Math.round(data.AlternatorTemperatureF);
           document.getElementById('dash-rpm').textContent = Math.round(data.RPM);
           // document.getElementById('dash-heartbeat').textContent = Math.round(data.WifiHeartBeat); // decided this was TMI
-
           // Sync dashboard toggles with main toggles
           document.getElementById('dash-alternator-enable').checked = (data.OnOff === 1);
           document.getElementById('dash-force-float').checked = (data.ForceFloat === 1);
           document.getElementById('dash-alarm-enable').checked = (data.AlarmActivate === 1);
           // Update dashboard echo displays (matching your pattern)
           document.getElementById('dash-target-amps-echo').textContent = data.TargetAmps || 0;
-
           // Update echo elements
           if ('TemperatureLimitF' in data) {
             document.getElementById('TemperatureLimitF_echo').textContent = data.TemperatureLimitF;
@@ -3782,7 +4001,35 @@ Contact me at mark@xengineering.net       -->
             lastPlotUpdate = nowMs;
           }
         }, false);
+
+        source.addEventListener('TimestampData', function (e) {
+          const ages = e.data.split(',').map(Number); // Now these are ages in milliseconds
+          window.sensorAges = {
+            heading: ages[0],
+            latitude: ages[1],
+            longitude: ages[2],
+            satellites: ages[3],
+            victronVoltage: ages[4],
+            victronCurrent: ages[5],
+            alternatorTemp: ages[6],  // This is how old the temp reading is
+            thermistorTemp: ages[7],
+            rpm: ages[8],
+            measuredAmps: ages[9],
+            batteryV: ages[10],
+            ibv: ages[11],
+            bcur: ages[12],
+            channel3V: ages[13],
+            dutyCycle: ages[14],
+            fieldVolts: ages[15],
+            fieldAmps: ages[16]
+          };
+          console.log("Sensor ages updated:", window.sensorAges);
+
+        }, false);
+
       }
+
+
 
       // uplot plot minor details like dark mode and gentle space
       function updateUplotTheme(plot) {
@@ -3869,7 +4116,18 @@ Contact me at mark@xengineering.net       -->
       document.getElementById("TempSource_checkbox").checked = (document.getElementById("TempSource").value === "1");
 
       document.getElementById("admin_password").addEventListener("change", updatePasswordFields);
+
+
+
     }); // ← ADD THIS LINE
+
+    // graying of obsolete data debug
+    function debugSensorAges() {
+      console.log('Current sensor ages:', window.sensorAges);
+      if (!window.sensorAges) {
+        console.error('sensorAges is undefined!');
+      }
+    }
 
     //something to do with tabs
     function showMainTab(tabName) {
@@ -4331,8 +4589,6 @@ Contact me at mark@xengineering.net       -->
     <input id="ForceFloat" style="display:none;" value="0" />
     <input id="bulkCompleteTime" style="display:none;" value="0" />
     <input id="FLOAT_DURATION" style="display:none;" value="0" />
-
-
 
   </div>
 </body>
