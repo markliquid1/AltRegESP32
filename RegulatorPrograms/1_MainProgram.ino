@@ -47,7 +47,7 @@ INA228 INA(0x40);
 #include <String>                        // Console message queue system
 #include "esp_task_wdt.h"                //Watch dog to prevent hung up code from wreaking havoc
 #include "esp_log.h"                     // get rid of spam in serial monitor
-#include <TinyGPSPlus.h>                 // used for NMEA0183, not currently implemented 
+#include <TinyGPSPlus.h>                 // used for NMEA0183, not currently implemented
 
 
 
@@ -122,12 +122,12 @@ int TargetAmps = 40;   //Normal alternator output, for best performance, set to 
 int TargetAmpLA = 25;  //Alternator output in Lo mode
 int uTargetAmps = 3;   // the one that gets used as the real target
 
-float TargetFloatVoltage = 13.4; // self-explanatory
-float FullChargeVoltage = 13.9; // this could have been called TargetBulkVoltage to be more clear
+float TargetFloatVoltage = 13.4;  // self-explanatory
+float FullChargeVoltage = 13.9;   // this could have been called TargetBulkVoltage to be more clear
 float ChargingVoltageTarget = 0;  // This becomes active target
 bool inBulkStage = true;
-unsigned long bulkCompleteTime = 1000;       // milliseconds
-unsigned long bulkCompleteTimer = 0;       // this is a timer, don't change
+unsigned long bulkCompleteTime = 1000;  // milliseconds
+unsigned long bulkCompleteTimer = 0;    // this is a timer, don't change
 
 unsigned long FLOAT_DURATION = 12 * 3600;  // 12 hours in seconds
 unsigned long floatStartTime = 0;
@@ -145,7 +145,7 @@ float AlternatorTemperatureLimitF = 150;  // the offset appears to be +40 to +50
 int ManualFieldToggle = 1;                // set to 1 to enable manual control of regulator field output, helpful for debugging
 //float ManualVoltageTarget = 5;            // voltage target corresponding to the toggle above
 int SwitchControlOverride = 1;  // set to 1 for web interface switches to override physical switch panel
-int ForceFloat = 0;  // Set to 1 to target 0 amps at battery (not really "float" charging, but we end up call it it that, sorry)
+int ForceFloat = 0;             // Set to 1 to target 0 amps at battery (not really "float" charging, but we end up call it it that, sorry)
 int OnOff = 0;                  // 0 is charger off, 1 is charger On (corresponds to Alternator Enable in Basic Settings)
 int Ignition = 1;               // Digital Input      NEED THIS TO HAVE WIFI ON , FOR NOW
 int IgnitionOverride = 1;       // to fake the ignition signal w/ software
@@ -156,6 +156,7 @@ int resolution = 12;            // for OneWire temp sensor measurement
 int VeData = 0;                 // Set to 1 if VE serial data exists
 int NMEA0183Data = 0;           // Set to 1 if NMEA serial data exists doesn't do anything yet
 int NMEA2KData = 1;             // doesn't do anything yet
+int NMEA2KVerbose = 0;          // print stuff to serial monitor or not
 //Field PWM stuff
 float interval = 0.8;   // larger value = faster response but more unstable
 float vout = 1;         // needs deleting
@@ -180,26 +181,21 @@ float iiout;                            // Calculated field amps (approximate)
 float AlternatorTemperatureF = NAN;     // alternator temperature
 float MaxAlternatorTemperatureF = NAN;  // maximum alternator temperature
 // === Thermistor Stuff
-float R_fixed = 10000.0;              // Series resistor in ohms
-float Beta = 3950.0;                  // Thermistor Beta constant (e.g. 3950K)
-float R0 = 10000.0;                   // Thermistor resistance at T0
-float T0_C = 25.0;                    // Reference temp in Celsius
-int TempSource = 0;                   // 0 for OneWire default, 1 for Thermistor
+float R_fixed = 10000.0;             // Series resistor in ohms
+float Beta = 3950.0;                 // Thermistor Beta constant (e.g. 3950K)
+float R0 = 10000.0;                  // Thermistor resistance at T0
+float T0_C = 25.0;                   // Reference temp in Celsius
+int TempSource = 0;                  // 0 for OneWire default, 1 for Thermistor
 int temperatureThermistor = -99;     // thermistor reading
 int MaxTemperatureThermistor = -99;  // maximum thermistor temperature (on alternator)
-int TempToUse;                        // gets set to temperatureThermistor or AlternatorTemperatureF
-TaskHandle_t tempTaskHandle = NULL;   // make a separate cpu task for temp reading because it's so slow
-float VictronVoltage = 0;             // battery V reading from VeDirect
-float VictronCurrent = 0;             // battery Current (careful, can also be solar current if hooked up to solar charge controller not BMV712)
-float HeadingNMEA = 0;                // Just here to test NMEA functionality
-double LatitudeNMEA = 0.0;            // GPS Latitude
-double LongitudeNMEA = 0.0;           // GPS Longitude
-int SatelliteCountNMEA = 0;           // Number of satellites
-//Stuff for using AIS instead of GPS if GPS not present
-bool hasValidGNSSData = false;
-unsigned long lastValidGNSSTime = 0;
-const unsigned long GNSS_TIMEOUT = 10000; // 10 seconds - consider GNSS invalid if no update
-
+int TempToUse;                       // gets set to temperatureThermistor or AlternatorTemperatureF
+TaskHandle_t tempTaskHandle = NULL;  // make a separate cpu task for temp reading because it's so slow
+float VictronVoltage = 0;            // battery V reading from VeDirect
+float VictronCurrent = 0;            // battery Current (careful, can also be solar current if hooked up to solar charge controller not BMV712)
+float HeadingNMEA = 0;               // Just here to test NMEA functionality
+double LatitudeNMEA = 0.0;           // GPS Latitude
+double LongitudeNMEA = 0.0;          // GPS Longitude
+int SatelliteCountNMEA = 0;          // Number of satellites
 
 // ADS1115
 int16_t Raw = 0;
@@ -233,12 +229,13 @@ unsigned long alternatorOnAccumulator = 0;  // Milliseconds accumulator for alte
 //Momentary Buttons and alarm logic
 int FactorySettings = 0;  // Reset Button
 // Add these alarm variables with your other globals
-bool alarmLatch = false;           // Current latched alarm state
-int AlarmLatchEnabled = 0;         // Whether latching is enabled (0/1 for consistency)
-int AlarmTest = 0;                 // Momentary alarm test (1 = test active)
-int ResetAlarmLatch = 0;           // Momentary reset command
+bool alarmLatch = false;    // Current latched alarm state
+int AlarmLatchEnabled = 0;  // Whether latching is enabled (0/1 for consistency)
+int AlarmTest = 0;          // Momentary alarm test (1 = test active)
+int ResetAlarmLatch = 0;    // Momentary reset command
 unsigned long alarmTestStartTime = 0;
-const unsigned long ALARM_TEST_DURATION = 2000; // 2 seconds test duration
+const unsigned long ALARM_TEST_DURATION = 2000;  // 2 seconds test duration
+int GPIO33_Status;                               // for alarm mirror light on Client
 
 //More Settings
 // SOC Parameters
@@ -255,10 +252,10 @@ int BMSLogicLevelOff = 0;             // set to 0 if the BMS gives a low signal 
 bool chargingEnabled;                 // defined from other variables
 bool bmsSignalActive;                 // Read from digital input pin 36
 int AlarmActivate = 0;                // set to 1 to enable alarm conditions
-int TempAlarm = 0;                    // above this value, sound alarm
-int VoltageAlarmHigh = 0;             // above this value, sound alarm
-int VoltageAlarmLow = 0;              // below this value, sound alarm
-int CurrentAlarmHigh = 0;             // above this value, sound alarm
+int TempAlarm = 190;                  // above this value, sound alarm
+int VoltageAlarmHigh = 15;            // above this value, sound alarm
+int VoltageAlarmLow = 11;             // below this value, sound alarm
+int CurrentAlarmHigh = 100;           // above this value, sound alarm
 int MaximumAllowedBatteryAmps = 100;  // safety for battery, optional
 int FourWay = 0;                      // 0 voltage data source = INA228 , 1 voltage source = ADS1115, 2 voltage source = NMEA2k, 3 voltage source = Victron VeDirect
 int RPMScalingFactor = 2000;          // self explanatory, adjust until it matches your trusted tachometer
@@ -347,6 +344,49 @@ int Amps7 = 30;
 int RPMThreshold = -20000;  //below this, there will be no field output in auto mode (Update this if we have RPM at low speeds and no field, otherwise, depend on Ignition)
 
 int maxPoints;  //number of points plotted per plot (X axis length)
+
+// Universal data freshness tracking
+// Complete DataIndex enum for all variables displayed in Live Data
+// Streamlined DataIndex enum - only tracks real-time sensor data that might go stale if a sensor is disconnected
+// Excludes peak/cumulative values that should persist even when source fails
+enum DataIndex {
+  // NMEA/GPS Data (real-time navigation)
+  IDX_HEADING_NMEA = 0,           // 0
+  IDX_LATITUDE_NMEA,              // 1  
+  IDX_LONGITUDE_NMEA,             // 2
+  IDX_SATELLITE_COUNT,            // 3
+  // Victron VE.Direct Data (real-time readings)
+  IDX_VICTRON_VOLTAGE,            // 4
+  IDX_VICTRON_CURRENT,            // 5
+  // Temperature Sensors (real-time only)
+  IDX_ALTERNATOR_TEMP,            // 6
+  IDX_THERMISTOR_TEMP,            // 7
+  // Engine/RPM Data (real-time only)
+  IDX_RPM,                        // 8
+  // Alternator Current/Power (real-time readings)
+  IDX_MEASURED_AMPS,              // 9
+  // Battery Voltage Sources (real-time readings)
+  IDX_BATTERY_V,                  // 10 - ADS1115 battery voltage
+  IDX_IBV,                        // 11 - INA228 battery voltage
+  // Battery Current (real-time reading)
+  IDX_BCUR,                       // 12 - Battery current from INA228
+  // ADS1115 Channels (real-time analog readings)
+  IDX_CHANNEL3V,                  // 13 - ADS Ch3 Voltage
+  // Real-time calculated values (these become meaningless if inputs are stale)
+  IDX_DUTY_CYCLE,                 // 14 - Field duty cycle percentage
+  IDX_FIELD_VOLTS,                // 15 - vvout (calculated field voltage)
+  IDX_FIELD_AMPS,                 // 16 - iiout (calculated field current)
+  // Keep this last - gives us array bounds checking
+  MAX_DATA_INDICES = 17           // Now matches the 17 timestamps being sent
+};
+unsigned long dataTimestamps[MAX_DATA_INDICES];  // Uses the enum size automatically
+
+const unsigned long DATA_TIMEOUT = 5000;  // 10 seconds default timeout
+// Universal macros for clean syntax
+#define MARK_FRESH(index) dataTimestamps[index] = millis()
+#define IS_STALE(index) (millis() - dataTimestamps[index] > DATA_TIMEOUT)
+#define SET_IF_STALE(index, variable, staleValue) \
+  if (IS_STALE(index)) { variable = staleValue; }
 
 // pre-setup stuff
 // onewire    Data wire is connetec to the Arduino digital pin 13
@@ -535,27 +575,24 @@ void setup() {
   // Essential hardware setup first
   setCpuFrequencyMhz(240);
   Serial.begin(115200);
-  pinMode(4, OUTPUT);  // This pin is used to provide a high signal to Field Enable pin
-  digitalWrite(4, LOW); // Start with field off
-  pinMode(2, OUTPUT);  // This pin is used to provide a heartbeat (pin 2 of ESP32 is the LED)
-  pinMode(39, INPUT);  // Ignition
-  pinMode(33, OUTPUT);  // Alarm aka Buzzer output
-  digitalWrite(33, HIGH); // Start with alarm off      FIX later
-
+  pinMode(4, OUTPUT);     // This pin is used to provide a high signal to Field Enable pin
+  digitalWrite(4, LOW);   // Start with field off
+  pinMode(2, OUTPUT);     // This pin is used to provide a heartbeat (pin 2 of ESP32 is the LED)
+  pinMode(39, INPUT);     // Ignition
+  pinMode(33, OUTPUT);    // Alarm/Buzzer output
+  digitalWrite(33, LOW);  // Start with alarm off
 
   // PWM setup (needed for basic operation)
   ledcAttach(pwmPin, fffr, pwmResolution);
 
   // Get WiFi connected ASAP - before file system operations
   setupWiFi();
-  setupServer();
-
   // Now do file system operations while WiFi is already connected
   esp_log_level_set("esp32-hal-i2c-ng", ESP_LOG_WARN);  // get rid of spam in serial monitor
   queueConsoleMessage("System starting up...");
 
   // Initialize LittleFS
-if (!LittleFS.begin(true, "/littlefs", 10, "spiffs")) {
+  if (!LittleFS.begin(true, "/littlefs", 10, "spiffs")) {
     Serial.println("An Error has occurred while mounting LittleFS");
     queueConsoleMessage("WARNING: An Error has occurred while mounting LittleFS");
     // Continue anyway since we might be able to format and use it later (?)
@@ -602,6 +639,13 @@ if (!LittleFS.begin(true, "/littlefs", 10, "spiffs")) {
   } else {
     Serial.println("Continuing without display");
   }
+
+  unsigned long now = millis();
+    for (int i = 0; i < MAX_DATA_INDICES; i++) {
+        dataTimestamps[i] = now;  // Start with current time
+    }
+
+    
   //ADS1115
   //Connection check
   if (!adc.testConnection()) {
@@ -706,16 +750,16 @@ void loop() {
         prev_millis743 = millis();
       }
     }
-
-    //CheckAlarms();  // Check alarms every loop cycle, unless it's found to slow things down much.  Turn back on later
-
+    //Alarm stuff
+    GPIO33_Status = digitalRead(33);  // Store the reading, this could be obviously simplified later, but whatever
+    CheckAlarms();
     UpdateDisplay();
     AdjustField();  // This may need to get moved if it takes any power, but have to be careful we don't get stuck with Field On!
     // Ignition = !digitalRead(39);  // see if ignition is on    (fix this later)
     if (IgnitionOverride == 1) {
       Ignition = 1;
     }
-    logDashboardValues(); // just nice to have some history in the Console
+    logDashboardValues();  // just nice to have some history in the Console
     if (Ignition == 0) {
       setCpuFrequencyMhz(10);
       WiFi.mode(WIFI_OFF);
