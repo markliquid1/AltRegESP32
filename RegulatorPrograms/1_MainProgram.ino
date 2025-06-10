@@ -119,7 +119,7 @@ int FlipFlopper2 = 0;  // delete
 
 //Input Settings
 int TargetAmps = 40;   //Normal alternator output, for best performance, set to something that just barely won't overheat
-int TargetAmpLA = 25;  //Alternator output in Lo mode
+int TargetAmpL = 25;  //Alternator output in Lo mode
 int uTargetAmps = 3;   // the one that gets used as the real target
 
 float TargetFloatVoltage = 13.4;  // self-explanatory
@@ -242,8 +242,8 @@ int GPIO33_Status;                               // for alarm mirror light on Cl
 int CurrentThreshold_scaled = 100;    // Ignore currents below this (A × 100)
 int PeukertExponent_scaled = 105;     // Peukert exponent × 100 (112 = 1.12)
 int ChargeEfficiency_scaled = 99;     // Charging efficiency % (0-100)
-int ChargedVoltage_scaled = 1450;     // Voltage threshold for "charged" (V × 100)
-int TailCurrent_scaled = 200;         // Current threshold for "charged" (% of capacity × 100 so 200 = 2%)
+int ChargedVoltage_Scaled = 1450;     // Voltage threshold for "charged" (V × 100)
+int TailCurrent_Scaled = 200;         // Current threshold for "charged" (% of capacity × 100 so 200 = 2%)
 int ShuntResistanceMicroOhm = 100;    // Shunt resistance in microohms
 int ChargedDetectionTime = 1000;      // Time at charged state to consider 100% (seconds)
 int IgnoreTemperature = 0;            // If no temp sensor, set to 1
