@@ -969,7 +969,20 @@ Contact me at mark@xengineering.net       -->
             </label>
           </div>
 
+
           <div class="control-item">
+            <span class="control-label">Target Alternator Output (A) (<span id="dash-target-amps-echo">0</span>)</span>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form" onsubmit="return dashboardSetChargeRateForm();">
+                <input type="hidden" name="password" class="password_field">
+                <input name="TargetAmps" type="number" step="1" min="0" id="dash-charge-rate-input" />
+                <input onclick="submitMessage()" type="submit" value="Set" />
+              </form>
+            </div>
+          </div>
+
+
+          <!--           <div class="control-item">
             <span class="control-label">Charge Rate Normal (A) (<span id="dash-target-amps-echo">0</span>)</span>
             <div style="display: flex; align-items: center; gap: 8px;">
               <input type="number" id="dash-charge-rate" min="0" step="1"
@@ -980,7 +993,7 @@ Contact me at mark@xengineering.net       -->
                 Set
               </button>
             </div>
-          </div>
+          </div> -->
 
           <div class="control-item">
             <span class="control-label">Dark Mode</span>
@@ -996,8 +1009,6 @@ Contact me at mark@xengineering.net       -->
 
 
   <div id="settings" class="tab-content">
-    <h2>Settings</h2>
-
     <!-- Settings Sub-tabs -->
     <div class="sub-tabs">
       <button class="sub-tab active" onclick="showSubTab('settings', 'basic')">Basic</button>
@@ -1036,7 +1047,8 @@ Contact me at mark@xengineering.net       -->
 
             <hr />
             <div class="form-row">
-              <div class="form-label">Charge Rate Normal (A) (<span id="TargetAmps_echo">0</span>):</div>
+              <div class="form-label">Target Alternator Output (Normal) (A) (<span id="TargetAmps_echo">0</span>):
+              </div>
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
@@ -1048,7 +1060,7 @@ Contact me at mark@xengineering.net       -->
 
             <hr />
             <div class="form-row">
-              <div class="form-label">Charge Rate Low (A) (<span id="TargetAmpL_echo">0</span>):</div>
+              <div class="form-label">Target Alternator Output (Low) (A) (<span id="TargetAmpL_echo">0</span>):</div>
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
@@ -1060,7 +1072,7 @@ Contact me at mark@xengineering.net       -->
 
             <hr />
             <div class="form-row">
-              <div class="form-label">Charge Rate (<span id="HiLow_echo">0</span>):</div>
+              <div class="form-label">Target Alternator Output(<span id="HiLow_echo">0</span>):</div>
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
@@ -1993,8 +2005,6 @@ Contact me at mark@xengineering.net       -->
   </div>
 
   <div id="livedata" class="tab-content">
-    <h2>Live Data</h2>
-
     <!-- Live Data Sub-tabs -->
     <div class="sub-tabs">
       <button class="sub-tab active" onclick="showSubTab('livedata', 'battery')">Battery</button>
@@ -2030,7 +2040,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetVoltage" id="ResetVoltage" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetVoltage()"
+                  <button type="button" class="btn-small" onclick="resetParameter('ResetVoltage')"
                     id="ResetVoltage_button">Reset</button>
                 </form>
               </div>
@@ -2049,7 +2059,7 @@ Contact me at mark@xengineering.net       -->
                   <input type="hidden" name="ResetAlternatorChargedEnergy" id="ResetAlternatorChargedEnergy"
                     value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetAlternatorChargedEnergy()"
+                  <button type="button" class="btn-small" onclick="resetParameter('ResetAlternatorChargedEnergy')"
                     id="ResetAlternatorChargedEnergy_button">Reset</button>
                 </form>
               </div>
@@ -2062,7 +2072,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetDischargedEnergy" id="ResetDischargedEnergy" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetDischargedEnergy()"
+                  <button type="button" class="btn-small" onclick="resetParameter('ResetDischargedEnergy')"
                     id="ResetDischargedEnergy_button">Reset</button>
                 </form>
               </div>
@@ -2115,7 +2125,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetAlternatorOnTime" id="ResetAlternatorOnTime" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetAlternatorOnTime()"
+                  <button type="button" class="btn-small" onclick="resetParameter('ResetAlternatorOnTime')"
                     id="ResetAlternatorOnTime_button">Reset</button>
                 </form>
               </div>
@@ -2128,7 +2138,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetFuelUsed" id="ResetFuelUsed" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetFuelUsed()"
+                  <button type="button" class="btn-small" onclick="resetParameter('ResetFuelUsed')"
                     id="ResetFuelUsed_button">Reset</button>
                 </form>
               </div>
@@ -2141,7 +2151,8 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetEnergy" id="ResetEnergy" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetEnergy()" id="ResetEnergy_button">Reset</button>
+                  <button type="button" class="btn-small" onclick="resetParameter('ResetEnergy')"
+                    id="ResetEnergy_button">Reset</button>
                 </form>
               </div>
             </div>
@@ -2153,7 +2164,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetCurrent" id="ResetCurrent" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetCurrent()"
+                  <button type="button" class="btn-small" onclick="resetParameter('ResetCurrent')"
                     id="ResetCurrent_button">Reset</button>
                 </form>
               </div>
@@ -2167,7 +2178,8 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetTemp" id="ResetTemp" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetTemp()" id="ResetTemp_button">Reset</button>
+                  <button type="button" class="btn-small" onclick="resetParameter('ResetTemp')"
+                    id="ResetTemp_button">Reset</button>
                 </form>
               </div>
             </div>
@@ -2184,7 +2196,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetThermTemp" id="ResetThermTemp" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetThermTemp()"
+                  <button type="button" class="btn-small" onclick="resetParameter('ResetThermTemp')"
                     id="ResetThermTemp_button">Reset</button>
                 </form>
               </div>
@@ -2210,7 +2222,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetEngineRunTime" id="ResetEngineRunTime" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetEngineRunTime()"
+                  <button type="button" class="btn-small" onclick="resetParameter('ResetEngineRunTime')"
                     id="ResetEngineRunTime_button">Reset</button>
                 </form>
               </div>
@@ -2223,7 +2235,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetEngineCycles" id="ResetEngineCycles" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetEngineCycles()"
+                  <button type="button" class="btn-small" onclick="resetParameter('ResetEngineCycles')"
                     id="ResetEngineCycles_button">Reset</button>
                 </form>
               </div>
@@ -2236,7 +2248,8 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetRPMMax" id="ResetRPMMax" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetRPMMax()" id="ResetRPMMax_button">Reset</button>
+                  <button type="button" class="btn-small" onclick="resetParameter('ResetRPMMax')"
+                    id="ResetRPMMax_button">Reset</button>
                 </form>
               </div>
             </div>
@@ -2318,7 +2331,6 @@ Contact me at mark@xengineering.net       -->
   </div>
 
   <div id="plots" class="tab-content">
-    <h2>Plots</h2>
     <div class="settings-card">
       <div class="plot-container" id="voltage-plot"></div>
     </div>
@@ -2603,6 +2615,34 @@ Contact me at mark@xengineering.net       -->
 
     let lastPlotUpdate = 0; // Timestamp of last time we updated the plot
     const PLOT_UPDATE_INTERVAL_MS = 1000; // Only update every 2 seconds (adjust as needed)
+
+
+    //Reset buttons
+    // Single unified reset function
+    function resetParameter(parameterName) {
+      if (!currentAdminPassword) {
+        alert("Please unlock settings first");
+        return;
+      }
+
+      updatePasswordFields();
+
+      // Find the hidden input and button by parameter name
+      const hiddenInput = document.getElementById(parameterName);
+      const button = document.getElementById(parameterName + '_button');
+
+      if (!hiddenInput || !button) {
+        console.error(`Reset elements not found for parameter: ${parameterName}`);
+        return;
+      }
+
+      hiddenInput.value = '1';
+      button.closest('form').submit();
+      submitMessage();
+    }
+
+
+
 
     //Console
     function clearConsole() {
@@ -3547,33 +3587,36 @@ Contact me at mark@xengineering.net       -->
 
           updateAlarmStatus(data);
 
+          let lastValues = {};
+
+          // Modify your existing updateFields with MINIMAL changes:
           const updateFields = (fieldArray) => {
             for (const [elementId, key] of fieldArray) {
               const el = document.getElementById(elementId);
               if (!el) continue;
               const value = data[key];
+
+              // Calculate what the new text content would be (your existing logic)
+              let newTextContent;
               if (value === undefined || isNaN(value)) {
-                el.textContent = "—";
-                continue;
+                newTextContent = "—";
               }
               // Values scaled by 100 on server (transmitted as integer × 100)
-              if (["BatteryV", "Channel3V", "IBV", "VictronVoltage", "vvout", "FullChargeVoltage", "VictronCurrent",
+              else if (["BatteryV", "Channel3V", "IBV", "VictronVoltage", "vvout", "FullChargeVoltage", "VictronCurrent",
                 "TargetFloatVoltage", "IBVMax", "Bcur", "MeasuredAmps", "MeasuredAmpsMax", "SoC_percent", "AlternatorCOffset", "BatteryCOffset", "R_fixed", "Beta", "T0_C"].includes(key)) {
-                el.textContent = (value / 100).toFixed(2);
+                newTextContent = (value / 100).toFixed(2);
               }
               // Values scaled by 10 on server (transmitted as integer × 10)  
               else if (["iiout"].includes(key)) {
-                el.textContent = (value / 10).toFixed(1);
+                newTextContent = (value / 10).toFixed(1);
               }
-              // Keep existing scaling for MeasuredAmps and MeasuredAmpsMax (confirmed working)
-              // No changes needed here - current display is correct
               // Energy values - transmitted as integer Wh (no scaling needed)
               else if (["ChargedEnergy", "DischargedEnergy", "AlternatorChargedEnergy"].includes(key)) {
-                el.textContent = value;  // Display as-is (integer Wh)
+                newTextContent = value;  // Display as-is (integer Wh)
               }
               // Fuel in mL - transmitted as integer mL, display as L with decimals
               else if (["AlternatorFuelUsed"].includes(key)) {
-                el.textContent = (value / 1000).toFixed(3);  // Convert mL to L with 3 decimal places
+                newTextContent = (value / 1000).toFixed(3);  // Convert mL to L with 3 decimal places
               }
               // Time values - convert seconds to H:M:S format
               else if (["EngineRunTime", "AlternatorOnTime"].includes(key)) {
@@ -3581,15 +3624,21 @@ Contact me at mark@xengineering.net       -->
                 const hours = Math.floor(totalSeconds / 3600);  // 3600 seconds per hour
                 const minutes = Math.floor((totalSeconds % 3600) / 60);  // Remaining seconds to minutes
                 const seconds = totalSeconds % 60;  // Remaining seconds
-                el.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                newTextContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
               }
               // Settings echo values that need scaling
               else if (["TargetAmps", "TargetAmpL"].includes(key)) {
-                el.textContent = value;  // These are not scaled - transmitted as integer amps
+                newTextContent = value;  // These are not scaled - transmitted as integer amps
               }
               // Default: display as integer
               else {
-                el.textContent = Math.round(value);
+                newTextContent = Math.round(value);  // Keep your exact original logic
+              }
+
+              // ONLY UPDATE DOM IF VALUE ACTUALLY CHANGED
+              if (lastValues[elementId] !== newTextContent) {
+                el.textContent = newTextContent;
+                lastValues[elementId] = newTextContent;
               }
             }
           };
@@ -3733,7 +3782,6 @@ Contact me at mark@xengineering.net       -->
           if ('ManualSOCPoint' in data) {
             document.getElementById('ManualSOCPoint_echo').textContent = data.ManualSOCPoint;
           }
-
           if ('BatteryVoltageSource' in data) {
             document.getElementById('BatteryVoltageSource_echo').textContent = data.BatteryVoltageSource;
           }
@@ -3812,7 +3860,6 @@ Contact me at mark@xengineering.net       -->
           if ('BatteryCapacity_Ah' in data) {
             document.getElementById('BatteryCapacity_Ah_echo').textContent = data.BatteryCapacity_Ah;
           }
-
           if ('R_fixed' in data) {
             document.getElementById('R_fixed_echo').textContent = (data.R_fixed / 100).toFixed(2);
           }
@@ -3831,7 +3878,6 @@ Contact me at mark@xengineering.net       -->
           if ('AmpSrc' in data) {
             document.getElementById('AmpSrc_echo').textContent = data.AmpSrc;
           }
-
           if ('AlarmLatchEnabled' in data) {
             document.getElementById('AlarmLatchEnabled_echo').textContent = data.AlarmLatchEnabled;
           }
@@ -3841,7 +3887,6 @@ Contact me at mark@xengineering.net       -->
           if ('ResetAlarmLatch' in data) {
             document.getElementById('ResetAlarmLatch_echo').textContent = data.ResetAlarmLatch;
           }
-
           if ('ForceFloat' in data) {
             document.getElementById('ForceFloat_echo').textContent = data.ForceFloat;
           }
@@ -3851,7 +3896,6 @@ Contact me at mark@xengineering.net       -->
           if ('FLOAT_DURATION' in data) {
             document.getElementById('FLOAT_DURATION_echo').textContent = Math.round(data.FLOAT_DURATION / 3600);
           }
-
           if ('AlarmLatchState' in data) {
             const latchDisplay = document.getElementById('AlarmLatchState_display');
             if (data.AlarmLatchState === 1) {
@@ -3862,10 +3906,6 @@ Contact me at mark@xengineering.net       -->
               latchDisplay.style.color = 'var(--accent)';
             }
           }
-
-
-
-
 
           // Initialize RPM/Amps fields once on page load
           if (!rpmAmpsInitialized) {
@@ -4165,6 +4205,30 @@ Contact me at mark@xengineering.net       -->
       // Add active class to clicked sub-tab
       event.target.classList.add('active');
     }
+
+    //dashboard
+    function dashboardSetChargeRateForm() {
+      if (!currentAdminPassword) {
+        alert("Please unlock settings first in the Security tab");
+        return false; // Prevent form submission
+      }
+
+      const input = document.getElementById('dash-charge-rate-input');
+      const value = parseInt(input.value);
+
+      if (!value || value < 0) {
+        alert("Please enter a valid charge rate (positive number)");
+        return false; // Prevent form submission
+      }
+
+      // Make sure password is included
+      updatePasswordFields();
+
+      // Allow form submission to proceed
+      return true;
+    }
+
+
     function dashboardToggleForceFloat() {
       if (!currentAdminPassword) {
         alert("Please unlock settings first in the Security tab");
