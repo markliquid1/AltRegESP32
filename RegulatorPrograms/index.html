@@ -59,48 +59,343 @@ Contact me at mark@xengineering.net       -->
       font-size: 14px;
     }
 
+    /* HEARTBEAT Field status indicator styles */
+    .field-status-active {
+      color: #00a19a !important;
+      animation: field-heartbeat 5s ease-in-out infinite;
+    }
+
+    .field-status-inactive {
+      color: #999999 !important;
+      animation: none;
+    }
+
+    @keyframes field-heartbeat {
+
+      0%,
+      100% {
+        text-shadow: 0 0 3px rgba(0, 161, 154, 0.3);
+        transform: scale(1);
+      }
+
+      50% {
+        text-shadow: 0 0 8px rgba(0, 161, 154, 0.8),
+          0 0 12px rgba(0, 161, 154, 0.4),
+          0 0 16px rgba(0, 161, 154, 0.2);
+        transform: scale(1.05);
+      }
+    }
+
+    /* Permanent Header */
+
+    .permanent-header {
+      background: linear-gradient(135deg, var(--card-light), #f8f9fa);
+      border-bottom: 3px solid var(--accent);
+      padding: 16px;
+      margin-bottom: 16px;
+      border-radius: var(--radius) var(--radius) 0 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .reading-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 80px;
+    }
+
+    .reading-label {
+      font-size: 11px;
+      color: var(--text-dark);
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .reading-value {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--text-dark);
+      text-align: center;
+    }
+
+    .sensor-readings-tier {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      width: 100%;
+    }
+
+    .reading-pair {
+      display: flex;
+      flex-direction: row;
+      gap: 15px;
+      align-items: center;
+      flex: 0 1 auto;
+      min-width: 160px;
+    }
+
+    .settings-access-tier {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+      background: transparent;
+      padding: 0;
+      margin: 0;
+      border: none;
+      box-shadow: none;
+      align-items: center;
+    }
+
+    .settings-access-hidden {
+      display: none !important;
+    }
+
+    .alternator-control-tier {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+
+
+    @media (max-width: 480px) {
+      .reading-group {
+        flex-direction: column;
+        gap: 8px;
+        min-width: 120px;
+      }
+
+      .readings-section {
+        gap: 15px;
+      }
+    }
+
+    .alternator-control {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--bg-light);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .control-label {
+      font-weight: bold;
+      color: var(--text-dark);
+      white-space: nowrap;
+    }
+
+    .lock-status-locked {
+      font-size: 16px;
+      font-weight: 900 !important;
+      margin-bottom: 6px;
+      color: #ff0000 !important;
+      text-align: center;
+    }
+
+    .lock-status-unlocked {
+      font-size: 16px;
+      font-weight: 900 !important;
+      margin-bottom: 6px;
+      color: var(--accent) !important;
+      text-align: center;
+    }
+
+
+    .password-form {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .password-input-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .password-form input[type="password"].password-input {
+      flex: 1;
+      min-width: 80px;
+      max-width: 160px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 14px;
+      width: auto;
+    }
+
+    .password-form .password-button {
+      background-color: #e0e0e0;
+      color: #000;
+      border: none;
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: bold;
+      white-space: nowrap;
+      flex-shrink: 0;
+      min-width: 70px;
+    }
+
+    .password-form .password-button:hover {
+      background-color: #cccccc;
+    }
+
+    .password-form .show-checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .password-form .show-checkbox {
+      margin: 0;
+    }
+
+    .password-form .show-label {
+      font-size: 12px;
+      margin: 0;
+      user-select: none;
+    }
+
+    @media (max-width: 480px) {
+      .permanent-header {
+        padding: 12px;
+      }
+
+      .reading-value {
+        font-size: 16px;
+      }
+
+      .password-form {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+
+      .password-input-group {
+        justify-content: space-between;
+      }
+
+      .password-form .password-input {
+        max-width: none;
+        flex: 1;
+      }
+
+      .password-form .show-checkbox-container {
+        justify-self: flex-end;
+        margin-left: auto;
+      }
+    }
+
+    @media (max-width: 320px) {
+      .password-form .password-input {
+        min-width: 60px;
+      }
+
+      .password-form .password-button {
+        padding: 8px 10px;
+        font-size: 13px;
+      }
+    }
+
+    /* Dark mode banner styling */
+    .dark-mode .permanent-header {
+      background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+      border-bottom: 3px solid var(--accent);
+      color: #cccccc;
+    }
+
+    .dark-mode .lock-status-locked {
+      color: #ff6666 !important;
+    }
+
+    .dark-mode .lock-status-unlocked {
+      color: var(--accent) !important;
+    }
+
+    .dark-mode .reading-label {
+      color: #cccccc;
+    }
+
+    .dark-mode .reading-value {
+      color: #cccccc;
+    }
+
+    .dark-mode .control-label {
+      color: #cccccc;
+    }
+
+    .dark-mode .alternator-control {
+      background: #2a2a2a;
+      border: 1px solid #444444;
+    }
+
+    .dark-mode .password-form .password-input {
+      background-color: #1e1e1e;
+      color: #cccccc;
+      border-color: #444444;
+    }
+
+    .dark-mode .password-form .password-button {
+      background-color: #2a2a2a;
+      color: #aaaaaa;
+    }
+
+    .dark-mode .password-form .password-button:hover {
+      background-color: #444444;
+    }
+
 
     /* Main Tab Navigation */
     .main-tabs {
       display: flex;
-      flex-wrap: wrap;
-      background: var(--card-light);
-      border-radius: var(--radius);
-      margin-bottom: 1rem;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
+      margin-bottom: 0;
+      gap: 2px;
     }
 
     .main-tab {
+      padding: 14px 20px;
+      border: 2px solid var(--border);
+      background: var(--bg-light);
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-dark);
+      border-radius: var(--radius) var(--radius) 0 0;
+      transition: all 0.3s ease;
+      border-bottom: none;
       flex: 1;
       min-width: 100px;
-      background: transparent;
-      border: none;
-      padding: 12px 16px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: bold;
-      color: var(--text-dark);
-      border-bottom: 3px solid transparent;
-      transition: all 0.3s ease;
     }
 
     .main-tab:hover {
-      background-color: var(--bg-light);
+      background: var(--card-light);
+      color: var(--accent);
+      border-color: var(--accent);
     }
 
     .main-tab.active {
-      background: linear-gradient(135deg, var(--accent), #008a85);
-      /* Gradient */
-      color: var(--text-light);
-      border-bottom: 3px solid var(--primary);
-      box-shadow: 0 3px 8px rgba(0, 161, 154, 0.4);
-      /* Teal shadow */
-      transform: translateY(-2px);
-      /* More lift */
-      font-weight: bold;
-      border-radius: var(--radius) var(--radius) 0 0;
-      /* Rounded top only */
+      background: var(--card-light);
+      color: var(--accent);
+      border-color: var(--accent);
+      border-bottom: 2px solid var(--card-light);
+      z-index: 2;
+      position: relative;
     }
 
     /* Tab Content */
@@ -123,37 +418,40 @@ Contact me at mark@xengineering.net       -->
 
     /* Sub Tab Navigation */
     .sub-tabs {
-      display: flex;
-      flex-wrap: wrap;
       background: var(--card-light);
-      border-radius: var(--radius);
+      border: 2px solid var(--accent);
+      border-top: none;
+      padding: 16px;
+      border-radius: 0 0 var(--radius) var(--radius);
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
       margin-bottom: 1rem;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
     }
 
     .sub-tab {
-      flex: 1;
-      min-width: 120px;
-      background: transparent;
-      border: none;
-      padding: 8px 12px;
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      background: var(--bg-light);
       cursor: pointer;
-      font-size: 12px;
+      font-size: 13px;
       color: var(--text-dark);
-      border-bottom: 2px solid transparent;
+      border-radius: 20px;
       transition: all 0.3s ease;
+      min-width: 80px;
+      flex: 0 0 auto;
     }
 
     .sub-tab:hover {
-      background-color: var(--bg-light);
+      background: rgba(0, 161, 154, 0.1);
+      border-color: var(--accent);
+      color: var(--accent);
     }
 
     .sub-tab.active {
-      background-color: var(--bg-light);
-      color: var(--accent);
-      border-bottom-color: var(--accent);
-      font-weight: bold;
+      background: var(--accent);
+      color: var(--card-light);
+      border-color: var(--accent);
     }
 
     .sub-tab-content {
@@ -164,105 +462,9 @@ Contact me at mark@xengineering.net       -->
       display: block;
     }
 
-    /* Dashboard Specific Styles */
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 15px;
-      margin-bottom: 20px;
-    }
-
-    .dashboard-card {
-      background: var(--card-light);
-      border-radius: var(--radius);
-      padding: 15px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      border-left: 4px solid var(--accent);
-    }
-
-    .card-title {
-      font-size: 16px;
-      font-weight: bold;
-      color: var(--text-dark);
-      margin-bottom: 15px;
-      text-align: center;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 8px;
-    }
-
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 10px;
-    }
-
-    .metric {
-      text-align: center;
-      padding: 10px;
-      background: var(--bg-light);
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-    }
-
-    .metric-label {
-      font-size: 11px;
-      color: var(--text-dark);
-      margin-bottom: 5px;
-      font-weight: bold;
-    }
-
-    .metric-value {
-      font-size: 18px;
-      font-weight: bold;
-      color: var(--reading);
-    }
-
-    .metric-unit {
-      font-size: 12px;
-      color: var(--text-dark);
-      margin-left: 2px;
-    }
-
-    .controls-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 15px;
-    }
-
-    .control-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px;
-      background: var(--bg-light);
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-    }
-
-    .control-label {
-      font-weight: bold;
-      color: var(--text-dark);
-    }
-
     /* For fixing plot legend appearance */
     .u-legend .u-value {
       display: none !important;
-    }
-
-
-    input[type="submit"] {
-      background-color: #555555;
-      color: white;
-      border: none;
-      padding: 4px 10px;
-      cursor: pointer;
-      border-radius: var(--radius);
-      font-weight: bold;
-      width: 60px;
-    }
-
-    input[type="submit"]:hover {
-      background-color: var(--accent);
     }
 
     input[type="text"],
@@ -272,8 +474,13 @@ Contact me at mark@xengineering.net       -->
       color: var(--text-dark);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 4px;
-      width: 50px;
+      padding: 6px 8px;
+      /* Consistent with button padding */
+      height: 28px;
+      /* Match button height */
+      box-sizing: border-box;
+      font-size: 12px;
+      /* Match button font size */
     }
 
     input:focus {
@@ -324,7 +531,6 @@ Contact me at mark@xengineering.net       -->
       gap: 10px;
     }
 
-
     .settings-card {
       background: var(--card-light);
       border-radius: var(--radius);
@@ -332,9 +538,7 @@ Contact me at mark@xengineering.net       -->
       margin-bottom: 16px;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
       max-width: 600px;
-      /* Limit card width */
       margin-left: auto;
-      /* Center the card */
       margin-right: auto;
       margin-bottom: 16px;
     }
@@ -356,7 +560,6 @@ Contact me at mark@xengineering.net       -->
       margin: 8px 0;
     }
 
-
     .confirm-msg {
       transition: opacity 1s ease;
       opacity: 1;
@@ -366,11 +569,9 @@ Contact me at mark@xengineering.net       -->
       opacity: 0;
     }
 
-
     .form-row {
       display: flex;
       justify-content: flex-start;
-      /* Change from space-between to flex-start */
       align-items: center;
       margin-bottom: 8px;
       max-width: 480px;
@@ -386,71 +587,6 @@ Contact me at mark@xengineering.net       -->
       display: flex;
       justify-content: flex-end;
       align-items: center;
-    }
-
-    /* FIXED: Password form responsive layout */
-    .password-form-container {
-      margin-bottom: 15px;
-    }
-
-    .password-form {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-    }
-
-    .password-input-group {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      width: 100%;
-      min-width: 0;
-    }
-
-    .password-form input[type="password"].password-input {
-      flex: 1;
-      min-width: 80px;
-      max-width: 160px;
-      /* Increased from 120px */
-      padding: 8px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 14px;
-      width: auto;
-      /* Override the general 50px width rule */
-    }
-
-    .password-form .password-button {
-      background-color: #555555;
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      border-radius: var(--radius);
-      cursor: pointer;
-      font-weight: bold;
-      white-space: nowrap;
-      flex-shrink: 0;
-      min-width: 70px;
-    }
-
-    .password-form .show-checkbox-container {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-
-    .password-form .show-checkbox {
-      margin: 0;
-    }
-
-    .password-form .show-label {
-      font-size: 12px;
-      margin: 0;
-      user-select: none;
     }
 
     /* Let this one card go full width */
@@ -471,7 +607,6 @@ Contact me at mark@xengineering.net       -->
       border-radius: var(--radius);
       width: 100%;
       height: 200px;
-      /* Default for mobile */
     }
 
     /* Tablet and up */
@@ -510,10 +645,116 @@ Contact me at mark@xengineering.net       -->
     }
 
 
+    /* BUTTONS!!  */
+    /* Unified Button System */
+    /* Unified Button System - Updated for better alignment */
+    .btn-primary {
+      background-color: #555555;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      /* Reduced from 8px 16px */
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 12px;
+      /* Reduced from 14px */
+      transition: all 0.3s ease;
+      min-width: 60px;
+      /* Reduced from 70px */
+      height: 28px;
+      /* Match input field height */
+      line-height: 1.2;
+      /* Better vertical alignment */
+    }
+
+    .btn-primary:hover {
+      background-color: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-primary:disabled {
+      background-color: #999;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-secondary {
+      background-color: #e0e0e0;
+      color: #333;
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+      /* Reduced from 6px 12px */
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 11px;
+      /* Reduced from 12px */
+      transition: all 0.3s ease;
+      height: 24px;
+      /* Smaller for secondary buttons */
+      line-height: 1.2;
+    }
+
+    .btn-secondary:hover {
+      background-color: #d0d0d0;
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .btn-danger {
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s ease;
+    }
+
+    .btn-danger:hover {
+      background-color: #c82333;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+    }
+
+    .dark-mode .btn-secondary {
+      background-color: #333333;
+      color: #aaaaaa;
+      border: 1px solid #555555;
+    }
+
+    .dark-mode .btn-secondary:hover {
+      background-color: #444444;
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .dark-mode .btn-danger {
+      background-color: #4a1a1a;
+      color: #ff9999;
+    }
+
+    .dark-mode .btn-danger:hover {
+      background-color: #5a2020;
+      box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+    }
+
     /* Locking Settings Capability */
+
     .locked input,
     .locked select,
-    .locked button {
+    .locked button,
+    .locked label.switch input {
+      /* Add this line */
       pointer-events: none;
       opacity: 0.5;
     }
@@ -683,24 +924,6 @@ Contact me at mark@xengineering.net       -->
       background-color: #F44336;
     }
 
-    /* Reset Buttons */
-    .btn-small {
-      background-color: #e0e0e0;
-      color: #000;
-      border: none;
-      padding: 2px 8px;
-      font-size: 0.8em;
-      margin-left: 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      vertical-align: middle;
-    }
-
-    .btn-small:hover {
-      background-color: #cccccc;
-    }
-
-
     /* Dark Mode */
     .dark-mode {
       --primary: gray;
@@ -782,50 +1005,79 @@ Contact me at mark@xengineering.net       -->
     let toggleStates = {}; // Track current toggle states
     let userInitiatedToggles = new Set(); // Track user-initiated changes
 
-    // feedback on button clicking etc
+    //feedback on button clicking
     function submitMessage() {
-      // Just add a CSS class - zero chance of breaking anything
-      if (event && event.target) {
-        event.target.classList.add('button-pulse');
-        setTimeout(() => event.target.classList.remove('button-pulse'), 600);
+      // Use 'this' which refers to the element that called the function
+      if (this && this.classList) {
+        this.classList.add('button-pulse');
+        setTimeout(() => this.classList.remove('button-pulse'), 600);
       }
     }
 
+    //this allows user to turn the alternator OFF even without entering a passoword, for safety reasons
+    function handleAlternatorToggle(checkbox) {
+      const isGoingOn = checkbox.checked; // true = turning ON, false = turning OFF
+      const checkboxId = checkbox.id;
+      const isLocked = !currentAdminPassword; // System is locked if no password
 
-    // function submitMessage() {
-    //   // Safe visual feedback - just change styling, don't touch disabled state or form submission
-    //   const submitButton = event.target.querySelector('input[type="submit"]') || event.target;
+      // Always allow turning OFF (safety feature)
+      if (!isGoingOn) {
+        if (handleUserToggle(checkboxId, 'OnOff', 'OnOff')) {
+          return true; // Allow form submission
+        }
+      }
 
-    //   if (submitButton && submitButton.type === 'submit') {
-    //     // Just change the background color briefly
-    //     const originalBg = submitButton.style.backgroundColor;
-    //     submitButton.style.backgroundColor = '#00a19a';
-    //     submitButton.style.transition = 'background-color 0.3s';
+      // For turning ON, require unlocked system
+      if (isGoingOn && isLocked) {
+        alert("Settings must be unlocked to turn alternator ON");
+        checkbox.checked = false; // Revert the toggle
+        return false; // Prevent form submission
+      }
 
-    //     setTimeout(() => {
-    //       submitButton.style.backgroundColor = originalBg;
-    //     }, 1000);
-    //   }
-    // }
+      // System is unlocked and we're turning ON, or we're turning OFF - proceed normally
+      return handleUserToggle(checkboxId, 'OnOff', 'OnOff');
+    }
 
-    // function submitMessage() {
-    //   // Find the submit button that was clicked
-    //   const submitButton = event.target.querySelector('input[type="submit"]') || event.target;
 
-    //   if (submitButton && submitButton.type === 'submit') {
-    //     const originalValue = submitButton.value;
-    //     submitButton.value = 'Saving...';
-    //     submitButton.disabled = true;
-    //     submitButton.style.backgroundColor = '#999';
+    //something to do with passwords
+    function togglePassword(inputId) {
+      const input = document.getElementById(inputId);
+      const checkbox = event.target;
+      input.type = checkbox.checked ? 'text' : 'password';
+    }
+    //password hiding stuff
+    function hideSettingsAccess() {
+      console.log("Password accepted, hiding access section");
+      document.getElementById('settings-access-section').classList.add('settings-access-hidden');
+    }
 
-    //     // Re-enable after timeout
-    //     setTimeout(() => {
-    //       submitButton.value = originalValue;
-    //       submitButton.disabled = false;
-    //       submitButton.style.backgroundColor = '';
-    //     }, 2000);
-    //   }
-    // }
+    function showSettingsAccess() {
+      const accessSection = document.getElementById('settings-access-section');
+      if (accessSection) {
+        accessSection.classList.remove('settings-access-hidden');
+      }
+    }
+    function lockSettingsManually() {
+      const section = document.getElementById('settings-section');
+      if (section) section.classList.add("locked");
+      const headerControl = document.querySelector('.alternator-control');
+      if (headerControl) headerControl.classList.add("locked");
+
+      const lockStatus = document.getElementById('lock-status');
+      if (lockStatus) {
+        lockStatus.textContent = "Settings are Locked";
+        lockStatus.className = "lock-status-locked";
+      }
+
+      console.log("About to show settings access section"); // DEBUG
+      showSettingsAccess();
+
+      // Check if it actually became visible
+      const accessSection = document.getElementById('settings-access-section');
+      console.log("Access section display:", accessSection ? accessSection.style.display : "element not found"); // DEBUG
+
+      currentAdminPassword = "";
+    }
 
     let rpmAmpsInitialized = false; // this is for the RPM/AMP speed based charging table
 
@@ -840,173 +1092,97 @@ Contact me at mark@xengineering.net       -->
 <body><iframe name="hidden-form" style="display:none"></iframe>
   <h2>X Engineering Alternator Regulator</h2>
 
-  <!-- Main Tab Navigation -->
-  <div class="main-tabs">
-    <button class="main-tab active" onclick="showMainTab('dashboard')">Dashboard</button>
-    <button class="main-tab" onclick="showMainTab('settings')">Settings</button>
-    <button class="main-tab" onclick="showMainTab('livedata')">Live Data</button>
-    <button class="main-tab" onclick="showMainTab('plots')">Plots</button>
-    <button class="main-tab" onclick="showMainTab('console')">Console</button>
-  </div>
-
-  <!-- Dashboard Tab -->
-  <div id="dashboard" class="tab-content active">
-    <div class="dashboard-grid">
-
-      <!-- Sensor Data Card -->
-      <div class="dashboard-card">
-        <div class="card-title">Sensor Data</div>
-        <div class="metrics-grid">
-          <div class="metric">
-            <div class="metric-label">INA Battery Voltage</div>
-            <div class="metric-value"><span id="dash-ibv">0</span><span class="metric-unit">V</span></div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">State of Charge</div>
-            <div class="metric-value"><span id="dash-soc">0</span><span class="metric-unit">%</span></div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">Alternator Current</div>
-            <div class="metric-value"><span id="dash-altcurrent">0</span><span class="metric-unit">A</span></div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">Battery Current</div>
-            <div class="metric-value"><span id="dash-battcurrent">0</span><span class="metric-unit">A</span></div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">Alternator Temp</div>
-            <div class="metric-value"><span id="dash-alttemp">0</span><span class="metric-unit">°F</span></div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">Engine Speed</div>
-            <div class="metric-value"><span id="dash-rpm">0</span><span class="metric-unit">RPM</span></div>
-          </div>
+  <div class="permanent-header">
+    <!-- Tier 1: Sensor readings that flow horizontally first, then wrap -->
+    <div class="sensor-readings-tier">
+      <div class="reading-pair">
+        <div class="reading-item">
+          <span class="reading-label">Battery</span>
+          <span class="reading-value"><span id="header-voltage">12.6</span>V</span>
+        </div>
+        <div class="reading-item">
+          <span class="reading-label">Charge</span>
+          <span class="reading-value"><span id="header-soc">85</span>%</span>
         </div>
       </div>
 
-
-      <!-- Add this as a new card in dashboard-grid -->
-      <div class="dashboard-card">
-        <div class="card-title">Settings Access</div>
-        <div id="lock-status" style="font-weight:bold; color:#00a19a; margin-bottom:15px; text-align:center;">
-          Settings are Locked
+      <div class="reading-pair">
+        <div class="reading-item">
+          <span class="reading-label">Alt Current</span>
+          <span class="reading-value"><span id="header-alt-current">42</span>A</span>
         </div>
-        <!-- Enter Password -->
-        <div class="password-form-container">
-          <form action="/get" method="GET" target="hidden-form" onsubmit="setAdminPassword(); return false;">
-            <input type="hidden" name="dummy" value="1" />
-            <div class="password-form">
-              <div class="password-input-group">
-                <input type="password" id="admin_password" name="admin_password" placeholder="Enter password"
-                  autocomplete="current-password" class="password-input" />
-                <input type="submit" id="admin_password_set" value="Unlock" class="password-button" />
-                <div class="show-checkbox-container">
-                  <input type="checkbox" class="show-checkbox" onclick="togglePassword('admin_password')">
-                  <label class="show-label">Show</label>
-                </div>
-              </div>
-            </div>
-            <div id="admin_password_msg" style="font-size: 12px; color: #00a19a; margin-top: 5px;"></div>
-          </form>
-        </div>
-
-        <!-- Change Password (only show when unlocked) -->
-        <div id="change-password-section" style="display: none;">
-          <hr style="margin: 10px 0;">
-          <div class="password-form-container">
-            <form action="/setPassword" method="POST" target="hidden-form" onsubmit="return setNewPassword();">
-              <input type="hidden" name="password" class="password_field" />
-              <div class="password-form">
-                <div class="password-input-group">
-                  <input type="password" id="newpassword" name="newpassword" placeholder="New password"
-                    class="password-input" />
-                  <input type="submit" id="newpassword_set" value="Change" class="password-button" />
-                  <div class="show-checkbox-container">
-                    <input type="checkbox" class="show-checkbox" onclick="togglePassword('newpassword')">
-                    <label class="show-label">Show</label>
-                  </div>
-                </div>
-              </div>
-              <div id="newpassword_msg" style="font-size: 12px; color: #00a19a; margin-top: 5px;"></div>
-            </form>
-          </div>
-        </div>
-
-        <!-- Lock Button (only show when unlocked) -->
-        <div id="lock-button-section" style="display: none; text-align: center; margin-top: 15px;">
-          <button onclick="lockSettingsManually(); return false;"
-            style="background-color: #555555; color: white; border: none; padding: 8px 16px; border-radius: var(--radius); cursor: pointer;">
-            Lock Settings
-          </button>
+        <div class="reading-item">
+          <span class="reading-label">Batt Current</span>
+          <span class="reading-value"><span id="header-batt-current">38</span>A</span>
         </div>
       </div>
 
-      <!-- Quick Settings Card -->
-      <div class="dashboard-card">
-        <div class="card-title">Quick Settings</div>
-        <div class="controls-grid">
-          <div class="control-item">
-            <span class="control-label">Alternator Enable</span>
-            <label class="switch">
-              <input type="checkbox" id="dash-alternator-enable" onchange="dashboardToggleAlternator()">
-              <span class="slider"></span>
-            </label>
-          </div>
-
-          <div class="control-item">
-            <span class="control-label">Force Float Mode</span>
-            <label class="switch">
-              <input type="checkbox" id="dash-force-float" onchange="dashboardToggleForceFloat()">
-              <span class="slider"></span>
-            </label>
-          </div>
-
-          <div class="control-item">
-            <span class="control-label">Alarm Enable</span>
-            <label class="switch">
-              <input type="checkbox" id="dash-alarm-enable" onchange="dashboardToggleAlarmEnable()">
-              <span class="slider"></span>
-            </label>
-          </div>
-
-
-          <div class="control-item">
-            <span class="control-label">Target Alternator Output (A) (<span id="dash-target-amps-echo">0</span>)</span>
-            <div class="form-input">
-              <form action="/get" method="GET" target="hidden-form" onsubmit="return dashboardSetChargeRateForm();">
-                <input type="hidden" name="password" class="password_field">
-                <input name="TargetAmps" type="number" step="1" min="0" id="dash-charge-rate-input" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
-              </form>
-            </div>
-          </div>
-
-
-          <!--           <div class="control-item">
-            <span class="control-label">Charge Rate Normal (A) (<span id="dash-target-amps-echo">0</span>)</span>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <input type="number" id="dash-charge-rate" min="0" step="1"
-                style="width: 60px; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius);"
-                placeholder="New" />
-              <button onclick="dashboardSetChargeRate()"
-                style="background-color: #555555; color: white; border: none; padding: 4px 8px; border-radius: var(--radius); cursor: pointer; font-size: 12px;">
-                Set
-              </button>
-            </div>
-          </div> -->
-
-          <div class="control-item">
-            <span class="control-label">Dark Mode</span>
-            <label class="switch">
-              <input type="checkbox" id="dash-dark-mode" onchange="dashboardToggleDarkMode()">
-              <span class="slider"></span>
-            </label>
-          </div>
+      <div class="reading-pair">
+        <div class="reading-item">
+          <span class="reading-label">Alt Temp</span>
+          <span class="reading-value"><span id="header-alt-temp">165</span>°F</span>
         </div>
+        <div class="reading-item">
+          <span class="reading-label">Engine</span>
+          <span class="reading-value"><span id="header-rpm">1850</span> RPM</span>
+        </div>
+      </div>
+      <div class="reading-pair">
+        <div class="reading-item">
+          <span class="reading-label">Field</span>
+          <span class="reading-value field-status-inactive" id="field-status">OFF</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tier 2: Settings Access (full width underneath readings) -->
+    <div id="settings-access-section" class="settings-access-tier">
+      <div id="lock-status">Settings are Locked</div>
+      <div class="password-form-wrapper">
+        <form action="/get" method="GET" target="hidden-form" onsubmit="setAdminPassword(); return false;">
+          <input type="hidden" name="dummy" value="1" />
+          <div class="password-form">
+            <div class="password-input-group">
+              <input type="password" id="admin_password" name="admin_password" placeholder="Enter password"
+                autocomplete="current-password" class="password-input" />
+              <input type="submit" id="admin_password_set" value="Unlock" class="btn-primary" />
+              <div class="show-checkbox-container">
+                <input type="checkbox" class="show-checkbox" onclick="togglePassword('admin_password')">
+                <label class="show-label">Show</label>
+              </div>
+            </div>
+          </div>
+          <div id="admin_password_msg"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Tier 3: Alternator control (always centered and visible) -->
+    <div class="alternator-control-tier">
+      <div class="alternator-control">
+        <span class="control-label">Alternator Enable</span>
+        <form action="/get" method="GET" target="hidden-form">
+          <input type="hidden" name="password" class="password_field">
+          <label class="switch">
+            <input id="header-alternator-enable" type="checkbox"
+              onchange="if(handleAlternatorToggle(this)) { this.form.submit(); submitMessage(); }" />
+            <span class="slider"></span>
+          </label>
+          <input id="OnOff" name="OnOff" type="number" value="" style="display:none;" />
+        </form>
       </div>
     </div>
   </div>
 
+  </div>
+
+  <!-- Main Tab Navigation -->
+  <div class="main-tabs">
+    <button class="main-tab" onclick="showMainTab('livedata')">Live Data</button>
+    <button class="main-tab" onclick="showMainTab('settings')">Settings</button>
+    <button class="main-tab" onclick="showMainTab('plots')">Plots</button>
+    <button class="main-tab" onclick="showMainTab('console')">Console</button>
+  </div>
 
   <div id="settings" class="tab-content">
     <!-- Settings Sub-tabs -->
@@ -1026,24 +1202,6 @@ Contact me at mark@xengineering.net       -->
         <div id="settings-basic" class="sub-tab-content active">
           <div class="settings-card">
             <div class="section-title">Basic</div>
-            <hr />
-            <div class="form-row">
-              <div class="form-label">Alternator Enable (<span id="OnOff_echo">0</span>):</div>
-              <div class="form-input">
-                <form action="/get" method="GET" target="hidden-form">
-                  <input type="hidden" name="password" class="password_field">
-                  <span class="toggle-label">Off</span>
-                  <label class="switch">
-                    <input id="OnOff_checkbox" type="checkbox" onchange="if(handleUserToggle('OnOff_checkbox', 'OnOff', 'OnOff')) { this.form.submit();
-              submitMessage(); }" />
-                    <span class="slider round"></span>
-                  </label>
-                  <span class="toggle-label">On</span>
-                  <input id="OnOff" name="OnOff" type="number" value="" style="display:none;" />
-                </form>
-              </div>
-            </div>
-
 
             <hr />
             <div class="form-row">
@@ -1053,7 +1211,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
                   <input name="TargetAmps" type="number" step="1" min="0" />
-                  <input onclick="submitMessage()" type="submit" value="Set" />
+                  <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
                 </form>
               </div>
             </div>
@@ -1065,14 +1223,14 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
                   <input name="TargetAmpL" type="number" step="1" min="0" />
-                  <input onclick="submitMessage()" type="submit" value="Set" />
+                  <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
                 </form>
               </div>
             </div>
 
             <hr />
             <div class="form-row">
-              <div class="form-label">Target Alternator Output(<span id="HiLow_echo">0</span>):</div>
+              <div class="form-label">Target Alternator Output (<span id="HiLow_echo">0</span>):</div>
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
@@ -1122,7 +1280,7 @@ Contact me at mark@xengineering.net       -->
                     <option value="6">Victron Batt</option>
                     <option value="7">Other</option>
                   </select>
-                  <input onclick="submitMessage()" type="submit" value="Set" />
+                  <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
                 </form>
               </div>
             </div>
@@ -1134,7 +1292,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
                   <input name="TemperatureLimitF" type="number" step="1" min="0" />
-                  <input onclick="submitMessage()" type="submit" value="Set" />
+                  <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
                 </form>
               </div>
             </div>
@@ -1146,7 +1304,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
                   <input name="FullChargeVoltage" type="number" step="0.01" min="0" />
-                  <input onclick="submitMessage()" type="submit" value="Set" />
+                  <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
                 </form>
               </div>
             </div>
@@ -1158,7 +1316,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
                   <input name="bulkCompleteTime" type="number" step="1" min="0" />
-                  <input onclick="submitMessage()" type="submit" value="Set" />
+                  <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
                 </form>
               </div>
             </div>
@@ -1171,19 +1329,19 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
                   <input name="TargetFloatVoltage" type="number" step="0.01" min="0" />
-                  <input onclick="submitMessage()" type="submit" value="Set" />
+                  <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
                 </form>
               </div>
             </div>
 
             <hr />
             <div class="form-row">
-              <div class="form-label">Float Duration (hours) (<span id="FLOAT_DURATION_echo">0</span>):</div>
+              <div class="form-label">Float Duration (hrs) (<span id="FLOAT_DURATION_echo">0</span>):</div>
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
                   <input name="FLOAT_DURATION" type="number" step="1" min="0" />
-                  <input onclick="submitMessage()" type="submit" value="Set" />
+                  <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
                 </form>
               </div>
             </div>
@@ -1220,7 +1378,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="R_fixed" type="number" step="1" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1232,7 +1390,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="Beta" type="number" step="1" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1244,7 +1402,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="T0_C" type="number" step="0.1" min="-50" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1262,7 +1420,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="SwitchingFrequency" type="number" step="1" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1273,7 +1431,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="interval" type="number" step="0.001" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1285,7 +1443,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="FieldAdjustmentinterval" type="number" step="1" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1297,7 +1455,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="RPMScalingFactor" type="number" step="0.01" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1363,7 +1521,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="MinDuty" type="number" step="1" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1375,7 +1533,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="MaxDuty" type="number" step="1" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1387,7 +1545,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="FieldResistance" type="number" step=".01" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1502,7 +1660,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="ManualDuty" type="number" step="1" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1556,7 +1714,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="TempAlarm" type="number" step="1" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1567,7 +1725,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="VoltageAlarmHigh" type="number" step="0.1" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1578,7 +1736,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="VoltageAlarmLow" type="number" step="0.1" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1589,7 +1747,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="CurrentAlarmHigh" type="number" step="1" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1602,7 +1760,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="MaximumAllowedBatteryAmps" type="number" step="1" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1691,7 +1849,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="BatteryCapacity_Ah" type="number" step="1" min="0" max="3000" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1703,7 +1861,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="CurrentThreshold" type="number" step="0.1" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1715,7 +1873,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="TailCurrent" type="number" step="0.1" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1727,7 +1885,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="ChargedDetectionTime" type="number" step="1" min="0" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1740,7 +1898,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="PeukertExponent" type="number" step="0.01" min="1" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1751,7 +1909,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="ChargeEfficiency" type="number" step="1" min="50" max="100" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1762,7 +1920,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="ChargedVoltage" type="number" step="0.01" min="12" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1774,7 +1932,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="ShuntResistanceMicroOhm" type="number" step="1" min="12" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1785,7 +1943,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="ManualSOCPoint" type="number" step="1" min="0" max="100" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1877,7 +2035,7 @@ Contact me at mark@xengineering.net       -->
                   <option value="3">3 NMEA0183</option>
                   <option value="4">4 NMEA2K</option>
                 </select>
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1922,7 +2080,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="AlternatorCOffset" type="number" step=".01" min="-100" max="100" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1933,7 +2091,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="BatteryCOffset" type="number" step=".01" min="-100" max="100" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1944,7 +2102,7 @@ Contact me at mark@xengineering.net       -->
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="maxPoints" type="number" step="1" min="5" max="10000" />
-                <input onclick="submitMessage()" type="submit" value="Set" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1986,13 +2144,42 @@ Contact me at mark@xengineering.net       -->
             </div>
           </div>
 
+          <div class="form-row">
+            <div class="form-label">Change Password:</div>
+            <div class="form-input">
+              <form action="/setPassword" method="POST" target="hidden-form" onsubmit="return setNewPassword();">
+                <input type="hidden" name="password" class="password_field" />
+                <div class="password-form">
+                  <div class="password-input-group">
+                    <input type="password" id="newpassword" name="newpassword" placeholder="New password"
+                      class="password-input" />
+                    <input type="submit" id="newpassword_set" value="Change" class="btn-primary" />
+                    <div class="show-checkbox-container">
+                      <input type="checkbox" class="show-checkbox" onclick="togglePassword('newpassword')">
+                      <label class="show-label">Show</label>
+                    </div>
+                  </div>
+                </div>
+                <div id="newpassword_msg" style="font-size: 12px; color: #00a19a; margin-top: 5px;"></div>
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Lock Settings:</div>
+            <div class="form-input">
+              <button type="button" onclick="lockSettingsManually()" class="btn-primary">
+                Lock Settings
+              </button>
+            </div>
+          </div>
 
           <hr />
           <div class="form-row">
             <div class="form-label">Factory Reset:</div>
             <div class="form-input">
-              <button type="button" id="factory-reset-btn" onclick="factoryReset()"
-                style="background-color: #555555; color: white; border: none; padding: 8px 16px; border-radius: var(--radius); cursor: pointer; font-weight: bold;">
+              <button type="button" id="factory-reset-btn" onclick="factoryReset()" class="btn-danger">
                 Restore Defaults
               </button>
             </div>
@@ -2040,7 +2227,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetVoltage" id="ResetVoltage" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetParameter('ResetVoltage')"
+                  <button type="button" class="btn-secondary" onclick="resetParameter('ResetVoltage')"
                     id="ResetVoltage_button">Reset</button>
                 </form>
               </div>
@@ -2059,7 +2246,7 @@ Contact me at mark@xengineering.net       -->
                   <input type="hidden" name="ResetAlternatorChargedEnergy" id="ResetAlternatorChargedEnergy"
                     value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetParameter('ResetAlternatorChargedEnergy')"
+                  <button type="button" class="btn-secondary" onclick="resetParameter('ResetAlternatorChargedEnergy')"
                     id="ResetAlternatorChargedEnergy_button">Reset</button>
                 </form>
               </div>
@@ -2072,7 +2259,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetDischargedEnergy" id="ResetDischargedEnergy" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetParameter('ResetDischargedEnergy')"
+                  <button type="button" class="btn-secondary" onclick="resetParameter('ResetDischargedEnergy')"
                     id="ResetDischargedEnergy_button">Reset</button>
                 </form>
               </div>
@@ -2125,7 +2312,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetAlternatorOnTime" id="ResetAlternatorOnTime" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetParameter('ResetAlternatorOnTime')"
+                  <button type="button" class="btn-secondary" onclick="resetParameter('ResetAlternatorOnTime')"
                     id="ResetAlternatorOnTime_button">Reset</button>
                 </form>
               </div>
@@ -2138,20 +2325,20 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetFuelUsed" id="ResetFuelUsed" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetParameter('ResetFuelUsed')"
+                  <button type="button" class="btn-secondary" onclick="resetParameter('ResetFuelUsed')"
                     id="ResetFuelUsed_button">Reset</button>
                 </form>
               </div>
             </div>
 
             <div class="card">
-              <p>Batt Charged Energy</p>
+              <p>Battery Charged Energy</p>
               <div class="reading" style="display: flex; align-items: center; gap: 4px;">
                 <span id="ChargedEnergyID">0</span><span>Wh</span>
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetEnergy" id="ResetEnergy" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetParameter('ResetEnergy')"
+                  <button type="button" class="btn-secondary" onclick="resetParameter('ResetEnergy')"
                     id="ResetEnergy_button">Reset</button>
                 </form>
               </div>
@@ -2164,7 +2351,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetCurrent" id="ResetCurrent" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetParameter('ResetCurrent')"
+                  <button type="button" class="btn-secondary" onclick="resetParameter('ResetCurrent')"
                     id="ResetCurrent_button">Reset</button>
                 </form>
               </div>
@@ -2178,7 +2365,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetTemp" id="ResetTemp" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetParameter('ResetTemp')"
+                  <button type="button" class="btn-secondary" onclick="resetParameter('ResetTemp')"
                     id="ResetTemp_button">Reset</button>
                 </form>
               </div>
@@ -2196,7 +2383,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetThermTemp" id="ResetThermTemp" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetParameter('ResetThermTemp')"
+                  <button type="button" class="btn-secondary" onclick="resetParameter('ResetThermTemp')"
                     id="ResetThermTemp_button">Reset</button>
                 </form>
               </div>
@@ -2222,7 +2409,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetEngineRunTime" id="ResetEngineRunTime" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetParameter('ResetEngineRunTime')"
+                  <button type="button" class="btn-secondary" onclick="resetParameter('ResetEngineRunTime')"
                     id="ResetEngineRunTime_button">Reset</button>
                 </form>
               </div>
@@ -2235,7 +2422,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetEngineCycles" id="ResetEngineCycles" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetParameter('ResetEngineCycles')"
+                  <button type="button" class="btn-secondary" onclick="resetParameter('ResetEngineCycles')"
                     id="ResetEngineCycles_button">Reset</button>
                 </form>
               </div>
@@ -2248,7 +2435,7 @@ Contact me at mark@xengineering.net       -->
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
                   <input type="hidden" name="ResetRPMMax" id="ResetRPMMax" value="0" />
                   <input type="hidden" name="password" class="password_field" />
-                  <button type="button" class="btn-small" onclick="resetParameter('ResetRPMMax')"
+                  <button type="button" class="btn-secondary" onclick="resetParameter('ResetRPMMax')"
                     id="ResetRPMMax_button">Reset</button>
                 </form>
               </div>
@@ -2383,8 +2570,6 @@ Contact me at mark@xengineering.net       -->
       });
     }
 
-
-
     const fieldIndexes = {
       AlternatorTemperatureF: 0,
       DutyCycle: 1,
@@ -2504,7 +2689,8 @@ Contact me at mark@xengineering.net       -->
       LatitudeNMEA: 115,
       LongitudeNMEA: 116,
       SatelliteCountNMEA: 117,
-      GPIO33_Status: 118
+      GPIO33_Status: 118,
+      fieldActiveStatus: 119
     };
 
     //Factory Reset Logic
@@ -3085,21 +3271,29 @@ Contact me at mark@xengineering.net       -->
             // Unlock settings
             const section = document.getElementById('settings-section');
             if (section) section.classList.remove("locked");
+            document.querySelector('.permanent-header').classList.remove('locked');  // remove this bullshit probably
+
+            // Also unlock header controls
+            const headerControl = document.querySelector('.alternator-control');
+            if (headerControl) headerControl.classList.remove("locked");
 
             const lockStatus = document.getElementById('lock-status');
             if (lockStatus) {
               lockStatus.textContent = "Settings are Unlocked";
-              lockStatus.style.color = "#00a19a";
+              lockStatus.className = "lock-status-unlocked";
             }
 
             // Show password change and lock sections
-            document.getElementById('change-password-section').style.display = 'block';
-            document.getElementById('lock-button-section').style.display = 'block';
+            // document.getElementById('change-password-section').style.display = 'block';
+            //document.getElementById('lock-button-section').style.display = 'block';
 
             updatePasswordFields();
             msg.textContent = "Password Accepted";
             msg.style.color = "#00a19a";
+
+            hideSettingsAccess();
           }
+
 
           else {
             msg.textContent = "Wrong Password";
@@ -3120,20 +3314,19 @@ Contact me at mark@xengineering.net       -->
     function lockSettingsManually() {
       const section = document.getElementById('settings-section');
       if (section) section.classList.add("locked");
-
       const lockStatus = document.getElementById('lock-status');
       if (lockStatus) {
         lockStatus.textContent = "Settings are Locked";
-        lockStatus.style.color = "#00a19a";
+        lockStatus.className = "lock-status-locked";
       }
-
-      // Hide password change and lock sections
-      document.getElementById('change-password-section').style.display = 'none';
-      document.getElementById('lock-button-section').style.display = 'none';
-
+      // Force the access section to show
+      const accessSection = document.getElementById('settings-access-section');
+      if (accessSection) {
+        accessSection.style.display = 'block';
+        accessSection.style.visibility = 'visible';
+      }
       currentAdminPassword = "";
     }
-
 
     function setNewPassword() {
       const button = document.getElementById('newpassword_set');
@@ -3182,6 +3375,11 @@ Contact me at mark@xengineering.net       -->
 
     //prevent double toggling here
     function updateTogglesFromData(data) {
+      // Add periodic cleanup at the start
+      if (userInitiatedToggles.size > 10) { // If too many pending
+        userInitiatedToggles.clear();
+        console.log("Cleared stale toggle states");
+      }
       try {
         if (!data) return;
 
@@ -3209,7 +3407,8 @@ Contact me at mark@xengineering.net       -->
         // Update all toggle checkboxes with their data keys
         updateCheckbox("ManualFieldToggle_checkbox", data.ManualFieldToggle, "ManualFieldToggle");
         updateCheckbox("SwitchControlOverride_checkbox", data.SwitchControlOverride, "SwitchControlOverride");
-        updateCheckbox("OnOff_checkbox", data.OnOff, "OnOff");
+        //updateCheckbox("OnOff_checkbox", data.OnOff, "OnOff");
+        updateCheckbox("header-alternator-enable", data.OnOff, "OnOff"); /// this one is for the banner aka header
         updateCheckbox("LimpHome_checkbox", data.LimpHome, "LimpHome");
         updateCheckbox("HiLow_checkbox", data.HiLow, "HiLow");
         updateCheckbox("VeData_checkbox", data.VeData, "VeData");
@@ -3250,7 +3449,7 @@ Contact me at mark@xengineering.net       -->
         // Clear the flag after a reasonable delay (longer than your server response time)
         setTimeout(() => {
           userInitiatedToggles.delete(dataKey);
-        }, 3000);
+        }, 5000); // Increased timeout
 
         return true; // Allow form submission
       }
@@ -3291,18 +3490,15 @@ Contact me at mark@xengineering.net       -->
       const lockStatus = document.getElementById('lock-status');
       if (lockStatus) {
         lockStatus.textContent = "Settings are Locked";
-        lockStatus.style.color = "#00a19a";  //  My house orange
+        lockStatus.className = "lock-status-locked";
       }
       if (localStorage.getItem('darkMode') === '1') {
         document.body.classList.add('dark-mode');
         const darkToggle = document.getElementById("DarkMode_checkbox");
         if (darkToggle) darkToggle.checked = true;
-
-        // Initialize dashboard dark mode toggle
-        if (localStorage.getItem('darkMode') === '1') {
-          document.getElementById('dash-dark-mode').checked = true;
-        }
       }
+
+      showMainTab('livedata'); // loads the first tab instead of it being blank
 
       initCurrentTempPlot();
       initVoltagePlot();
@@ -3348,13 +3544,20 @@ Contact me at mark@xengineering.net       -->
           ["VictronCurrentID", "VictronCurrent"],          // 34
           ["LatitudeNMEA_ID", "LatitudeNMEA"],     // 115
           ["LongitudeNMEA_ID", "LongitudeNMEA"],   // 116  
-          ["SatelliteCountNMEA_ID", "SatelliteCountNMEA"] // 117
+          ["SatelliteCountNMEA_ID", "SatelliteCountNMEA"], // 117
+          ["header-voltage", "IBV"],                       // Add this
+          ["header-soc", "SoC_percent"],                   // Add this  
+          ["header-alt-current", "MeasuredAmps"],          // Add this
+          ["header-batt-current", "Bcur"],                 // Add this
+          ["header-alt-temp", "AlternatorTemperatureF"],   // Add this
+          ["header-rpm", "RPM"]                            // Add this
 
 
         ];
 
         // this is the numerical displays, with scaling done locally
         const source = new EventSource('/events');
+
 
         //Console
         source.addEventListener("console", function (event) {
@@ -3526,7 +3729,9 @@ Contact me at mark@xengineering.net       -->
             ForceFloat: values[fieldIndexes.ForceFloat],
             bulkCompleteTime: values[fieldIndexes.bulkCompleteTime],
             FLOAT_DURATION: values[fieldIndexes.FLOAT_DURATION],
-            GPIO33_Status: values[fieldIndexes.GPIO33_Status]
+            GPIO33_Status: values[fieldIndexes.GPIO33_Status],
+            fieldActiveStatus: values[fieldIndexes.fieldActiveStatus],  // Add this line
+
 
           };
 
@@ -3542,7 +3747,7 @@ Contact me at mark@xengineering.net       -->
                 console.warn(`Element ${elementId} not found for stale styling`);
                 return;
               }
-              const staleThreshold = 5100; // 5.1 seconds, don't go lower without making sure digital temp sensor tempTask is going to keep up
+              const staleThreshold = 7100; // 7.1 seconds, don't go lower without making sure digital temp sensor tempTask is going to keep up
               const isStale = (ageMs > staleThreshold);
               if (isStale) {
                 element.style.opacity = "0.4";
@@ -3576,16 +3781,28 @@ Contact me at mark@xengineering.net       -->
             applyStaleStyleByAge("FieldVoltsID", window.sensorAges.fieldVolts);             // Field voltage (calculated)
             applyStaleStyleByAge("FieldAmpsID", window.sensorAges.fieldAmps);               // Field current (calculated)
 
-            // Apply to dashboard displays too
-            applyStaleStyleByAge("dash-ibv", window.sensorAges.ibv);                        // Dashboard INA voltage
-            applyStaleStyleByAge("dash-altcurrent", window.sensorAges.measuredAmps);        // Dashboard alternator current
-            applyStaleStyleByAge("dash-battcurrent", window.sensorAges.bcur);               // Dashboard battery current  
-            applyStaleStyleByAge("dash-alttemp", window.sensorAges.alternatorTemp);         // Dashboard alternator temp
-            applyStaleStyleByAge("dash-rpm", window.sensorAges.rpm);                        // Dashboard RPM
+            //banner
+            applyStaleStyleByAge("header-voltage", window.sensorAges.ibv);
+            applyStaleStyleByAge("header-soc", window.sensorAges.soc);
+            applyStaleStyleByAge("header-alt-current", window.sensorAges.measuredAmps);
+            applyStaleStyleByAge("header-batt-current", window.sensorAges.bcur);
+            applyStaleStyleByAge("header-alt-temp", window.sensorAges.alternatorTemp);
+            applyStaleStyleByAge("header-rpm", window.sensorAges.rpm);
 
           }
 
           updateAlarmStatus(data);
+
+          const fieldIndicator = document.getElementById('field-status');
+          if (fieldIndicator) {
+            if (data.fieldActiveStatus === 1) {
+              fieldIndicator.textContent = 'ACTIVE';
+              fieldIndicator.className = 'reading-value field-status-active';
+            } else {
+              fieldIndicator.textContent = 'OFF';
+              fieldIndicator.className = 'reading-value field-status-inactive';
+            }
+          }
 
           let lastValues = {};
 
@@ -3644,21 +3861,9 @@ Contact me at mark@xengineering.net       -->
           };
 
           updateFields(telemetryFields);  // only visible span updates
-          // Update Dashboard displays
-          document.getElementById('dash-ibv').textContent = (data.IBV / 100).toFixed(2);
-          document.getElementById('dash-soc').textContent = Math.round(data.SoC_percent / 100);
-          document.getElementById('dash-altcurrent').textContent = (data.MeasuredAmps / 100).toFixed(1);
-          document.getElementById('dash-battcurrent').textContent = (data.Bcur / 100).toFixed(1);
-          document.getElementById('dash-alttemp').textContent = Math.round(data.AlternatorTemperatureF);
-          document.getElementById('dash-rpm').textContent = Math.round(data.RPM);
-          // document.getElementById('dash-heartbeat').textContent = Math.round(data.WifiHeartBeat); // decided this was TMI
-          // Sync dashboard toggles with main toggles
-          document.getElementById('dash-alternator-enable').checked = (data.OnOff === 1);
-          document.getElementById('dash-force-float').checked = (data.ForceFloat === 1);
-          document.getElementById('dash-alarm-enable').checked = (data.AlarmActivate === 1);
-          // Update dashboard echo displays (matching your pattern)
-          document.getElementById('dash-target-amps-echo').textContent = data.TargetAmps || 0;
-          // Update echo elements
+
+          // document.getElementById('header-alternator-enable').checked = (data.OnOff === 1); // no idea, don't ask
+
           if ('TemperatureLimitF' in data) {
             document.getElementById('TemperatureLimitF_echo').textContent = data.TemperatureLimitF;
           }
@@ -4063,13 +4268,9 @@ Contact me at mark@xengineering.net       -->
             fieldVolts: ages[15],
             fieldAmps: ages[16]
           };
-          console.log("Sensor ages updated:", window.sensorAges);
-
         }, false);
 
       }
-
-
 
       // uplot plot minor details like dark mode and gentle space
       function updateUplotTheme(plot) {
@@ -4139,7 +4340,7 @@ Contact me at mark@xengineering.net       -->
       // Initialize toggle states on page load
       document.getElementById("ManualFieldToggle_checkbox").checked = (document.getElementById("ManualFieldToggle").value === "1");
       document.getElementById("SwitchControlOverride_checkbox").checked = (document.getElementById("SwitchControlOverride").value === "1");
-      document.getElementById("OnOff_checkbox").checked = (document.getElementById("OnOff").value === "1");
+      //document.getElementById("OnOff_checkbox").checked = (document.getElementById("OnOff").value === "1");
       document.getElementById("LimpHome_checkbox").checked = (document.getElementById("LimpHome").value === "1");
       document.getElementById("HiLow_checkbox").checked = (document.getElementById("HiLow").value === "1");
       document.getElementById("VeData_checkbox").checked = (document.getElementById("VeData").value === "1");
@@ -4154,10 +4355,7 @@ Contact me at mark@xengineering.net       -->
       document.getElementById("InvertBattAmps_checkbox").checked = (document.getElementById("InvertBattAmps").value === "1");
       document.getElementById("IgnitionOverride_checkbox").checked = (document.getElementById("IgnitionOverride").value === "1");
       document.getElementById("TempSource_checkbox").checked = (document.getElementById("TempSource").value === "1");
-
       document.getElementById("admin_password").addEventListener("change", updatePasswordFields);
-
-
 
     }); // ← ADD THIS LINE
 
@@ -4206,174 +4404,6 @@ Contact me at mark@xengineering.net       -->
       event.target.classList.add('active');
     }
 
-    //dashboard
-    function dashboardSetChargeRateForm() {
-      if (!currentAdminPassword) {
-        alert("Please unlock settings first in the Security tab");
-        return false; // Prevent form submission
-      }
-
-      const input = document.getElementById('dash-charge-rate-input');
-      const value = parseInt(input.value);
-
-      if (!value || value < 0) {
-        alert("Please enter a valid charge rate (positive number)");
-        return false; // Prevent form submission
-      }
-
-      // Make sure password is included
-      updatePasswordFields();
-
-      // Allow form submission to proceed
-      return true;
-    }
-
-
-    function dashboardToggleForceFloat() {
-      if (!currentAdminPassword) {
-        alert("Please unlock settings first in the Security tab");
-        // Reset the toggle
-        document.getElementById('dash-force-float').checked = !document.getElementById('dash-force-float').checked;
-        return;
-      }
-
-      const toggle = document.getElementById('dash-force-float');
-      const mainToggle = document.getElementById('ForceFloat_checkbox');
-      const hiddenInput = document.getElementById('ForceFloat');
-
-      mainToggle.checked = toggle.checked;
-      hiddenInput.value = toggle.checked ? '1' : '0';
-
-      // Make sure password is included
-      updatePasswordFields();
-
-      if (handleUserToggle('ForceFloat_checkbox', 'ForceFloat', 'ForceFloat')) {
-        mainToggle.form.submit();
-        submitMessage();
-      }
-    }
-
-    function dashboardToggleAlarmEnable() {
-      if (!currentAdminPassword) {
-        alert("Please unlock settings first in the Security tab");
-        // Reset the toggle
-        document.getElementById('dash-alarm-enable').checked = !document.getElementById('dash-alarm-enable').checked;
-        return;
-      }
-
-      const toggle = document.getElementById('dash-alarm-enable');
-      const mainToggle = document.getElementById('AlarmActivate_checkbox');
-      const hiddenInput = document.getElementById('AlarmActivate');
-
-      mainToggle.checked = toggle.checked;
-      hiddenInput.value = toggle.checked ? '1' : '0';
-
-      // Make sure password is included
-      updatePasswordFields();
-
-      if (handleUserToggle('AlarmActivate_checkbox', 'AlarmActivate', 'AlarmActivate')) {
-        mainToggle.form.submit();
-        submitMessage();
-      }
-    }
-
-    function dashboardSetChargeRate() {
-      if (!currentAdminPassword) {
-        alert("Please unlock settings first in the Security tab");
-        return;
-      }
-
-      const input = document.getElementById('dash-charge-rate');
-      const value = parseInt(input.value);
-
-      if (!value || value < 0) {
-        alert("Please enter a valid charge rate (positive number)");
-        return;
-      }
-
-      // Use the same method as your existing forms
-      const form = document.createElement('form');
-      form.action = '/get';
-      form.method = 'GET';
-      form.target = 'hidden-form';
-
-      // Add password field (matching your pattern)
-      const passwordField = document.createElement('input');
-      passwordField.type = 'hidden';
-      passwordField.name = 'password';
-      passwordField.className = 'password_field';
-      passwordField.value = currentAdminPassword;
-      form.appendChild(passwordField);
-
-      // Add the target amps field
-      const targetAmpsField = document.createElement('input');
-      targetAmpsField.type = 'hidden';
-      targetAmpsField.name = 'TargetAmps';
-      targetAmpsField.value = value;
-      form.appendChild(targetAmpsField);
-
-      // Submit the form
-      document.body.appendChild(form);
-      form.submit();
-      document.body.removeChild(form);
-
-      // Visual feedback (matching your submitMessage pattern)
-      const button = event.target;
-      const originalBg = button.style.backgroundColor;
-      button.style.backgroundColor = '#00a19a';
-      button.style.transition = 'background-color 0.3s';
-
-      setTimeout(() => {
-        button.style.backgroundColor = originalBg;
-      }, 1000);
-    }
-
-    function dashboardToggleAlternator() {
-      if (!currentAdminPassword) {
-        alert("Please unlock settings first in the Security tab");
-        // Reset the toggle
-        document.getElementById('dash-alternator-enable').checked = !document.getElementById('dash-alternator-enable').checked;
-        return;
-      }
-
-      const toggle = document.getElementById('dash-alternator-enable');
-      const mainToggle = document.getElementById('OnOff_checkbox');
-      const hiddenInput = document.getElementById('OnOff');
-
-      mainToggle.checked = toggle.checked;
-      hiddenInput.value = toggle.checked ? '1' : '0';
-
-      // Make sure password is included
-      updatePasswordFields();
-
-      if (handleUserToggle('OnOff_checkbox', 'OnOff', 'OnOff')) {
-        mainToggle.form.submit();
-        submitMessage();
-      }
-    }
-
-    function dashboardToggleDarkMode() {
-      const toggle = document.getElementById('dash-dark-mode');
-      const mainToggle = document.getElementById('DarkMode_checkbox');
-
-      // Apply dark mode
-      document.body.classList.toggle('dark-mode', toggle.checked);
-
-      // Sync with main toggle
-      mainToggle.checked = toggle.checked;
-
-      // Save to localStorage
-      localStorage.setItem('darkMode', toggle.checked ? '1' : '0');
-
-      // Update plots if they exist
-      if (typeof updateUplotTheme === 'function') {
-        if (currentTempPlot) updateUplotTheme(currentTempPlot);
-        if (voltagePlot) updateUplotTheme(voltagePlot);
-        if (rpmPlot) updateUplotTheme(rpmPlot);
-        if (temperaturePlot) updateUplotTheme(temperaturePlot);
-      }
-    }
-
 
     // Frozen page response stuff
 
@@ -4415,22 +4445,24 @@ Contact me at mark@xengineering.net       -->
       // Don't add multiple offline banners
       if (document.getElementById('offlineBanner')) return;
 
-      // Disable all form controls and buttons except reconnect
+      // Disable all form controls and buttons except reconnect and tab navigation
       document.querySelectorAll('input[type="submit"], button, input[type="checkbox"], input[type="number"], input[type="text"], input[type="password"], select').forEach(el => {
-        // Skip the dark mode toggle and other non-setting controls
-        if (!el.id.includes('DarkMode') && !el.onclick?.toString().includes('location.reload')) {
+        // Skip the dark mode toggle, reconnect buttons, and tab navigation
+        if (!el.id.includes('DarkMode') &&
+          !el.onclick?.toString().includes('location.reload') &&
+          !el.classList.contains('main-tab') &&
+          !el.classList.contains('sub-tab')) {
           el.disabled = true;
           el.style.opacity = '0.5';
           el.style.cursor = 'not-allowed';
         }
       });
 
-      // Disable dashboard controls
+      // Disable toggles in offline mode
       document.querySelectorAll('.switch input').forEach(el => {
         el.disabled = true;
         el.style.opacity = '0.5';
       });
-
       // Add offline banner at the top
       const offlineBanner = document.createElement('div');
       offlineBanner.id = 'offlineBanner';
@@ -4563,7 +4595,6 @@ Contact me at mark@xengineering.net       -->
     <span id="ForceFloat_echo" style="display:none;">0</span>
     <span id="bulkCompleteTime_echo" style="display:none;">0</span>
     <span id="FLOAT_DURATION_echo" style="display:none;">0</span>
-    <span id="dash-target-amps-echo" style="display:none;">0</span>
 
 
 
@@ -4577,7 +4608,6 @@ Contact me at mark@xengineering.net       -->
     <input id="FieldAdjustmentinterval" style="display:none;" value="0" />
     <input id="ManualDuty" style="display:none;" value="0" />
     <input id="SwitchControlOverride" style="display:none;" value="0" />
-    <input id="OnOff" style="display:none;" value="0" />
     <input id="ManualFieldToggle" style="display:none;" value="0" />
     <input id="HiLow" style="display:none;" value="0" />
     <input id="LimpHome" style="display:none;" value="0" />
