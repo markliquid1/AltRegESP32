@@ -16,7 +16,7 @@
 Contact me at mark@xengineering.net       -->
 
 
-<!DOCTYPE HTML> 
+<!DOCTYPE HTML>
 
 <html>
 
@@ -150,11 +150,9 @@ Contact me at mark@xengineering.net       -->
       border: none;
       box-shadow: none;
       align-items: center;
+      justify-content: center;
     }
 
-    .settings-access-hidden {
-      display: none !important;
-    }
 
     .alternator-control-tier {
       display: flex;
@@ -209,6 +207,13 @@ Contact me at mark@xengineering.net       -->
     }
 
 
+    .password-form-wrapper {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
     .password-form {
       display: flex;
       flex-wrap: wrap;
@@ -216,6 +221,14 @@ Contact me at mark@xengineering.net       -->
       gap: 8px;
       width: 100%;
       justify-content: center;
+      max-width: 400px;
+      /* Add this to limit width */
+    }
+
+    /* Make sure the lock status is also centered */
+    #lock-status {
+      text-align: center;
+      width: 100%;
     }
 
     .password-input-group {
@@ -709,23 +722,6 @@ Contact me at mark@xengineering.net       -->
       transform: translateY(-1px);
     }
 
-    .btn-danger {
-      background-color: #dc3545;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: var(--radius);
-      cursor: pointer;
-      font-weight: bold;
-      transition: all 0.3s ease;
-    }
-
-    .btn-danger:hover {
-      background-color: #c82333;
-      transform: translateY(-1px);
-      box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
-    }
-
     .dark-mode .btn-secondary {
       background-color: #333333;
       color: #aaaaaa;
@@ -736,16 +732,6 @@ Contact me at mark@xengineering.net       -->
       background-color: #444444;
       border-color: var(--accent);
       color: var(--accent);
-    }
-
-    .dark-mode .btn-danger {
-      background-color: #4a1a1a;
-      color: #ff9999;
-    }
-
-    .dark-mode .btn-danger:hover {
-      background-color: #5a2020;
-      box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
     }
 
     /* Locking Settings Capability */
@@ -825,20 +811,6 @@ Contact me at mark@xengineering.net       -->
         padding: 8px 10px;
         font-size: 13px;
       }
-    }
-
-    /* Recovery screen styling */
-
-    #recoveryDialog {
-      background: rgba(0, 0, 0, 0.5);
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
     }
 
     /* Toggle switch styling */
@@ -1029,7 +1001,7 @@ Contact me at mark@xengineering.net       -->
 
       // For turning ON, require unlocked system
       if (isGoingOn && isLocked) {
-        alert("Settings must be unlocked to turn alternator ON");
+        // alert("Settings must be unlocked to turn alternator ON");   // i find this intrusive
         checkbox.checked = false; // Revert the toggle
         return false; // Prevent form submission
       }
@@ -1048,39 +1020,30 @@ Contact me at mark@xengineering.net       -->
     //password hiding stuff
     function hideSettingsAccess() {
       console.log("Password accepted, hiding access section");
-      document.getElementById('settings-access-section').classList.add('settings-access-hidden');
+      document.getElementById('settings-access-section').style.display = 'none';
     }
 
     function showSettingsAccess() {
-      const accessSection = document.getElementById('settings-access-section');
-      if (accessSection) {
-        accessSection.classList.remove('settings-access-hidden');
-      }
+      document.getElementById('settings-access-section').style.display = 'block';
     }
+
+
     function lockSettingsManually() {
       const section = document.getElementById('settings-section');
       if (section) section.classList.add("locked");
-      const headerControl = document.querySelector('.alternator-control');
-      if (headerControl) headerControl.classList.add("locked");
-
+      // DON'T lock the header control - we want to allow turning OFF the alternator
+      // const headerControl = document.querySelector('.alternator-control');
+      // if (headerControl) headerControl.classList.add("locked");
+      showSettingsAccess();
+      console.log("just reshowed settings access");
       const lockStatus = document.getElementById('lock-status');
       if (lockStatus) {
         lockStatus.textContent = "Settings are Locked";
         lockStatus.className = "lock-status-locked";
       }
-
-      console.log("About to show settings access section"); // DEBUG
-      showSettingsAccess();
-
-      // Check if it actually became visible
-      const accessSection = document.getElementById('settings-access-section');
-      console.log("Access section display:", accessSection ? accessSection.style.display : "element not found"); // DEBUG
-
       currentAdminPassword = "";
     }
-
     let rpmAmpsInitialized = false; // this is for the RPM/AMP speed based charging table
-
     // for faster wifi reconnects after scheduled shut downs:
     let reconnectInterval;
     let reconnectionAttempts = 0;
@@ -1108,11 +1071,11 @@ Contact me at mark@xengineering.net       -->
 
       <div class="reading-pair">
         <div class="reading-item">
-          <span class="reading-label">Alt Current</span>
+          <span class="reading-label">Alternator Current</span>
           <span class="reading-value"><span id="header-alt-current">42</span>A</span>
         </div>
         <div class="reading-item">
-          <span class="reading-label">Batt Current</span>
+          <span class="reading-label">Battery Current</span>
           <span class="reading-value"><span id="header-batt-current">38</span>A</span>
         </div>
       </div>
@@ -1742,7 +1705,8 @@ Contact me at mark@xengineering.net       -->
           </div>
           <hr />
           <div class="form-row">
-            <div class="form-label">High Current Alarm (Alt) (A) (<span id="CurrentAlarmHigh_echo">0</span>):</div>
+            <div class="form-label">High Current Alarm (Alternator) (A) (<span id="CurrentAlarmHigh_echo">0</span>):
+            </div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1754,7 +1718,8 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">High Current Alarm (Batt) (A) (<span id="MaximumAllowedBatteryAmps_echo">0</span>):
+            <div class="form-label">High Current Alarm (Battery) (A) (<span
+                id="MaximumAllowedBatteryAmps_echo">0</span>):
             </div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
@@ -2179,7 +2144,7 @@ Contact me at mark@xengineering.net       -->
           <div class="form-row">
             <div class="form-label">Factory Reset:</div>
             <div class="form-input">
-              <button type="button" id="factory-reset-btn" onclick="factoryReset()" class="btn-danger">
+              <button type="button" id="factory-reset-btn" onclick="factoryReset()" class="btn-primary">
                 Restore Defaults
               </button>
             </div>
@@ -2345,7 +2310,7 @@ Contact me at mark@xengineering.net       -->
             </div>
 
             <div class="card">
-              <p>Max Alt Output Current</p>
+              <p>Max Alternator Output Current</p>
               <div class="reading" style="display: flex; align-items: center; gap: 4px;">
                 <span id="MeasuredAmpsMaxID">0</span><span>A</span>
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
@@ -2507,7 +2472,7 @@ Contact me at mark@xengineering.net       -->
               <p class="reading"><span id="LongitudeNMEA_ID">0</span>°</p>
             </div>
             <div class="card">
-              <p>Satellites</p>
+              <p># Satellites</p>
               <p class="reading"><span id="SatelliteCountNMEA_ID">0</span></p>
             </div>
           </div> <!-- Closes .grid -->
@@ -2542,13 +2507,6 @@ Contact me at mark@xengineering.net       -->
       <div id="consoleOutput" class="responsive-console"></div>
     </div>
   </div>
-
-
-
-
-
-
-
 
   <script>
 
@@ -2858,6 +2816,29 @@ Contact me at mark@xengineering.net       -->
         alarmText.style.color = '#00a19a';
       }
     }
+
+    //Graying when wifi disconnects
+    function markAllReadingsStale() {
+      // Find all elements with the "reading" class (your sensor values)
+      document.querySelectorAll('.reading span, .reading-value').forEach(element => {
+        element.style.opacity = "0.4";
+        element.style.color = "#999999";
+        element.style.fontStyle = "italic";
+      });
+      console.log('All readings marked as stale due to data timeout');
+    }
+
+    function clearStaleMarkings() {
+      document.querySelectorAll('.reading span, .reading-value').forEach(element => {
+        element.style.opacity = "1.0";
+        element.style.color = "var(--reading)";
+        element.style.fontStyle = "normal";
+      });
+    }
+
+
+
+    //Plots
 
     function scheduleCurrentTempPlotUpdate() {
       if (!window.currentTempUpdateScheduled && currentTempPlot) {
@@ -3311,23 +3292,6 @@ Contact me at mark@xengineering.net       -->
       return false;
     }
 
-    function lockSettingsManually() {
-      const section = document.getElementById('settings-section');
-      if (section) section.classList.add("locked");
-      const lockStatus = document.getElementById('lock-status');
-      if (lockStatus) {
-        lockStatus.textContent = "Settings are Locked";
-        lockStatus.className = "lock-status-locked";
-      }
-      // Force the access section to show
-      const accessSection = document.getElementById('settings-access-section');
-      if (accessSection) {
-        accessSection.style.display = 'block';
-        accessSection.style.visibility = 'visible';
-      }
-      currentAdminPassword = "";
-    }
-
     function setNewPassword() {
       const button = document.getElementById('newpassword_set');
       const input = document.getElementById('newpassword');
@@ -3591,24 +3555,23 @@ Contact me at mark@xengineering.net       -->
           showRecoveryOptions();
         }, false);
 
-
         // Initial status - set to connected if we made it this far
         updateInlineStatus(true);
 
         setInterval(function () {
           const timeSinceLastEvent = Date.now() - lastEventTime;
-          if (timeSinceLastEvent > 3000) { // 3 seconds without data = disconnected
+          if (timeSinceLastEvent > 5000) { // 5 seconds without data = disconnected
             updateInlineStatus(false);
+            markAllReadingsStale(); //gray out
           }
         }, 2000); // Check every 2 seconds
-
         source.addEventListener('CSVData', function (e) {
           // Update timestamp when data is received
           lastEventTime = Date.now();
 
           // Immediately mark as connected when data arrives
           updateInlineStatus(true);
-
+          clearStaleMarkings(); // ungray
           // Parse CSV data into an array
           const values = e.data.split(',').map(Number);
 
@@ -4439,10 +4402,11 @@ Contact me at mark@xengineering.net       -->
       }
     }
 
+
     function enterOfflineMode() {
       closeRecovery();
 
-      // Don't add multiple offline banners
+      // Don't run multiple times
       if (document.getElementById('offlineBanner')) return;
 
       // Disable all form controls and buttons except reconnect and tab navigation
@@ -4457,27 +4421,11 @@ Contact me at mark@xengineering.net       -->
           el.style.cursor = 'not-allowed';
         }
       });
-
       // Disable toggles in offline mode
       document.querySelectorAll('.switch input').forEach(el => {
         el.disabled = true;
         el.style.opacity = '0.5';
       });
-      // Add offline banner at the top
-      const offlineBanner = document.createElement('div');
-      offlineBanner.id = 'offlineBanner';
-      offlineBanner.innerHTML = `
-    <div style="background: #ff6600; color: white; padding: 10px; text-align: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-      📱 <strong>OFFLINE MODE</strong> - Showing last known values only. Settings cannot be changed.
-      <button onclick="location.reload()" style="background: white; color: #ff6600; border: none; padding: 6px 12px; border-radius: var(--radius); margin-left: 15px; font-weight: bold; cursor: pointer;">
-        🔄 Reconnect
-      </button>
-    </div>
-  `;
-
-      // Insert at very top of page
-      document.body.insertBefore(offlineBanner, document.body.firstChild);
-
       // Update corner status to show offline
       const cornerStatus = document.getElementById('corner-status');
       if (cornerStatus) {
@@ -4486,7 +4434,7 @@ Contact me at mark@xengineering.net       -->
         cornerStatus.style.backgroundColor = '#ff6600';
       }
 
-      console.log('Entered offline mode - controls disabled, showing last known data');
+      console.log('Entered offline mode - all readings marked as stale');
     }
 
   </script>
