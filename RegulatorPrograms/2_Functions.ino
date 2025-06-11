@@ -802,34 +802,40 @@ void HandleNMEA2000Msg(const tN2kMsg &N2kMsg) {
   }
 }
 String readFile(fs::FS &fs, const char *path) {
-  // Serial.printf("Reading file: %s\r\n", path);
-  File file = fs.open(path, "r");
-  if (!file || file.isDirectory()) {
-    Serial.println("- empty file or failed to open file");
+  if (!littleFSMounted && !ensureLittleFS()) {
+    Serial.println("Cannot read file - LittleFS not available: " + String(path));
     return String();
   }
-  // Serial.println("- read from file:");
+  
+  File file = fs.open(path, "r");
+  if (!file || file.isDirectory()) {
+    Serial.println("- empty file or failed to open file: " + String(path));
+    return String();
+  }
+  
   String fileContent;
   while (file.available()) {
     fileContent += String((char)file.read());
   }
   file.close();
-  // Serial.println(fileContent);
   return fileContent;
 }
 void writeFile(fs::FS &fs, const char *path, const char *message) {
-  // Serial.printf("Writing file: %s\r\n", path);
+  if (!littleFSMounted && !ensureLittleFS()) {
+    Serial.println("Cannot write file - LittleFS not available: " + String(path));
+    return;
+  }
   File file = fs.open(path, "w");
   if (!file) {
-    Serial.println("- failed to open file for writing and triggered a return");
+    Serial.println("- failed to open file for writing: " + String(path));
     return;
   }
   if (file.print(message)) {
-    //  Serial.println("- file written");
+    // Success - file written
   } else {
-    Serial.println("- write failed");
+    Serial.println("- write failed for: " + String(path));
   }
-  delay(2);  // Make sure the CREATE and LASTWRITE times are different Delte later?
+  delay(2);
   file.close();
 }
 
@@ -1058,130 +1064,275 @@ void checkAndRestart() {
 
 // Function to set up WiFi - tries to connect to saved network, falls back to AP mode
 void setupWiFi() {
-  // Try to get saved WiFi credentials
-  String saved_ssid = readFile(LittleFS, WIFI_SSID_FILE);
-  String saved_password = readFile(LittleFS, WIFI_PASS_FILE);
+  // Check for factory reset or permanent AP mode FIRST
+  if (LittleFS.exists(WIFI_MODE_FILE)) {
+    String savedMode = readFile(LittleFS, WIFI_MODE_FILE);
+    savedMode.trim();
+    Serial.println("Found WiFi mode file: " + savedMode);
+    
+    if (savedMode == "ap") {
+      permanentAPMode = 1;
+      Serial.println("Permanent AP mode configured - starting hotspot");
+      setupAccessPoint();
+      currentWiFiMode = AWIFI_MODE_AP;
+      setupServer(); // Serve MAIN interface in permanent AP mode
+      return;
+    }
+  }
 
-  // If no saved credentials, use defaults
+  // Try client mode - load saved credentials with debugging
+  String saved_ssid = "";
+  String saved_password = "";
+  
+  Serial.println("Checking for saved WiFi credentials...");
+  
+  if (LittleFS.exists(WIFI_SSID_FILE)) {
+    saved_ssid = readFile(LittleFS, WIFI_SSID_FILE);
+    saved_ssid.trim();
+    Serial.printf("Found saved SSID: '%s' (length: %d)\n", saved_ssid.c_str(), saved_ssid.length());
+  } else {
+    Serial.println("No SSID file found");
+  }
+  
+  if (LittleFS.exists(WIFI_PASS_FILE)) {
+    saved_password = readFile(LittleFS, WIFI_PASS_FILE);
+    saved_password.trim();
+    Serial.printf("Found saved password (length: %d)\n", saved_password.length());
+  } else {
+    Serial.println("No password file found");
+  }
+
+  // Use defaults if no saved credentials
   if (saved_ssid.length() == 0) {
     saved_ssid = default_ssid;
     saved_password = default_password;
+    Serial.println("No saved WiFi credentials, using defaults: " + saved_ssid);
+  } else {
+    Serial.println("Using saved WiFi credentials for: " + saved_ssid);
   }
 
-  Serial.println("Attempting to connect to WiFi network: " + saved_ssid);
-
-  // Try to connect to the WiFi network
+  // Attempt connection with longer timeout and better error handling
+  Serial.println("Attempting WiFi connection to: " + saved_ssid);
+  
   if (connectToWiFi(saved_ssid.c_str(), saved_password.c_str(), WIFI_TIMEOUT)) {
-    // Successfully connected to WiFi
+    // Success - connected to WiFi
     currentWiFiMode = AWIFI_MODE_CLIENT;
-    Serial.println("Connected to WiFi network!");
+    Serial.println("WiFi connected successfully!");
     Serial.print("IP Address: ");
     Serial.println(WiFi.localIP());
-
-    // Set up the web server for normal operation
-    setupServer();
+    setupServer(); // Serve main interface
   } else {
-    // Failed to connect to WiFi, create access point instead
-    Serial.println("Failed to connect to WiFi. Starting AP mode for configuration...");
+    // Failed to connect - start configuration AP
+    Serial.println("WiFi connection failed - starting configuration mode");
     setupAccessPoint();
+    setupWiFiConfigServer(); // Serve CONFIG interface only
     currentWiFiMode = AWIFI_MODE_AP;
   }
 }
+
 // Function to connect to a WiFi network with timeout
 bool connectToWiFi(const char *ssid, const char *password, unsigned long timeout) {
-  if (strlen(ssid) == 0) {
-    Serial.println("No SSID provided");
+  if (!ssid || strlen(ssid) == 0) {
+    Serial.println("ERROR: No SSID provided for WiFi connection");
     return false;
   }
 
-  Serial.printf("Attempting to connect to WiFi network: %s\n", ssid);
+  Serial.printf("Connecting to WiFi: %s\n", ssid);
+  Serial.printf("Password length: %d\n", strlen(password));
 
+  // Ensure clean WiFi state
+  WiFi.disconnect(true);
+  delay(100);
+  
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
+  // REMOVED: WiFi.setAutoConnect(false); // This method doesn't exist in ESP32
 
-  WiFi.begin(ssid, password);
+  // Begin connection
+  if (strlen(password) > 0) {
+    WiFi.begin(ssid, password);
+  } else {
+    WiFi.begin(ssid); // Open network
+  }
 
-  // CRITICAL: Feed watchdog during connection with short intervals
-  // Wait for connection or timeout
   unsigned long startTime = millis();
-  unsigned long lastWatchdogReset = millis();
+  unsigned long lastStatusPrint = 0;
+  
   while (WiFi.status() != WL_CONNECTED && millis() - startTime < timeout) {
     delay(250);
-    Serial.print(".");
-
-    // Feed watchdog every 500ms during connection attempt
-    if (millis() - lastWatchdogReset > 500) {
-      lastWatchdogReset = millis();
+    
+    // Print status every 2 seconds for debugging
+    if (millis() - lastStatusPrint > 2000) {
+      lastStatusPrint = millis();
+      wl_status_t status = WiFi.status();
+      Serial.printf("WiFi Status: %d (", status);
+      switch(status) {
+        case WL_IDLE_STATUS: Serial.print("IDLE"); break;
+        case WL_NO_SSID_AVAIL: Serial.print("NO_SSID_AVAIL"); break;
+        case WL_SCAN_COMPLETED: Serial.print("SCAN_COMPLETED"); break;
+        case WL_CONNECTED: Serial.print("CONNECTED"); break;
+        case WL_CONNECT_FAILED: Serial.print("CONNECT_FAILED"); break;
+        case WL_CONNECTION_LOST: Serial.print("CONNECTION_LOST"); break;
+        case WL_DISCONNECTED: Serial.print("DISCONNECTED"); break;
+        default: Serial.print("UNKNOWN"); break;
+      }
+      Serial.println(")");
     }
+
+    // Feed watchdog during connection
+    esp_task_wdt_reset();
   }
-  Serial.println();
 
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("Connected to WiFi");
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
+    Serial.println("WiFi connection successful!");
+    Serial.printf("IP address: %s\n", WiFi.localIP().toString().c_str());
+    Serial.printf("Signal strength: %d dBm\n", WiFi.RSSI());
 
+    // Setup mDNS
     if (MDNS.begin("alternator")) {
       Serial.println("mDNS responder started");
       MDNS.addService("http", "tcp", 80);
-    } else {
-      Serial.println("Error setting up mDNS responder!");
     }
     return true;
   } else {
-    Serial.println("Failed to connect to WiFi within timeout period");
+    Serial.printf("WiFi connection failed after %lu ms\n", timeout);
+    Serial.printf("Final status: %d\n", WiFi.status());
     return false;
   }
 }
+
+
 // Function to set up the device as an access point
 void setupAccessPoint() {
-  const char *ap_ssid = "ALTERNATOR_CONFIG";  // Hardcoded AP SSID
-  const char *ap_password = "alternator123";  // Hardcoded AP password
+  const char *ap_ssid = "ALTERNATOR_CONFIG";
 
   WiFi.mode(WIFI_AP);
-  WiFi.softAP(ap_ssid, ap_password);
+  WiFi.softAP(ap_ssid, esp32_ap_password.c_str());
 
   Serial.println("Access Point Started");
+  Serial.print("AP SSID: ");
+  Serial.println(ap_ssid);
+  Serial.print("AP Password: ");
+  Serial.println(esp32_ap_password);
   Serial.print("AP IP address: ");
   Serial.println(WiFi.softAPIP());
 
   // Start DNS server for captive portal
   dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
 
-  // Set up the configuration web server
-  setupWiFiConfigServer();
+  // NOTE: Don't automatically call setupWiFiConfigServer() here
+  // Let the caller decide which interface to serve
 }
+
 // Function to set up the configuration web server in AP mode
 void setupWiFiConfigServer() {
-  server.onNotFound([](AsyncWebServerRequest *request) {
-    request->redirect("http://" + WiFi.softAPIP().toString());
-  });
+
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/index.html", "text/html");
-  });
+    request->send_P(200, "text/html", WIFI_CONFIG_HTML);
+  });  // close server.on("/") handler
 
   server.on("/wifi", HTTP_POST, [](AsyncWebServerRequest *request) {
-    String ssid = request->getParam("ssid", true)->value();
-    String password = request->getParam("password", true)->value();
-    ssid.trim();
-    password.trim();
-    writeFile(LittleFS, "/ssid.txt", ssid.c_str());
-    writeFile(LittleFS, "/pass.txt", password.c_str());
+    String mode = "client";
+    String ssid = "";
+    String password = "";
+    String ap_password = "";
 
-    String response = "<!DOCTYPE html><html><head><title>WiFi Setup</title>";
-    response += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
-    response += "<style>:root{--primary:#333;--accent:#f60;--bg-light:#f5f5f5;--text-dark:#333;--card-light:#fff;--radius:4px}body{font-family:Arial,sans-serif;background-color:var(--bg-light);color:var(--text-dark);padding:20px;line-height:1.6;font-size:14px}h2{color:var(--text-dark);border-bottom:2px solid var(--accent);padding-bottom:.25rem;margin-top:1rem;margin-bottom:.75rem;font-size:18px}.card{background:var(--card-light);padding:16px;border-left:2px solid var(--accent);border-radius:var(--radius);box-shadow:0 1px 2px rgba(0,0,0,0.1);margin-bottom:16px}a{color:var(--accent);text-decoration:none;font-weight:bold}b{color:var(--text-dark);font-weight:bold}</style></head><body><div class='card'>";
-    response += "<h2>WiFi Configuration Saved</h2>";
-    response += "<p>The regulator will now attempt to connect to WiFi</p>";
-    response += "<p><b>Next:</b> Close this page, connect your device to the ship WiFi, and browse to <b>http://alternator.local</b> (if your browser supports it) or the device's IP address (192.168.4.1)</p>";
-    response += "</div></body></html>";
+    if (request->hasParam("mode", true)) {
+      mode = request->getParam("mode", true)->value();
+    }
+    if (request->hasParam("ap_password", true)) {
+      ap_password = request->getParam("ap_password", true)->value();
+      ap_password.trim();
+    }
 
-    request->send(200, "text/html", response);
-  });
+    if (ap_password.length() > 0) {
+      writeFile(LittleFS, AP_PASSWORD_FILE, ap_password.c_str());
+      esp32_ap_password = ap_password;
+      Serial.println("ESP32 AP password updated");
+    } else {
+      request->send(400, "text/html",
+                    "<html><body><h2>Error</h2><p>Alternator hotspot password cannot be empty.</p>"
+                    "<a href='/'>Go Back</a></body></html>");
+      return;
+    }  // close `if (ap_password.length() > 0)`
+
+    if (mode == "ap") {
+      writeFile(LittleFS, WIFI_MODE_FILE, "ap");
+      permanentAPMode = 1;
+
+      String response = "<!DOCTYPE html><html><head><title>Setup Complete</title>";
+      response += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+      response += "<style>";
+      response += ":root { --primary: #333333; --accent: #ff6600; --bg-light: #f5f5f5; --text-dark: #333333; --card-light: #ffffff; --radius: 4px; }";
+      response += "body { font-family: Arial, sans-serif; background-color: var(--bg-light); color: var(--text-dark); padding: 20px; }";
+      response += ".card { background: var(--card-light); padding: 16px; border-left: 2px solid var(--accent); border-radius: var(--radius); box-shadow: 0 1px 2px rgba(0,0,0,0.1); max-width: 450px; margin: 0 auto; }";
+      response += "h2 { color: var(--text-dark); border-bottom: 2px solid var(--accent); padding-bottom: 0.25rem; }";
+      response += "</style></head><body><div class='card'>";
+      response += "<h2>✅ Hotspot Mode Configured</h2>";
+      response += "<p>The alternator regulator is now in standalone hotspot mode.</p>";
+      response += "<p><b>Network Name:</b> ALTERNATOR_CONFIG</p>";
+      response += "<p><b>Password:</b> " + esp32_ap_password + "</p>";
+      response += "<p><strong>⚠️ Write down this password!</strong> You'll need it to reconnect.</p>";
+      response += "<p>The system will restart in 5 seconds...</p>";
+      response += "<script>setTimeout(() => location.reload(), 5000);</script>";
+      response += "</div></body></html>";
+
+      request->send(200, "text/html", response);
+
+      delay(2000);
+      ESP.restart();
+    } else {  // else for mode != "ap"
+      if (request->hasParam("ssid", true) && request->hasParam("password", true)) {
+        ssid = request->getParam("ssid", true)->value();
+        password = request->getParam("password", true)->value();
+        ssid.trim();
+        password.trim();
+
+        writeFile(LittleFS, "/ssid.txt", ssid.c_str());
+        writeFile(LittleFS, "/pass.txt", password.c_str());
+        writeFile(LittleFS, WIFI_MODE_FILE, "client");
+        permanentAPMode = 0;
+
+        String response = "<!DOCTYPE html><html><head><title>Setup Complete</title>";
+        response += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+        response += "<style>";
+        response += ":root { --primary: #333333; --accent: #ff6600; --bg-light: #f5f5f5; --text-dark: #333333; --card-light: #ffffff; --radius: 4px; }";
+        response += "body { font-family: Arial, sans-serif; background-color: var(--bg-light); color: var(--text-dark); padding: 20px; }";
+        response += ".card { background: var(--card-light); padding: 16px; border-left: 2px solid var(--accent); border-radius: var(--radius); box-shadow: 0 1px 2px rgba(0,0,0,0.1); max-width: 450px; margin: 0 auto; }";
+        response += "h2 { color: var(--text-dark); border-bottom: 2px solid var(--accent); padding-bottom: 0.25rem; }";
+        response += "</style></head><body><div class='card'>";
+        response += "<h2>✅ Client Mode Configured</h2>";
+        response += "<p>The regulator will connect to: <b>" + ssid + "</b></p>";
+        response += "<p>If connection fails, it will return to hotspot mode.</p>";
+        response += "<p><b>Remember your hotspot password:</b> " + esp32_ap_password + "</p>";
+        response += "<p>The system will restart in 5 seconds...</p>";
+        response += "<script>setTimeout(() => location.reload(), 5000);</script>";
+        response += "</div></body></html>";
+
+        request->send(200, "text/html", response);
+
+        delay(2000);
+        ESP.restart();
+      } else {
+        request->send(400, "text/html",
+                      "<html><body><h2>Error</h2><p>Ship WiFi credentials required for client mode.</p>"
+                      "<a href='/'>Go Back</a></body></html>");
+      }  // close inner else (missing ssid/password)
+    }    // close outer else (mode != "ap")
+  });    // close server.on("/wifi", HTTP_POST, ...)
+
+  server.onNotFound([](AsyncWebServerRequest *request) {
+    request->redirect("http://" + WiFi.softAPIP().toString());
+  });  // close server.onNotFound()
+
   Serial.println("Serving ONLY index.html");
 
   server.begin();
-}
+}  // close setupWiFiConfigServer()
+
+
+
+
 void setupServer() {
 
   //Factory Reset Logic
@@ -1246,9 +1397,12 @@ void setupServer() {
   //This is essentially how the system handles all the setting changes from the web interface - validating the request,
   //identifying which setting to change, saving it permanently, updating it in memory, and confirming the action to the user.
 
+
+
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(LittleFS, "/index.html", "text/html");
   });
+
 
 
   server.on(
@@ -3168,6 +3322,74 @@ void updateChargingStage() {
       floatStartTime = millis();
       queueConsoleMessage("CHARGING: Returning to bulk stage");
     }
+  }
+}
+
+bool checkFactoryReset() {
+  pinMode(FACTORY_RESET_PIN, INPUT_PULLUP);
+  delay(100);  // Let pin settle
+
+  if (digitalRead(FACTORY_RESET_PIN) == LOW) {  // GPIO35 shorted to GND
+    Serial.println("FACTORY RESET: GPIO35 detected shorted to GND");
+
+    // Delete ALL settings files
+    LittleFS.remove(WIFI_MODE_FILE);
+    LittleFS.remove("/ssid.txt");
+    LittleFS.remove("/pass.txt");
+    LittleFS.remove(AP_PASSWORD_FILE);
+    LittleFS.remove("/password.txt");
+    LittleFS.remove("/password.hash");
+
+    // Reset variables to defaults
+    permanentAPMode = 0;
+    esp32_ap_password = "alternator123";  // Back to default
+
+    Serial.println("FACTORY RESET: All settings cleared, entering factory config mode");
+    queueConsoleMessage("FACTORY RESET: All settings cleared via hardware reset");
+
+    return true;  // Factory reset performed
+  }
+
+  return false;  // Normal boot
+}
+
+void loadESP32APPassword() {
+  if (LittleFS.exists(AP_PASSWORD_FILE)) {
+    String savedPassword = readFile(LittleFS, AP_PASSWORD_FILE);
+    savedPassword.trim();
+    if (savedPassword.length() > 0) {  // Just check it's not empty
+      esp32_ap_password = savedPassword;
+      Serial.println("ESP32 AP password loaded from storage");
+    } else {
+      Serial.println("Stored AP password is empty, using default");
+      esp32_ap_password = "alternator123";
+    }
+  } else {
+    Serial.println("No stored AP password, using default");
+    esp32_ap_password = "alternator123";
+  }
+}
+
+bool ensureLittleFS() {
+  if (littleFSMounted) {
+    return true; // Already mounted, no need to try again
+  }
+  Serial.println("Initializing LittleFS...");
+  if (!LittleFS.begin(true, "/littlefs", 10, "spiffs")) {
+    Serial.println("CRITICAL: LittleFS mount failed! Attempting format...");
+    if (!LittleFS.begin(true)) {
+      Serial.println("CRITICAL: LittleFS format failed - filesystem unavailable");
+      littleFSMounted = false;
+      return false;
+    } else {
+      Serial.println("LittleFS formatted and mounted successfully");
+      littleFSMounted = true;
+      return true;
+    }
+  } else {
+    Serial.println("LittleFS mounted successfully");
+    littleFSMounted = true;
+    return true;
   }
 }
 
