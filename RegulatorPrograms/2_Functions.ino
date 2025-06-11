@@ -27,6 +27,27 @@ void AdjustField() {
     // Update charging stage (bulk/float logic)
     updateChargingStage();
     float currentBatteryVoltage = getBatteryVoltage();
+    // Emergency field collapse - voltage spike protection
+    if (currentBatteryVoltage > (ChargingVoltageTarget + 0.2) && chargingEnabled) {
+      digitalWrite(4, 0);  // Immediately disable field
+      dutyCycle = MinDuty;
+      setDutyPercent((int)dutyCycle);
+      fieldCollapseTime = millis();  // Record when collapse happened
+      queueConsoleMessage("EMERGENCY: Field collapsed - voltage spike (" + String(currentBatteryVoltage, 2) + "V) - disabled for 10 seconds");
+      return;  // Exit function immediately
+    }
+    // Check if we're still in collapse delay period
+    if (fieldCollapseTime > 0 && (millis() - fieldCollapseTime) < FIELD_COLLAPSE_DELAY) {
+      digitalWrite(4, 0);  // Keep field off
+      dutyCycle = MinDuty;
+      setDutyPercent((int)dutyCycle);
+      return;  // Exit function, don't do normal field control
+    }
+    // Clear the collapse flag after delay expires
+    if (fieldCollapseTime > 0 && (millis() - fieldCollapseTime) >= FIELD_COLLAPSE_DELAY) {
+      fieldCollapseTime = 0;
+      queueConsoleMessage("Field collapse delay expired - normal operation resumed");
+    }
     // Check if charging should be enabled (ignition on, system enabled, BMS allows)
     chargingEnabled = (Ignition == 1 && OnOff == 1);
     // Check BMS override if BMS logic is enabled--- this is a manual human setting in the user interface
@@ -156,6 +177,23 @@ void AdjustField() {
         //  queueConsoleMessage(msg);      GREAT DEBUG TOOL ADD BACK IN LATER
       }
     }
+    fieldActiveStatus = (
+                          // Basic enables
+                          (Ignition == 1) && (OnOff == 1) &&
+
+                          // BMS logic (if enabled)
+                          (BMSlogic == 0 || (BMSLogicLevelOff == 0 ? bmsSignalActive : !bmsSignalActive)) &&
+
+                          // Not in emergency field collapse
+                          (fieldCollapseTime == 0 || (millis() - fieldCollapseTime) >= FIELD_COLLAPSE_DELAY) &&
+
+                          // Duty cycle is meaningfully above minimum
+                          (dutyCycle > (MinDuty + 1.0)) &&
+
+                          // Physical field enable pin is actually HIGH
+                          (digitalRead(4) == HIGH))
+                          ? 1
+                          : 0;
   }
 }
 
@@ -824,7 +862,7 @@ void SendWifiData() {
       snprintf(payload, sizeof(payload),
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
@@ -885,7 +923,7 @@ void SendWifiData() {
                SafeInt(VeData),                       // 45
                SafeInt(NMEA0183Data),                 // 46
                SafeInt(NMEA2KData),                   // 47
-               SafeInt(TargetAmpL),                  // 48
+               SafeInt(TargetAmpL),                   // 48
 
                // More Settings
                SafeInt(CurrentThreshold_scaled),    // 49
@@ -959,7 +997,9 @@ void SendWifiData() {
                SafeInt(LatitudeNMEA * 1000000),    // 115 - Convert to integer with 6 decimal precision
                SafeInt(LongitudeNMEA * 1000000),   // 116 - Convert to integer with 6 decimal precision
                SafeInt(SatelliteCountNMEA),        // 117
-               SafeInt(GPIO33_Status)              //  118
+               SafeInt(GPIO33_Status),             //  118
+               SafeInt(fieldActiveStatus)          // 119
+
       );
       // Send main sensor data payload
       events.send(payload, "CSVData");    // Changed event name to reflect new format
@@ -1447,11 +1487,11 @@ void setupServer() {
         inputMessage = "1";  // Return confirmation
       }
 
-     // else if (request->hasParam("ResetAlarmLatch")) { // this whole thing is hopefullly obsolete
-     //   inputMessage = request->getParam("ResetAlarmLatch")->value();
-     //  ResetAlarmLatch = inputMessage.toInt();  // Don't save to file - momentary action
-     //   resetAlarmLatch();                       // Call the reset function
-    //  }
+      // else if (request->hasParam("ResetAlarmLatch")) { // this whole thing is hopefullly obsolete
+      //   inputMessage = request->getParam("ResetAlarmLatch")->value();
+      //  ResetAlarmLatch = inputMessage.toInt();  // Don't save to file - momentary action
+      //   resetAlarmLatch();                       // Call the reset function
+      //  }
 
       else if (request->hasParam("bulkCompleteTime")) {
         inputMessage = request->getParam("bulkCompleteTime")->value();
@@ -1494,7 +1534,7 @@ void setupServer() {
       } else if (request->hasParam("ResetEnergy")) {
         ChargedEnergy = 0;                               // reset the variable on ESP32 mem
         writeFile(LittleFS, "/ChargedEnergy.txt", "0");  // not pointless
-        queueConsoleMessage("Charged Energy: Reset requested from web interface");
+        queueConsoleMessage("Battery Charged Energy: Reset requested from web interface");
       } else if (request->hasParam("ResetDischargedEnergy")) {
         DischargedEnergy = 0;                               // reset the variable on ESP32 mem
         writeFile(LittleFS, "/DischargedEnergy.txt", "0");  // not pointless
@@ -3078,10 +3118,10 @@ void CheckAlarms() {
 }
 
 //void resetAlarmLatch() {
- // if (alarmLatch) {
- //   alarmLatch = false;
-  //  queueConsoleMessage("ALARM LATCH: Manually reset in function!!");
- // }
+// if (alarmLatch) {
+//   alarmLatch = false;
+//  queueConsoleMessage("ALARM LATCH: Manually reset in function!!");
+// }
 //}
 
 void logDashboardValues() {
