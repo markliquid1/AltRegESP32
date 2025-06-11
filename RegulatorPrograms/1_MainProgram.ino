@@ -1,4 +1,4 @@
-// X Engineering Alternator Regulator
+// X Engineering Alternator Regulator      // THIS ISNT PERFECT BUT COULD BE RECOVERED W HELP OF CLAUDE LOGS
 //     Copyright (C) 2025  Mark Nickerson
 
 //     This program is free software: you can redistribute it and/or modify
@@ -52,10 +52,17 @@ INA228 INA(0x40);
 
 
 // Settings - these will be moved to LittleFS
-const char *default_ssid = "MN2G";            // Default SSID if no saved credentials
-const char *default_password = "5FENYC8ABC";  // Default password if no saved credentials // 5FENYC8ABC
+const char *default_ssid = "WRONG";            // Default SSID if no saved credentials  //MN2G   // Maybe delete?
+const char *default_password = "WRONG";  // Default password if no saved credentials // 5FENYC8ABC       //Maybe delete?
+
+
 // WiFi connection timeout when trying to avoid Access Point Mode (and connect to ship's wifi on reboot)
 const unsigned long WIFI_TIMEOUT = 20000;  // 20 seconds
+const char *AP_PASSWORD_FILE = "/appass.txt";
+String esp32_ap_password = "alternator123";  // Default ESP32 AP password
+const int FACTORY_RESET_PIN = 35;            // GPIO35 for factory reset
+int permanentAPMode = 0;                     // 0 = try client mode, 1 = stay in AP mode
+const char *WIFI_MODE_FILE = "/wifimode.txt";
 
 //Security
 char requiredPassword[32] = "admin";  // Max password length = 31 chars     Password for access to change settings from browser
@@ -102,6 +109,9 @@ enum WiFiMode {
 
 WiFiMode currentWiFiMode = AWIFI_MODE_CLIENT;
 
+//little fs monitor
+bool littleFSMounted = false;
+
 //delete this later ?
 int INADisconnected = 0;
 int WifiHeartBeat = 0;
@@ -118,9 +128,9 @@ int FlipFlopper = 0;   // delete
 int FlipFlopper2 = 0;  // delete
 
 //Input Settings
-int TargetAmps = 40;   //Normal alternator output, for best performance, set to something that just barely won't overheat
+int TargetAmps = 40;  //Normal alternator output, for best performance, set to something that just barely won't overheat
 int TargetAmpL = 25;  //Alternator output in Lo mode
-int uTargetAmps = 3;   // the one that gets used as the real target
+int uTargetAmps = 3;  // the one that gets used as the real target
 
 float TargetFloatVoltage = 13.4;  // self-explanatory
 float FullChargeVoltage = 13.9;   // this could have been called TargetBulkVoltage to be more clear
@@ -277,8 +287,8 @@ int ResetRPMMax;
 int ResetThermTemp = 0;  // Max thermistor temp reset
 
 unsigned long fieldCollapseTime = 0;
-const unsigned long FIELD_COLLAPSE_DELAY = 10000; // 10 seconds
-int fieldActiveStatus = 0; // direct read of ESP32 hardare to control the field active light in Banner
+const unsigned long FIELD_COLLAPSE_DELAY = 10000;  // 10 seconds
+int fieldActiveStatus = 0;                         // direct read of ESP32 hardare to control the field active light in Banner
 
 
 int Voltage_scaled = 0;            // Battery voltage scaled (V × 100)
@@ -355,33 +365,33 @@ int maxPoints;  //number of points plotted per plot (X axis length)
 // Excludes peak/cumulative values that should persist even when source fails
 enum DataIndex {
   // NMEA/GPS Data (real-time navigation)
-  IDX_HEADING_NMEA = 0,           // 0
-  IDX_LATITUDE_NMEA,              // 1  
-  IDX_LONGITUDE_NMEA,             // 2
-  IDX_SATELLITE_COUNT,            // 3
+  IDX_HEADING_NMEA = 0,  // 0
+  IDX_LATITUDE_NMEA,     // 1
+  IDX_LONGITUDE_NMEA,    // 2
+  IDX_SATELLITE_COUNT,   // 3
   // Victron VE.Direct Data (real-time readings)
-  IDX_VICTRON_VOLTAGE,            // 4
-  IDX_VICTRON_CURRENT,            // 5
+  IDX_VICTRON_VOLTAGE,  // 4
+  IDX_VICTRON_CURRENT,  // 5
   // Temperature Sensors (real-time only)
-  IDX_ALTERNATOR_TEMP,            // 6
-  IDX_THERMISTOR_TEMP,            // 7
+  IDX_ALTERNATOR_TEMP,  // 6
+  IDX_THERMISTOR_TEMP,  // 7
   // Engine/RPM Data (real-time only)
-  IDX_RPM,                        // 8
+  IDX_RPM,  // 8
   // Alternator Current/Power (real-time readings)
-  IDX_MEASURED_AMPS,              // 9
+  IDX_MEASURED_AMPS,  // 9
   // Battery Voltage Sources (real-time readings)
-  IDX_BATTERY_V,                  // 10 - ADS1115 battery voltage
-  IDX_IBV,                        // 11 - INA228 battery voltage
+  IDX_BATTERY_V,  // 10 - ADS1115 battery voltage
+  IDX_IBV,        // 11 - INA228 battery voltage
   // Battery Current (real-time reading)
-  IDX_BCUR,                       // 12 - Battery current from INA228
+  IDX_BCUR,  // 12 - Battery current from INA228
   // ADS1115 Channels (real-time analog readings)
-  IDX_CHANNEL3V,                  // 13 - ADS Ch3 Voltage
+  IDX_CHANNEL3V,  // 13 - ADS Ch3 Voltage
   // Real-time calculated values (these become meaningless if inputs are stale)
-  IDX_DUTY_CYCLE,                 // 14 - Field duty cycle percentage
-  IDX_FIELD_VOLTS,                // 15 - vvout (calculated field voltage)
-  IDX_FIELD_AMPS,                 // 16 - iiout (calculated field current)
+  IDX_DUTY_CYCLE,   // 14 - Field duty cycle percentage
+  IDX_FIELD_VOLTS,  // 15 - vvout (calculated field voltage)
+  IDX_FIELD_AMPS,   // 16 - iiout (calculated field current)
   // Keep this last - gives us array bounds checking
-  MAX_DATA_INDICES = 17           // Now matches the 17 timestamps being sent
+  MAX_DATA_INDICES = 17  // Now matches the 17 timestamps being sent
 };
 unsigned long dataTimestamps[MAX_DATA_INDICES];  // Uses the enum size automatically
 
@@ -479,6 +489,8 @@ void dnsHandleRequest();
 void HandleNMEA2000Msg(const tN2kMsg &N2kMsg);
 
 // HTML for the WiFi configuration page
+// Replace your existing WIFI_CONFIG_HTML with this final working version:
+
 const char WIFI_CONFIG_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html>
@@ -517,8 +529,8 @@ const char WIFI_CONFIG_HTML[] PROGMEM = R"rawliteral(
       padding: 16px;
       border-left: 2px solid var(--accent);
       border-radius: var(--radius);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-      max-width: 400px;
+      box-shadow: 0 1px 2px #00000020;
+      max-width: 450px;
       margin: 0 auto;
     }
     label {
@@ -542,7 +554,7 @@ const char WIFI_CONFIG_HTML[] PROGMEM = R"rawliteral(
     }
     input[type="submit"] {
       background-color: var(--accent);
-      color: var(--text-light);
+      color: white;
       padding: 10px 20px;
       border: none;
       border-radius: var(--radius);
@@ -553,27 +565,147 @@ const char WIFI_CONFIG_HTML[] PROGMEM = R"rawliteral(
     input[type="submit"]:hover {
       background-color: #e65c00;
     }
+    .mode-selection {
+      margin: 16px 0;
+      padding: 12px;
+      background-color: #f0f8ff;
+      border-radius: var(--radius);
+      border-left: 3px solid var(--accent);
+    }
+    .radio-group {
+      margin: 8px 0;
+    }
+    .radio-group input[type="radio"] {
+      margin-right: 8px;
+    }
+    .radio-group label {
+      font-weight: normal;
+      margin-bottom: 0;
+      cursor: pointer;
+    }
+    .power-warning {
+      background-color: #fff3cd;
+      border: 1px solid #ffeaa7;
+      color: #856404;
+      padding: 8px;
+      border-radius: var(--radius);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .security-section {
+      margin: 16px 0;
+      padding: 12px;
+      background-color: #f8f9fa;
+      border-radius: var(--radius);
+      border-left: 3px solid #dc3545;
+    }
+    .show-checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+    .show-checkbox {
+      margin: 0;
+    }
+    .show-label {
+      font-size: 12px;
+      margin: 0;
+      font-weight: normal;
+    }
   </style>
 </head>
 <body>
   <div class="card">
-    <h2>Configure WiFi</h2>
-    <p>Enter the ship's WiFi network credentials</p>
+    <h2>WiFi &amp; Security Setup</h2>
+    
     <form action="/wifi" method="POST">
-      <label for="ssid">Network Name (SSID):</label>
-      <input type="text" id="ssid" name="ssid" required>
+      <div class="security-section">
+        <h3 style="margin-top: 0;">Security Settings</h3>
+        <label for="ap_password">Alternator Hotspot Password:</label>
+        <input type="password" id="ap_password" name="ap_password" 
+               placeholder="Enter secure password" 
+               required>
+        <div class="show-checkbox-container">
+          <input type="checkbox" class="show-checkbox" id="show_ap_pass" 
+                 onchange="togglePasswordVisibility('ap_password', this)">
+          <label class="show-label" for="show_ap_pass">Show password</label>
+        </div>
+        <p style="font-size: 12px; color: #666; margin-bottom: 0;">
+          This password will be required to connect to "ALTERNATOR_CONFIG" network in the future.
+          <strong>Write it down!</strong>
+        </p>
+      </div>
 
-      <label for="password">Password:</label>
-      <input type="password" id="password" name="password" required>
+      <div class="mode-selection">
+        <h3>Connection Mode:</h3>
+        <div class="radio-group">
+          <input type="radio" id="client" name="mode" value="client" checked>
+          <label for="client">Connect to Ship WiFi (Recommended)</label>
+          <p style="font-size: 12px; margin: 4px 0 8px 24px; color: #666;">
+            Connect to existing network. Lower power usage.
+          </p>
+        </div>
+        <div class="radio-group">
+          <input type="radio" id="ap" name="mode" value="ap">
+          <label for="ap">Standalone Hotspot Mode</label>
+          <p style="font-size: 12px; margin: 4px 0 8px 24px; color: #666;">
+            Create own network. Higher power usage but always accessible.
+          </p>
+          <div class="power-warning">
+            <strong>Power Usage:</strong> Hotspot mode uses approximately 100-200mA more power than client mode
+          </div>
+        </div>
+      </div>
+
+      <div id="clientFields">
+        <label for="ssid">Ship Network Name (SSID):</label>
+        <input type="text" id="ssid" name="ssid" placeholder="e.g., BoatWiFi">
+
+        <label for="password">Ship Network Password:</label>
+        <input type="password" id="password" name="password" placeholder="Ship WiFi password">
+        <div class="show-checkbox-container">
+          <input type="checkbox" class="show-checkbox" id="show_ship_pass" 
+                 onchange="togglePasswordVisibility('password', this)">
+          <label class="show-label" for="show_ship_pass">Show password</label>
+        </div>
+      </div>
 
       <div class="submit-row">
-        <input type="submit" value="Save">
+        <input type="submit" value="Save Configuration">
       </div>
     </form>
+
+    <script>
+      function togglePasswordVisibility(inputId, checkbox) {
+        var input = document.getElementById(inputId);
+        input.type = checkbox.checked ? 'text' : 'password';
+      }
+
+      var radios = document.querySelectorAll('input[name="mode"]');
+      for (var i = 0; i < radios.length; i++) {
+        radios[i].addEventListener('change', function() {
+          var clientFields = document.getElementById('clientFields');
+          var ssidInput = document.getElementById('ssid');
+          var passwordInput = document.getElementById('password');
+          
+          if (this.value === 'client') {
+            clientFields.style.display = 'block';
+            ssidInput.required = true;
+            passwordInput.required = true;
+          } else {
+            clientFields.style.display = 'none';
+            ssidInput.required = false;
+            passwordInput.required = false;
+          }
+        });
+      }
+    </script>
   </div>
 </body>
 </html>
 )rawliteral";
+
 
 void setup() {
   // Essential hardware setup first
@@ -589,18 +721,21 @@ void setup() {
   // PWM setup (needed for basic operation)
   ledcAttach(pwmPin, fffr, pwmResolution);
 
-  // Get WiFi connected ASAP - before file system operations
+// CRITICAL: Initialize LittleFS FIRST before any file operations--- wifi credentials are
+  if (!ensureLittleFS()) {
+    Serial.println("CRITICAL: Cannot continue without filesystem");
+    queueConsoleMessage("CRITICAL: Filesystem initialization failed");
+  }
+  // NOW setup WiFi with working file system  .  Previously this was first in a misguided attempt to save time
   setupWiFi();
-  // Now do file system operations while WiFi is already connected
-  esp_log_level_set("esp32-hal-i2c-ng", ESP_LOG_WARN);  // get rid of spam in serial monitor
+  
+  esp_log_level_set("esp32-hal-i2c-ng", ESP_LOG_WARN);
   queueConsoleMessage("System starting up...");
 
-  // Initialize LittleFS
-  if (!LittleFS.begin(true, "/littlefs", 10, "spiffs")) {
-    Serial.println("An Error has occurred while mounting LittleFS");
-    queueConsoleMessage("WARNING: An Error has occurred while mounting LittleFS");
-    // Continue anyway since we might be able to format and use it later (?)
-  }
+
+  bool factoryResetPerformed = checkFactoryReset();  // Check for factory reset FIRST (before any other WiFi setup)
+  loadESP32APPassword();                             // Load ESP32 AP password from storage
+
   InitPersistentVariables();  // load all persistent variables from LittleFS.  If no files exist, create them.
   InitSystemSettings();       // load all settings from LittleFS.  If no files exist, create them.
   loadPasswordHash();
@@ -645,11 +780,11 @@ void setup() {
   }
 
   unsigned long now = millis();
-    for (int i = 0; i < MAX_DATA_INDICES; i++) {
-        dataTimestamps[i] = now;  // Start with current time
-    }
+  for (int i = 0; i < MAX_DATA_INDICES; i++) {
+    dataTimestamps[i] = now;  // Start with current time
+  }
 
-    
+
   //ADS1115
   //Connection check
   if (!adc.testConnection()) {
