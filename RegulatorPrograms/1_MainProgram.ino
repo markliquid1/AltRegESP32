@@ -1,4 +1,4 @@
-// X Engineering Alternator Regulator      // THIS ISNT PERFECT BUT COULD BE RECOVERED W HELP OF CLAUDE LOGS
+// X Engineering Alternator Regulator
 //     Copyright (C) 2025  Mark Nickerson
 
 //     This program is free software: you can redistribute it and/or modify
@@ -29,6 +29,7 @@ INA228 INA(0x40);
 #include <Arduino.h>                  // maybe not needed, was in NMEA2K example I copied
 #define ESP32_CAN_RX_PIN GPIO_NUM_16  //
 #define ESP32_CAN_TX_PIN GPIO_NUM_17  //
+
 #include <NMEA2000_CAN.h>
 #include <N2kMessages.h>
 #include <N2kMessagesEnumToStr.h>  // questionably needed
@@ -50,12 +51,13 @@ INA228 INA(0x40);
 #include <TinyGPSPlus.h>                 // used for NMEA0183, not currently implemented
 
 
-
+//WIFI STUFF
 // Settings - these will be moved to LittleFS
-const char *default_ssid = "WRONG";            // Default SSID if no saved credentials  //MN2G   // Maybe delete?
+const char *default_ssid = "WRONG";      // Default SSID if no saved credentials  //MN2G   // Maybe delete?
 const char *default_password = "WRONG";  // Default password if no saved credentials // 5FENYC8ABC       //Maybe delete?
-
-
+//these will be the custom network created by the user in AP mode
+String esp32_ap_ssid = "ALTERNATOR_WIFI";  // Default SSID
+const char *AP_SSID_FILE = "/apssid.txt";  // File to store custom SSID
 // WiFi connection timeout when trying to avoid Access Point Mode (and connect to ship's wifi on reboot)
 const unsigned long WIFI_TIMEOUT = 20000;  // 20 seconds
 const char *AP_PASSWORD_FILE = "/appass.txt";
@@ -107,7 +109,26 @@ enum WiFiMode {
   AWIFI_MODE_AP
 };
 
+
 WiFiMode currentWiFiMode = AWIFI_MODE_CLIENT;
+
+// Add this new enum after the existing WiFiMode enum
+enum OperationalMode {
+  CONFIG_AP_MODE,       // First boot configuration
+  OPERATIONAL_AP_MODE,  // Permanent AP with full functionality
+  CLIENT_MODE           // Connected to ship's WiFi
+};
+
+// Add this function after your forward declarations section
+OperationalMode getCurrentMode() {
+  if (currentWiFiMode == AWIFI_MODE_CLIENT) {
+    return CLIENT_MODE;
+  } else if (permanentAPMode == 1) {
+    return OPERATIONAL_AP_MODE;
+  } else {
+    return CONFIG_AP_MODE;
+  }
+}
 
 //little fs monitor
 bool littleFSMounted = false;
@@ -271,6 +292,9 @@ int FourWay = 0;                      // 0 voltage data source = INA228 , 1 volt
 int RPMScalingFactor = 2000;          // self explanatory, adjust until it matches your trusted tachometer
 float AlternatorCOffset = 0;          // tare for alt current
 float BatteryCOffset = 0;             // tare or batt current
+int timeToFullChargeMin = -999;       // self explained
+int timeToFullDischargeMin = -999;    // self explained
+
 
 //Pointless Flags delete later
 int ResetTemp;              // reset the maximum alternator temperature tracker
@@ -493,219 +517,64 @@ void HandleNMEA2000Msg(const tN2kMsg &N2kMsg);
 
 const char WIFI_CONFIG_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>WiFi Setup</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root {
-      --primary: #333333;
-      --accent: #ff6600;
-      --bg-light: #f5f5f5;
-      --text-dark: #333333;
-      --card-light: #ffffff;
-      --radius: 4px;
-      --input-border: #999999;
-    }
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      background-color: var(--bg-light);
-      color: var(--text-dark);
-      padding: 20px;
-      line-height: 1.6;
-      font-size: 14px;
-    }
-    h2 {
-      color: var(--text-dark);
-      border-bottom: 2px solid var(--accent);
-      padding-bottom: 0.25rem;
-      margin-top: 1rem;
-      margin-bottom: 0.75rem;
-      font-size: 18px;
-    }
-    .card {
-      background: var(--card-light);
-      padding: 16px;
-      border-left: 2px solid var(--accent);
-      border-radius: var(--radius);
-      box-shadow: 0 1px 2px #00000020;
-      max-width: 450px;
-      margin: 0 auto;
-    }
-    label {
-      display: block;
-      margin-bottom: 6px;
-      font-weight: bold;
-    }
-    input[type="text"], input[type="password"] {
-      width: 100%;
-      padding: 8px;
-      margin-bottom: 12px;
-      border: 1px solid var(--input-border);
-      border-radius: var(--radius);
-      font-size: 14px;
-      background-color: #fff;
-      box-sizing: border-box;
-    }
-    .submit-row {
-      text-align: center;
-      margin-top: 16px;
-    }
-    input[type="submit"] {
-      background-color: var(--accent);
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      border-radius: var(--radius);
-      cursor: pointer;
-      font-weight: bold;
-      font-size: 14px;
-    }
-    input[type="submit"]:hover {
-      background-color: #e65c00;
-    }
-    .mode-selection {
-      margin: 16px 0;
-      padding: 12px;
-      background-color: #f0f8ff;
-      border-radius: var(--radius);
-      border-left: 3px solid var(--accent);
-    }
-    .radio-group {
-      margin: 8px 0;
-    }
-    .radio-group input[type="radio"] {
-      margin-right: 8px;
-    }
-    .radio-group label {
-      font-weight: normal;
-      margin-bottom: 0;
-      cursor: pointer;
-    }
-    .power-warning {
-      background-color: #fff3cd;
-      border: 1px solid #ffeaa7;
-      color: #856404;
-      padding: 8px;
-      border-radius: var(--radius);
-      font-size: 12px;
-      margin-top: 4px;
-    }
-    .security-section {
-      margin: 16px 0;
-      padding: 12px;
-      background-color: #f8f9fa;
-      border-radius: var(--radius);
-      border-left: 3px solid #dc3545;
-    }
-    .show-checkbox-container {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      margin-bottom: 8px;
-    }
-    .show-checkbox {
-      margin: 0;
-    }
-    .show-label {
-      font-size: 12px;
-      margin: 0;
-      font-weight: normal;
-    }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h2>WiFi &amp; Security Setup</h2>
-    
-    <form action="/wifi" method="POST">
-      <div class="security-section">
-        <h3 style="margin-top: 0;">Security Settings</h3>
-        <label for="ap_password">Alternator Hotspot Password:</label>
-        <input type="password" id="ap_password" name="ap_password" 
-               placeholder="Enter secure password" 
-               required>
-        <div class="show-checkbox-container">
-          <input type="checkbox" class="show-checkbox" id="show_ap_pass" 
-                 onchange="togglePasswordVisibility('ap_password', this)">
-          <label class="show-label" for="show_ap_pass">Show password</label>
-        </div>
-        <p style="font-size: 12px; color: #666; margin-bottom: 0;">
-          This password will be required to connect to "ALTERNATOR_CONFIG" network in the future.
-          <strong>Write it down!</strong>
-        </p>
-      </div>
+<html><head>
+<title>WiFi Setup</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font-family:Arial;padding:20px;background:#f5f5f5}
+.card{background:white;padding:20px;border-radius:8px;max-width:400px;margin:0 auto}
+h1{color:#333;margin-bottom:20px}
+input,select{width:100%;padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px}
+button{background:#ff6600;color:white;padding:10px 20px;border:none;border-radius:4px;cursor:pointer;width:100%}
+button:hover{background:#e55a00}
+.radio-group{margin:10px 0}
+.radio-group input{width:auto;margin-right:5px}
+.info-box{background:#e8f4f8;border:1px solid #bee5eb;color:#0c5460;padding:12px;border-radius:4px;margin:10px 0;font-size:14px}
+.hotspot-options{display:none;background:#f8f9fa;padding:15px;border-radius:4px;margin:10px 0}
+</style>
+<script>
+function toggleHotspotOptions() {
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  const hotspotOptions = document.getElementById('hotspot-options');
+  if (mode === 'ap') {
+    hotspotOptions.style.display = 'block';
+  } else {
+    hotspotOptions.style.display = 'none';
+  }
+}
+</script>
+</head><body>
+<div class="card">
+<h1>Alternator WiFi Setup</h1>
+<form action="/wifi" method="POST">
 
-      <div class="mode-selection">
-        <h3>Connection Mode:</h3>
-        <div class="radio-group">
-          <input type="radio" id="client" name="mode" value="client" checked>
-          <label for="client">Connect to Ship WiFi (Recommended)</label>
-          <p style="font-size: 12px; margin: 4px 0 8px 24px; color: #666;">
-            Connect to existing network. Lower power usage.
-          </p>
-        </div>
-        <div class="radio-group">
-          <input type="radio" id="ap" name="mode" value="ap">
-          <label for="ap">Standalone Hotspot Mode</label>
-          <p style="font-size: 12px; margin: 4px 0 8px 24px; color: #666;">
-            Create own network. Higher power usage but always accessible.
-          </p>
-          <div class="power-warning">
-            <strong>Power Usage:</strong> Hotspot mode uses approximately 100-200mA more power than client mode
-          </div>
-        </div>
-      </div>
+<label>Alternator Hotspot Password:</label>
+<input type="password" name="ap_password" required placeholder="For accessing alternator interface">
+<div class="info-box">This password will be used to connect to the alternator's WiFi network</div>
 
-      <div id="clientFields">
-        <label for="ssid">Ship Network Name (SSID):</label>
-        <input type="text" id="ssid" name="ssid" placeholder="e.g., BoatWiFi">
+<div class="radio-group">
+<label>Connection Mode:</label><br>
+<input type="radio" name="mode" value="client" checked onchange="toggleHotspotOptions()"> Connect to Ship WiFi<br>
+<input type="radio" name="mode" value="ap" onchange="toggleHotspotOptions()"> Standalone Hotspot
+</div>
 
-        <label for="password">Ship Network Password:</label>
-        <input type="password" id="password" name="password" placeholder="Ship WiFi password">
-        <div class="show-checkbox-container">
-          <input type="checkbox" class="show-checkbox" id="show_ship_pass" 
-                 onchange="togglePasswordVisibility('password', this)">
-          <label class="show-label" for="show_ship_pass">Show password</label>
-        </div>
-      </div>
+<div id="hotspot-options" class="hotspot-options">
+<label>Custom Hotspot Name (optional):</label>
+<input type="text" id="hotspot_ssid" name="hotspot_ssid" placeholder="ALTERNATOR_WIFI">
+<div class="info-box">Leave blank to use default name "ALTERNATOR_WIFI"</div>
+</div>
 
-      <div class="submit-row">
-        <input type="submit" value="Save Configuration">
-      </div>
-    </form>
+<label>Ship WiFi Name (SSID):</label>
+<input type="text" id="ssid" name="ssid" placeholder="Leave blank for hotspot mode">
 
-    <script>
-      function togglePasswordVisibility(inputId, checkbox) {
-        var input = document.getElementById(inputId);
-        input.type = checkbox.checked ? 'text' : 'password';
-      }
+<label>Ship WiFi Password:</label>
+<input type="password" name="password" placeholder="Leave blank for hotspot mode">
 
-      var radios = document.querySelectorAll('input[name="mode"]');
-      for (var i = 0; i < radios.length; i++) {
-        radios[i].addEventListener('change', function() {
-          var clientFields = document.getElementById('clientFields');
-          var ssidInput = document.getElementById('ssid');
-          var passwordInput = document.getElementById('password');
-          
-          if (this.value === 'client') {
-            clientFields.style.display = 'block';
-            ssidInput.required = true;
-            passwordInput.required = true;
-          } else {
-            clientFields.style.display = 'none';
-            ssidInput.required = false;
-            passwordInput.required = false;
-          }
-        });
-      }
-    </script>
-  </div>
-</body>
-</html>
+<button type="submit">Save Configuration</button>
+</form>
+</div>
+</body></html>
 )rawliteral";
-
 
 void setup() {
   // Essential hardware setup first
@@ -717,151 +586,60 @@ void setup() {
   pinMode(39, INPUT);     // Ignition
   pinMode(33, OUTPUT);    // Alarm/Buzzer output
   digitalWrite(33, LOW);  // Start with alarm off
-
   // PWM setup (needed for basic operation)
   ledcAttach(pwmPin, fffr, pwmResolution);
-
-// CRITICAL: Initialize LittleFS FIRST before any file operations--- wifi credentials are
-  if (!ensureLittleFS()) {
-    Serial.println("CRITICAL: Cannot continue without filesystem");
-    queueConsoleMessage("CRITICAL: Filesystem initialization failed");
-  }
-  // NOW setup WiFi with working file system  .  Previously this was first in a misguided attempt to save time
-  setupWiFi();
-  
-  esp_log_level_set("esp32-hal-i2c-ng", ESP_LOG_WARN);
-  queueConsoleMessage("System starting up...");
-
-
-  bool factoryResetPerformed = checkFactoryReset();  // Check for factory reset FIRST (before any other WiFi setup)
-  loadESP32APPassword();                             // Load ESP32 AP password from storage
-
+  // ============ WATCHDOG ============
+  // Simple watchdog setup - don't try to deinit, just reconfigure
+  //This will trigger a hardware reset if necessary
+  //If code hangs: ESP32 reboots in 10 seconds, resumes operation
+  //If code crashes: ESP32 reboots immediately, resumes operation
+  //If hardware fails: ESP32 may reboot forever, but alternator field turns OFF (safe state)
+  // esp_task_wdt_config_t wdt_config = {
+  //   .timeout_ms = 10000,    // 10 seconds timeout
+  //   .idle_core_mask = 0,   // Don't watch idle cores (like original)
+  //   .trigger_panic = true  // Restart on timeout
+  // };
+  // esp_err_t wdt_result = esp_task_wdt_reconfigure(&wdt_config);
+  // if (wdt_result != ESP_OK) {
+  //   Serial.printf("Watchdog reconfigure failed: %s\n", esp_err_to_name(wdt_result));
+  //   // Try simple init instead
+  //   esp_task_wdt_add(NULL);
+  // } else {
+  //   esp_task_wdt_add(NULL);
+  //   Serial.println("Watchdog reconfigured to 10s timeout");
+  // }
+  //   if (!ensureLittleFS()) {
+  //     Serial.println("CRITICAL: Cannot continue without filesystem");
+  //     // Don't call queueConsoleMessage yet - WiFi isn't set up
+  //   }
+  // MOVE ALL FILE-DEPENDENT FUNCTIONS BEFORE setupWiFi()
+  ensureLittleFS();
+  bool factoryResetPerformed = checkFactoryReset();  // Must do this before setting up wifi
+  loadESP32APPassword();                             // Must do this before setting up wifi
   InitPersistentVariables();  // load all persistent variables from LittleFS.  If no files exist, create them.
   InitSystemSettings();       // load all settings from LittleFS.  If no files exist, create them.
   loadPasswordHash();
-
-  //NMEA2K
-  OutputStream = &Serial;
-  //   while (!Serial)
-  //  NMEA2000.SetN2kCANReceiveFrameBufSize(50); // was commented
-  // Do not forward bus messages at all
-  NMEA2000.SetForwardType(tNMEA2000::fwdt_Text);
-  NMEA2000.SetForwardStream(OutputStream);
-  // Set false below, if you do not want to see messages parsed to HEX withing library
-  NMEA2000.EnableForward(false);  // was false
-  NMEA2000.SetMsgHandler(HandleNMEA2000Msg);
-  //  NMEA2000.SetN2kCANMsgBufSize(2);
-  NMEA2000.Open();
-  OutputStream->print("NMEA2K Running...");
-
-  //Victron VeDirect
-  Serial1.begin(19200, SERIAL_8N1, 25, -1, 0);  // ... note the "0" at end for normal logic.  This is the reading of the combined NMEA0183 data from YachtDevices
-  Serial2.begin(19200, SERIAL_8N1, 26, -1, 1);  // This is the reading of Victron VEDirect
-  Serial2.flush();
-
-  if (!INA.begin()) {
-    Serial.println("Could not connect INA. Fix and Reboot");
-    queueConsoleMessage("WARNING: Could not connect INA228 Battery Voltage/Amp measuring chip");
-    INADisconnected = 1;
-    // while (1)
-    ;
-  } else {
-    INADisconnected = 0;
-  }
-  // at least 529ms for an update with these settings for average and conversion time
-  INA.setMode(11);                       // Bh = Continuous shunt and bus voltage
-  INA.setAverage(4);                     //0h = 1, 1h = 4, 2h = 16, 3h = 64, 4h = 128, 5h = 256, 6h = 512, 7h = 1024     Applies to all channels
-  INA.setBusVoltageConversionTime(7);    // Sets the conversion time of the bus voltage measurement: 0h = 50 µs, 1h = 84 µs, 2h = 150 µs, 3h = 280 µs, 4h = 540 µs, 5h = 1052 µs, 6h = 2074 µs, 7h = 4120 µs
-  INA.setShuntVoltageConversionTime(7);  // Sets the conversion time of the bus voltage measurement: 0h = 50 µs, 1h = 84 µs, 2h = 150 µs, 3h = 280 µs, 4h = 540 µs, 5h = 1052 µs, 6h = 2074 µs, 7h = 4120 µs
-  if (setupDisplay()) {
-    Serial.println("Display ready for use");
-  } else {
-    Serial.println("Continuing without display");
-  }
-
-  unsigned long now = millis();
-  for (int i = 0; i < MAX_DATA_INDICES; i++) {
-    dataTimestamps[i] = now;  // Start with current time
-  }
-
-
-  //ADS1115
-  //Connection check
-  if (!adc.testConnection()) {
-    Serial.println("ADS1115 Connection failed and would have triggered a return if it wasn't commented out");
-    queueConsoleMessage("WARNING: ADS1115 Analog Input chip failed");
-    ADS1115Disconnected = 1;
-    // return;
-  } else {
-    ADS1115Disconnected = 0;
-  }
-  //Gain parameter.
-  adc.setGain(ADS1115_REG_CONFIG_PGA_6_144V);
-  // ADS1115_REG_CONFIG_PGA_6_144V(0x0000)  // +/-6.144V range = Gain 2/3
-  // ADS1115_REG_CONFIG_PGA_4_096V(0x0200)  // +/-4.096V range = Gain 1
-  // ADS1115_REG_CONFIG_PGA_2_048V(0x0400)  // +/-2.048V range = Gain 2 (default)
-  // ADS1115_REG_CONFIG_PGA_1_024V(0x0600)  // +/-1.024V range = Gain 4
-  // ADS1115_REG_CONFIG_PGA_0_512V(0x0800)  // +/-0.512V range = Gain 8
-  // ADS1115_REG_CONFIG_PGA_0_256V(0x0A00)  // +/-0.256V range = Gain 16
-  //Sample rate parameter
-  adc.setSampleRate(ADS1115_REG_CONFIG_DR_8SPS);  //Set the slowest and most accurate sample rate, 8
-  // ADS1115_REG_CONFIG_DR_8SPS(0x0000)              // 8 SPS(Sample per Second), or a sample every 125ms
-  // ADS1115_REG_CONFIG_DR_16SPS(0x0020)             // 16 SPS, or every 62.5ms
-  // ADS1115_REG_CONFIG_DR_32SPS(0x0040)             // 32 SPS, or every 31.3ms
-  // ADS1115_REG_CONFIG_DR_64SPS(0x0060)             // 64 SPS, or every 15.6ms
-  // ADS1115_REG_CONFIG_DR_128SPS(0x0080)            // 128 SPS, or every 7.8ms  (default)
-  // ADS1115_REG_CONFIG_DR_250SPS(0x00A0)            // 250 SPS, or every 4ms, note that noise free resolution is reduced to ~14.75-16bits, see table 2 in datasheet
-  // ADS1115_REG_CONFIG_DR_475SPS(0x00C0)            // 475 SPS, or every 2.1ms, note that noise free resolution is reduced to ~14.3-15.5bits, see table 2 in datasheet
-  // ADS1115_REG_CONFIG_DR_860SPS(0x00E0)            // 860 SPS, or every 1.16ms, note that noise free resolution is reduced to ~13.8-15bits, see table 2 in datasheet
-  //onewire
-  sensors.begin();
-  sensors.setResolution(12);
-  sensors.getAddress(tempDeviceAddress, 0);
-  if (sensors.getDeviceCount() == 0) {
-    Serial.println("WARNING: No DS18B20 sensors found on the bus.");
-    queueConsoleMessage("WARNING: No DS18B20 sensors found on the bus");
-    sensors.setWaitForConversion(false);  // this is critical!
-  }
-  // Simple watchdog setup - don't try to deinit, just reconfigure
-  esp_task_wdt_config_t wdt_config = {
-    .timeout_ms = 5000,    // 5 seconds timeout
-    .idle_core_mask = 0,   // Don't watch idle cores (like original)
-    .trigger_panic = true  // Restart on timeout
-  };
-  esp_err_t wdt_result = esp_task_wdt_reconfigure(&wdt_config);
-  if (wdt_result != ESP_OK) {
-    Serial.printf("Watchdog reconfigure failed: %s\n", esp_err_to_name(wdt_result));
-    // Try simple init instead
-    esp_task_wdt_add(NULL);
-  } else {
-    esp_task_wdt_add(NULL);
-    Serial.println("Watchdog reconfigured to 5s timeout");
-  }
-  // Check if we recovered from a watchdog reset
+  setupWiFi();  // NOW setup WiFi with all settings properly loaded
+  esp_log_level_set("esp32-hal-i2c-ng", ESP_LOG_WARN);
+  queueConsoleMessage("System starting up...");
+  initializeHardware();  // Initialize hardware systems
   esp_reset_reason_t reset_reason = esp_reset_reason();
   if (reset_reason == ESP_RST_TASK_WDT) {
     queueConsoleMessage("CRITICAL: System recovered from watchdog reset - code was hung");
   } else if (reset_reason == ESP_RST_SW) {
     queueConsoleMessage("System restarted - scheduled maintenance");
+  } else {
+    queueConsoleMessage("System started - reset reason: " + String(reset_reason));
   }
-
-  xTaskCreatePinnedToCore(
-    TempTask,
-    "TempTask",
-    4096,
-    NULL,
-    0,  // Priority lower than normal (execute if nothing else to do, all the 1's are idle)
-    &tempTaskHandle,
-    0  // Run on Core 0, which is the one doing Wifi and system tasks, and theoretically has more idle points than Core 1 and "loop()"
-  );
+  Serial.println("=== SETUP COMPLETE ===");
 }
-
 
 void loop() {
   starttime = esp_timer_get_time();  // Record start time for Loop
   currentTime = millis();
 
-  esp_task_wdt_reset();  // Feed the watchdog
+  Ignition = 1;  // Bypass power management for AP mode testing FIX THIS LATER
+
   // SOC and runtime update every 2 seconds
   if (currentTime - lastSOCUpdateTime >= SOCUpdateInterval) {
     elapsedMillis = currentTime - lastSOCUpdateTime;
@@ -874,76 +652,93 @@ void loop() {
     lastDataSaveTime = currentTime;
     SaveAllData();
   }
-  // Handle DNS requests if in AP mode
-  if (currentWiFiMode == AWIFI_MODE_AP) {
-    dnsHandleRequest();
-  } else {
-    // This is all the normal stuff .... only done in Client Mode
-    ReadAnalogInputs();
-    if (VeData == 1) {
-      ReadVEData();  //read Data from Victron
-    }
-    if (NMEA2KData == 1) {
-      if (millis() - prev_millis743 > 2000) {  // Only parse every 2 seconds
-        NMEA2000.ParseMessages();
-        prev_millis743 = millis();
+  // New three-way mode handling
+  OperationalMode mode = getCurrentMode();
+  switch (mode) {
+    case CONFIG_AP_MODE:
+      // Minimal functionality - just DNS and configuration
+      dnsHandleRequest();
+      break;
+    case OPERATIONAL_AP_MODE:
+      // Full functionality - same as client mode
+      dnsHandleRequest();  // Still need DNS for AP mode
+      // Fall through to full functionality...
+    case CLIENT_MODE:
+      // Full sensor/data functionality
+      ReadAnalogInputs();
+      if (VeData == 1) {
+        ReadVEData();  //read Data from Victron
       }
-    }
-    //Alarm stuff
-    GPIO33_Status = digitalRead(33);  // Store the reading, this could be obviously simplified later, but whatever
-    CheckAlarms();
-    UpdateDisplay();
-    AdjustField();  // This may need to get moved if it takes any power, but have to be careful we don't get stuck with Field On!
-    // Ignition = !digitalRead(39);  // see if ignition is on    (fix this later)
-    if (IgnitionOverride == 1) {
-      Ignition = 1;
-    }
-    logDashboardValues();  // just nice to have some history in the Console
-    if (Ignition == 0) {
-      setCpuFrequencyMhz(10);
-      WiFi.mode(WIFI_OFF);
-      Serial.println("wifi has been turned off");
-    } else {
-      if (WiFi.status() != WL_CONNECTED) {             // Only setup WiFi if not already connected
-        setCpuFrequencyMhz(240);                       // turn it back on - ignition is on so enter full power mode
-        setupWiFi();                                   // Use our new WiFi setup function
-        Serial.println("Wifi is reinitialized");       // too many ignition on/off cycles could break this, something to harden later?
-        queueConsoleMessage("Wifi is reinitialized");  // too many ignition on/off cycles could break this, something to harden later?
+      if (NMEA2KData == 1) {
+        if (millis() - prev_millis743 > 2000) {  // Only parse every 2 seconds
+          NMEA2000.ParseMessages();
+          prev_millis743 = millis();
+        }
       }
-      // Send WiFi data to client
+      //Alarm stuff
+      GPIO33_Status = digitalRead(33);  // Store the reading, this could be obviously simplified later, but whatever
+      CheckAlarms();
+      UpdateDisplay();
+      AdjustField();  // This may need to get moved if it takes any power, but have to be careful we don't get stuck with Field On!
+      // Ignition = !digitalRead(39);  // see if ignition is on    (fix this later)
+      if (IgnitionOverride == 1) {
+        Ignition = 1;
+      }
+      logDashboardValues();  // just nice to have some history in the Console
+      // Power management and WiFi logic moved to after the switch statement
       SendWifiData();
-      // Check WiFi connection status if in client mode - only try to reconnect when ignition is on
-      checkWiFiConnection();
-      Freq = getCpuFrequencyMhz();  // unused at this time
+      // Client-specific connection monitoring
+      if (mode == CLIENT_MODE) {
+        checkWiFiConnection();
+      }
+      break;
+  }
+  // Power management section (the ignition logic) goes here after the switch
+  if (Ignition == 0) {
+    setCpuFrequencyMhz(10);
+    WiFi.mode(WIFI_OFF);
+    Serial.println("wifi has been turned off");
+  } else {
+    // Only do client-mode specific WiFi management in client mode
+    if (mode == CLIENT_MODE && WiFi.status() != WL_CONNECTED) {
+      setCpuFrequencyMhz(240);
+      setupWiFi();
+      Serial.println("Wifi is reinitialized");
+      queueConsoleMessage("Wifi is reinitialized");
     }
+    Freq = getCpuFrequencyMhz();  // unused at this time
   }
   //Blink LED on and off every X seconds - works in both power modes for status indication
   // optimize for power consumpiton later
   //AP Mode: Fast triple blink pattern
   //WiFi Disconnected: Medium blink with 100ms pulse
   //WiFi Connected: Normal toggle
-  if (millis() - previousMillisBLINK >= intervalBLINK) {
-    // Use different blink patterns to indicate WiFi status
-    if (currentWiFiMode == AWIFI_MODE_AP) {
-      // Fast blink in AP mode (toggle twice)
-      digitalWrite(2, HIGH);
-      delay(50);
-      digitalWrite(2, LOW);
-      delay(50);
-      digitalWrite(2, HIGH);
-      delay(50);
-      digitalWrite(2, (ledState = !ledState));
-    } else if (WiFi.status() != WL_CONNECTED) {
-      // Medium blink when WiFi is disconnected
-      digitalWrite(2, HIGH);
-      delay(100);
-      digitalWrite(2, (ledState = !ledState));
-    } else {
-      // Normal blink when connected
-      digitalWrite(2, (ledState = !ledState));
-    }
-    previousMillisBLINK = millis();
-  }
+
+  //FIX THIS LATER
+  // if (millis() - previousMillisBLINK >= intervalBLINK) {
+  //   // Use different blink patterns to indicate WiFi status
+  //   if (currentWiFiMode == AWIFI_MODE_AP) {
+  //     // Fast blink in AP mode (toggle twice)
+  //     digitalWrite(2, HIGH);
+  //     delay(50);
+  //     digitalWrite(2, LOW);
+  //     delay(50);
+  //     digitalWrite(2, HIGH);
+  //     delay(50);
+  //     digitalWrite(2, (ledState = !ledState));
+  //   } else if (WiFi.status() != WL_CONNECTED) {
+  //     // Medium blink when WiFi is disconnected
+  //     digitalWrite(2, HIGH);
+  //     delay(100);
+  //     digitalWrite(2, (ledState = !ledState));
+  //   } else {
+  //     // Normal blink when connected
+  //     digitalWrite(2, (ledState = !ledState));
+  //   }
+  //   previousMillisBLINK = millis();
+  // }
+
+
   if (millis() - prev_millis7888 > 3000) {  // every 3 seconds reset the maximum loop time
     MaximumLoopTime = 0;
     prev_millis7888 = millis();
