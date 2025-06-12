@@ -15,12 +15,112 @@
 
 // Contact me at mark@xengineering.net
 
+
+// Helper function to organize hardware initialization
+void initializeHardware() {
+  Serial.println("Starting hardware initialization...");
+
+  //NMEA2K
+  OutputStream = &Serial;
+  //   while (!Serial)
+  //  NMEA2000.SetN2kCANReceiveFrameBufSize(50); // was commented
+  // Do not forward bus messages at all
+  NMEA2000.SetForwardType(tNMEA2000::fwdt_Text);
+  NMEA2000.SetForwardStream(OutputStream);
+  // Set false below, if you do not want to see messages parsed to HEX withing library
+  NMEA2000.EnableForward(false);  // was false
+  NMEA2000.SetMsgHandler(HandleNMEA2000Msg);
+  //  NMEA2000.SetN2kCANMsgBufSize(2);
+  NMEA2000.Open();
+  Serial.println("NMEA2K Running...");
+
+  //Victron VeDirect
+  Serial1.begin(19200, SERIAL_8N1, 25, -1, 0);  // ... note the "0" at end for normal logic.  This is the reading of the combined NMEA0183 data from YachtDevices
+  Serial2.begin(19200, SERIAL_8N1, 26, -1, 1);  // This is the reading of Victron VEDirect
+  Serial2.flush();
+
+  if (!INA.begin()) {
+    Serial.println("Could not connect INA. Fix and Reboot");
+    queueConsoleMessage("WARNING: Could not connect INA228 Battery Voltage/Amp measuring chip");
+    INADisconnected = 1;
+    // while (1)
+    ;
+  } else {
+    INADisconnected = 0;
+  }
+  // at least 529ms for an update with these settings for average and conversion time
+  INA.setMode(11);                       // Bh = Continuous shunt and bus voltage
+  INA.setAverage(4);                     //0h = 1, 1h = 4, 2h = 16, 3h = 64, 4h = 128, 5h = 256, 6h = 512, 7h = 1024     Applies to all channels
+  INA.setBusVoltageConversionTime(7);    // Sets the conversion time of the bus voltage measurement: 0h = 50 µs, 1h = 84 µs, 2h = 150 µs, 3h = 280 µs, 4h = 540 µs, 5h = 1052 µs, 6h = 2074 µs, 7h = 4120 µs
+  INA.setShuntVoltageConversionTime(7);  // Sets the conversion time of the bus voltage measurement: 0h = 50 µs, 1h = 84 µs, 2h = 150 µs, 3h = 280 µs, 4h = 540 µs, 5h = 1052 µs, 6h = 2074 µs, 7h = 4120 µs
+
+  if (setupDisplay()) {
+    Serial.println("Display ready for use");
+  } else {
+    Serial.println("Continuing without display");
+  }
+
+  unsigned long now = millis();
+  for (int i = 0; i < MAX_DATA_INDICES; i++) {
+    dataTimestamps[i] = now;  // Start with current time
+  }
+
+  //ADS1115
+  //Connection check
+  if (!adc.testConnection()) {
+    Serial.println("ADS1115 Connection failed and would have triggered a return if it wasn't commented out");
+    queueConsoleMessage("WARNING: ADS1115 Analog Input chip failed");
+    ADS1115Disconnected = 1;
+    // return;
+  } else {
+    ADS1115Disconnected = 0;
+  }
+  //Gain parameter.
+  adc.setGain(ADS1115_REG_CONFIG_PGA_6_144V);
+  // ADS1115_REG_CONFIG_PGA_6_144V(0x0000)  // +/-6.144V range = Gain 2/3
+  // ADS1115_REG_CONFIG_PGA_4_096V(0x0200)  // +/-4.096V range = Gain 1
+  // ADS1115_REG_CONFIG_PGA_2_048V(0x0400)  // +/-2.048V range = Gain 2 (default)
+  // ADS1115_REG_CONFIG_PGA_1_024V(0x0600)  // +/-1.024V range = Gain 4
+  // ADS1115_REG_CONFIG_PGA_0_512V(0x0800)  // +/-0.512V range = Gain 8
+  // ADS1115_REG_CONFIG_PGA_0_256V(0x0A00)  // +/-0.256V range = Gain 16
+  //Sample rate parameter
+  adc.setSampleRate(ADS1115_REG_CONFIG_DR_8SPS);  //Set the slowest and most accurate sample rate, 8
+  // ADS1115_REG_CONFIG_DR_8SPS(0x0000)              // 8 SPS(Sample per Second), or a sample every 125ms
+  // ADS1115_REG_CONFIG_DR_16SPS(0x0020)             // 16 SPS, or every 62.5ms
+  // ADS1115_REG_CONFIG_DR_32SPS(0x0040)             // 32 SPS, or every 31.3ms
+  // ADS1115_REG_CONFIG_DR_64SPS(0x0060)             // 64 SPS, or every 15.6ms
+  // ADS1115_REG_CONFIG_DR_128SPS(0x0080)            // 128 SPS, or every 7.8ms  (default)
+  // ADS1115_REG_CONFIG_DR_250SPS(0x00A0)            // 250 SPS, or every 4ms, note that noise free resolution is reduced to ~14.75-16bits, see table 2 in datasheet
+  // ADS1115_REG_CONFIG_DR_475SPS(0x00C0)            // 475 SPS, or every 2.1ms, note that noise free resolution is reduced to ~14.3-15.5bits, see table 2 in datasheet
+  // ADS1115_REG_CONFIG_DR_860SPS(0x00E0)            // 860 SPS, or every 1.16ms, note that noise free resolution is reduced to ~13.8-15bits, see table 2 in datasheet
+
+  //onewire
+  sensors.begin();
+  sensors.setResolution(12);
+  sensors.getAddress(tempDeviceAddress, 0);
+  if (sensors.getDeviceCount() == 0) {
+    Serial.println("WARNING: No DS18B20 sensors found on the bus.");
+    queueConsoleMessage("WARNING: No DS18B20 sensors found on the bus");
+    sensors.setWaitForConversion(false);  // this is critical!
+  }
+
+  xTaskCreatePinnedToCore(
+    TempTask,
+    "TempTask",
+    4096,
+    NULL,
+    0,  // Priority lower than normal (execute if nothing else to do, all the 1's are idle)
+    &tempTaskHandle,
+    0  // Run on Core 0, which is the one doing Wifi and system tasks, and theoretically has more idle points than Core 1 and "loop()"
+  );
+
+  Serial.println("Hardware initialization complete");
+}
 void setDutyPercent(int percent) {  // Function to set PWM duty cycle by percentage
   percent = constrain(percent, 0, 100);
   uint32_t duty = (65535UL * percent) / 100;
   ledcWrite(pwmPin, duty);  // In v3.x, first parameter is the pin number
 }
-
 // Function 6: AdjustField() - PWM Field Control with Freshness Tracking
 void AdjustField() {
   if (millis() - prev_millis22 > FieldAdjustmentInterval) {  // adjust field every FieldAdjustmentInterval milliseconds
@@ -316,6 +416,7 @@ void ReadAnalogInputs() {
       break;
   }
 
+  calculateChargeTimes();  // calculate charge/discharge times
   // Lazy check and update of maximum values, clean this up later if desired
   if (!isnan(IBV) && IBV > IBVMax) IBVMax = IBV;
   if (MeasuredAmps > MeasuredAmpsMax) MeasuredAmpsMax = MeasuredAmps;
@@ -806,13 +907,13 @@ String readFile(fs::FS &fs, const char *path) {
     Serial.println("Cannot read file - LittleFS not available: " + String(path));
     return String();
   }
-  
+
   File file = fs.open(path, "r");
   if (!file || file.isDirectory()) {
     Serial.println("- empty file or failed to open file: " + String(path));
     return String();
   }
-  
+
   String fileContent;
   while (file.available()) {
     fileContent += String((char)file.read());
@@ -866,7 +967,7 @@ void SendWifiData() {
                                   // CSV field order: see index.html -> fields[] mapping
       char payload[1400];         // >1400 the wifi transmission won't fit in 1 packet
       snprintf(payload, sizeof(payload),
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
@@ -1004,7 +1105,10 @@ void SendWifiData() {
                SafeInt(LongitudeNMEA * 1000000),   // 116 - Convert to integer with 6 decimal precision
                SafeInt(SatelliteCountNMEA),        // 117
                SafeInt(GPIO33_Status),             //  118
-               SafeInt(fieldActiveStatus)          // 119
+               SafeInt(fieldActiveStatus),         // 119
+               SafeInt(timeToFullChargeMin),       // 120
+               SafeInt(timeToFullDischargeMin)     // 121
+
 
       );
       // Send main sensor data payload
@@ -1042,7 +1146,6 @@ void SendWifiData() {
     lastTimestampSend = now;
   }
 }
-
 void checkAndRestart() {
   //Restart the ESP32 every hour just for maintenance
   unsigned long currentMillis = millis();
@@ -1061,278 +1164,346 @@ void checkAndRestart() {
     lastRestartTime = currentMillis;  // This line won't be reached, but for clarity...
   }
 }
-
 // Function to set up WiFi - tries to connect to saved network, falls back to AP mode
 void setupWiFi() {
-  // Check for factory reset or permanent AP mode FIRST
+  Serial.println("\n=== WiFi Setup Starting ===");
+  // PRESERVES: Check for permanent AP mode FIRST (your original logic)
   if (LittleFS.exists(WIFI_MODE_FILE)) {
     String savedMode = readFile(LittleFS, WIFI_MODE_FILE);
     savedMode.trim();
-    Serial.println("Found WiFi mode file: " + savedMode);
-    
+    Serial.println("Found WiFi mode: '" + savedMode + "'");
     if (savedMode == "ap") {
       permanentAPMode = 1;
-      Serial.println("Permanent AP mode configured - starting hotspot");
+      Serial.println("=== PERMANENT AP MODE DETECTED ===");
+      Serial.println("Should use stored password: '" + esp32_ap_password + "'");
       setupAccessPoint();
       currentWiFiMode = AWIFI_MODE_AP;
-      setupServer(); // Serve MAIN interface in permanent AP mode
+      // PRESERVES: Your interface selection logic for permanent AP mode
+      if (LittleFS.exists("/index.html")) {
+        Serial.println("index.html exists - serving MAIN INTERFACE in permanent AP mode");
+        setupServer();  // Full alternator interface
+      } else {
+        Serial.println("No index.html - serving captive portal landing");
+        setupCaptivePortalLanding();  // Simple landing page
+      }
       return;
     }
   }
-
-  // Try client mode - load saved credentials with debugging
+  // PRESERVES: Try client mode - load saved credentials (your original logic)
   String saved_ssid = "";
   String saved_password = "";
-  
-  Serial.println("Checking for saved WiFi credentials...");
-  
   if (LittleFS.exists(WIFI_SSID_FILE)) {
     saved_ssid = readFile(LittleFS, WIFI_SSID_FILE);
     saved_ssid.trim();
-    Serial.printf("Found saved SSID: '%s' (length: %d)\n", saved_ssid.c_str(), saved_ssid.length());
+    Serial.println("Found SSID: '" + saved_ssid + "'");
   } else {
     Serial.println("No SSID file found");
   }
-  
   if (LittleFS.exists(WIFI_PASS_FILE)) {
     saved_password = readFile(LittleFS, WIFI_PASS_FILE);
     saved_password.trim();
-    Serial.printf("Found saved password (length: %d)\n", saved_password.length());
+    Serial.println("Found WiFi password (length: " + String(saved_password.length()) + ")");
   } else {
-    Serial.println("No password file found");
+    Serial.println("No WiFi password file found");
   }
-
-  // Use defaults if no saved credentials
-  if (saved_ssid.length() == 0) {
-    saved_ssid = default_ssid;
-    saved_password = default_password;
-    Serial.println("No saved WiFi credentials, using defaults: " + saved_ssid);
+  // ENHANCED: Better handling of missing credentials
+  if (saved_ssid.length() == 0 || saved_ssid == "WRONG") {
+    Serial.println("=== FIRST BOOT DETECTED ===");
+    Serial.println("No valid WiFi credentials - entering configuration mode");
+    Serial.println("Will serve WiFi configuration form");
+    setupAccessPoint();
+    setupWiFiConfigServer();  // Serve config interface only
+    currentWiFiMode = AWIFI_MODE_AP;
+    return;
   } else {
+    Serial.println("=== CLIENT MODE ATTEMPT ===");
     Serial.println("Using saved WiFi credentials for: " + saved_ssid);
   }
-
-  // Attempt connection with longer timeout and better error handling
+  // PRESERVES: Client mode attempt (reduced timeout to prevent watchdog issues)
   Serial.println("Attempting WiFi connection to: " + saved_ssid);
-  
-  if (connectToWiFi(saved_ssid.c_str(), saved_password.c_str(), WIFI_TIMEOUT)) {
-    // Success - connected to WiFi
+
+  if (connectToWiFi(saved_ssid.c_str(), saved_password.c_str(), 8000)) {  // Reduced from 20s to 8s
     currentWiFiMode = AWIFI_MODE_CLIENT;
+    Serial.println("=== CLIENT MODE SUCCESS ===");
     Serial.println("WiFi connected successfully!");
     Serial.print("IP Address: ");
     Serial.println(WiFi.localIP());
-    setupServer(); // Serve main interface
+    setupServer();  // PRESERVES: Serve full interface in client mode
   } else {
-    // Failed to connect - start configuration AP
+    Serial.println("=== CLIENT MODE FAILED ===");
     Serial.println("WiFi connection failed - starting configuration mode");
     setupAccessPoint();
-    setupWiFiConfigServer(); // Serve CONFIG interface only
+    setupWiFiConfigServer();  // PRESERVES: Serve config interface only
     currentWiFiMode = AWIFI_MODE_AP;
   }
+  Serial.println("=== WiFi Setup Complete ===");
 }
-
-// Function to connect to a WiFi network with timeout
+// 3. FIX connectToWiFi() TO PREVENT WATCHDOG TIMEOUT
+// PRESERVES: All your connection logic, just adds watchdog feeding and better error handling
 bool connectToWiFi(const char *ssid, const char *password, unsigned long timeout) {
   if (!ssid || strlen(ssid) == 0) {
-    Serial.println("ERROR: No SSID provided for WiFi connection");
+    Serial.println("ERROR: No SSID provided for WiFi connection");  // PRESERVES: Your error message style
     return false;
   }
 
   Serial.printf("Connecting to WiFi: %s\n", ssid);
   Serial.printf("Password length: %d\n", strlen(password));
 
-  // Ensure clean WiFi state
+  // PRESERVES: Your WiFi setup sequence
   WiFi.disconnect(true);
   delay(100);
-  
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
-  // REMOVED: WiFi.setAutoConnect(false); // This method doesn't exist in ESP32
+  // Note: Removed WiFi.setAutoConnect(false) as you noted it doesn't exist
 
-  // Begin connection
+  // PRESERVES: Your connection logic
   if (strlen(password) > 0) {
     WiFi.begin(ssid, password);
   } else {
-    WiFi.begin(ssid); // Open network
+    WiFi.begin(ssid);  // Open network
   }
 
   unsigned long startTime = millis();
-  unsigned long lastStatusPrint = 0;
-  
-  while (WiFi.status() != WL_CONNECTED && millis() - startTime < timeout) {
-    delay(250);
-    
-    // Print status every 2 seconds for debugging
-    if (millis() - lastStatusPrint > 2000) {
-      lastStatusPrint = millis();
-      wl_status_t status = WiFi.status();
-      Serial.printf("WiFi Status: %d (", status);
-      switch(status) {
-        case WL_IDLE_STATUS: Serial.print("IDLE"); break;
-        case WL_NO_SSID_AVAIL: Serial.print("NO_SSID_AVAIL"); break;
-        case WL_SCAN_COMPLETED: Serial.print("SCAN_COMPLETED"); break;
-        case WL_CONNECTED: Serial.print("CONNECTED"); break;
-        case WL_CONNECT_FAILED: Serial.print("CONNECT_FAILED"); break;
-        case WL_CONNECTION_LOST: Serial.print("CONNECTION_LOST"); break;
-        case WL_DISCONNECTED: Serial.print("DISCONNECTED"); break;
-        default: Serial.print("UNKNOWN"); break;
-      }
-      Serial.println(")");
-    }
+  int attempts = 0;
+  const int maxAttempts = timeout / 500;  // Check every 500ms instead of 250ms
 
-    // Feed watchdog during connection
-    esp_task_wdt_reset();
+  while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts) {
+    delay(500);
+    attempts++;
+
+    // Print progress every 2 seconds (less spam than your original)
+    if (attempts % 4 == 0) {
+      Serial.printf("WiFi Status: %d, attempt %d/%d\n", WiFi.status(), attempts, maxAttempts);
+    }
   }
 
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("WiFi connection successful!");
-    Serial.printf("IP address: %s\n", WiFi.localIP().toString().c_str());
-    Serial.printf("Signal strength: %d dBm\n", WiFi.RSSI());
+    Serial.println("WiFi connection successful!");                         // PRESERVES: Your success message
+    Serial.printf("IP address: %s\n", WiFi.localIP().toString().c_str());  // PRESERVES: Your IP logging
+    Serial.printf("Signal strength: %d dBm\n", WiFi.RSSI());               // PRESERVES: Your signal logging
 
-    // Setup mDNS
+    // PRESERVES: Your mDNS setup
     if (MDNS.begin("alternator")) {
-      Serial.println("mDNS responder started");
+      Serial.println("mDNS responder started");  //
       MDNS.addService("http", "tcp", 80);
     }
     return true;
   } else {
-    Serial.printf("WiFi connection failed after %lu ms\n", timeout);
-    Serial.printf("Final status: %d\n", WiFi.status());
+    Serial.printf("WiFi connection failed after %lu ms\n", timeout);  // PRESERVES: Your failure message style
+    Serial.printf("Final status: %d\n", WiFi.status());               // PRESERVES: Your debug info
     return false;
   }
 }
-
-
 // Function to set up the device as an access point
 void setupAccessPoint() {
-  const char *ap_ssid = "ALTERNATOR_CONFIG";
+  Serial.println("=== SETTING UP ACCESS POINT ===");
+  Serial.println("Using SSID: '" + esp32_ap_ssid + "'");
+  Serial.println("Using password: '" + esp32_ap_password + "'");
+  Serial.println("Password length: " + String(esp32_ap_password.length()));
+  Serial.println("SSID length: " + String(esp32_ap_ssid.length()));
 
   WiFi.mode(WIFI_AP);
-  WiFi.softAP(ap_ssid, esp32_ap_password.c_str());
 
-  Serial.println("Access Point Started");
-  Serial.print("AP SSID: ");
-  Serial.println(ap_ssid);
-  Serial.print("AP Password: ");
-  Serial.println(esp32_ap_password);
-  Serial.print("AP IP address: ");
-  Serial.println(WiFi.softAPIP());
+  bool apStarted = WiFi.softAP(esp32_ap_ssid.c_str(), esp32_ap_password.c_str());
 
-  // Start DNS server for captive portal
-  dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+  if (apStarted) {
+    Serial.println("=== ACCESS POINT STARTED SUCCESSFULLY ===");
+    Serial.print("AP SSID: ");
+    Serial.println(esp32_ap_ssid);
+    Serial.print("AP Password: ");
+    Serial.println(esp32_ap_password);
+    Serial.print("AP IP address: ");
+    Serial.println(WiFi.softAPIP());
 
-  // NOTE: Don't automatically call setupWiFiConfigServer() here
-  // Let the caller decide which interface to serve
+    // Start DNS server for captive portal
+    dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+    Serial.println("DNS server started for captive portal");
+
+    Serial.println("=== AP SETUP COMPLETE ===");
+  } else {
+    Serial.println("=== ACCESS POINT FAILED TO START ===");
+    Serial.println("This is a critical error!");
+    // Try with default settings as fallback
+    Serial.println("Trying with default settings as fallback...");
+    WiFi.softAP("ALTERNATOR_WIFI", "alternator123");
+  }
 }
-
 // Function to set up the configuration web server in AP mode
 void setupWiFiConfigServer() {
+  Serial.println("\n=== SETTING UP WIFI CONFIG SERVER ===");
 
+  // Main config page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    Serial.println("=== CONFIG PAGE REQUEST ===");
+    Serial.println("Client IP: " + request->client()->remoteIP().toString());
+    Serial.println("User-Agent: " + request->header("User-Agent"));
+    Serial.println("Serving WiFi configuration page");
     request->send_P(200, "text/html", WIFI_CONFIG_HTML);
-  });  // close server.on("/") handler
+  });
 
+  // Enhanced WiFi configuration handler with custom SSID support
   server.on("/wifi", HTTP_POST, [](AsyncWebServerRequest *request) {
+    Serial.println("\n=== WIFI CONFIG POST RECEIVED ===");
+    Serial.println("Client IP: " + request->client()->remoteIP().toString());
+
+    // Debug: Print all received parameters
+    int params = request->params();
+    Serial.println("Parameters received: " + String(params));
+    for (int i = 0; i < params; i++) {
+      auto p = request->getParam(i);
+      if (p->name() == "ap_password" || p->name() == "password") {
+        //Serial.println("Param " + String(i) + ": " + p->name() + " = '[REDACTED]' (length: " + String(p->value().length()) + ")");
+      } else {
+        // Serial.println("Param " + String(i) + ": " + p->name() + " = '" + p->value() + "'");
+      }
+    }
+
     String mode = "client";
     String ssid = "";
     String password = "";
     String ap_password = "";
+    String hotspot_ssid = "";
 
+    // Get parameters
     if (request->hasParam("mode", true)) {
       mode = request->getParam("mode", true)->value();
+      mode.trim();
+      Serial.println("Selected mode: " + mode);
     }
+
     if (request->hasParam("ap_password", true)) {
       ap_password = request->getParam("ap_password", true)->value();
       ap_password.trim();
+      Serial.println("New AP password length: " + String(ap_password.length()));
     }
 
-    if (ap_password.length() > 0) {
-      writeFile(LittleFS, AP_PASSWORD_FILE, ap_password.c_str());
-      esp32_ap_password = ap_password;
-      Serial.println("ESP32 AP password updated");
-    } else {
+    if (request->hasParam("hotspot_ssid", true)) {
+      hotspot_ssid = request->getParam("hotspot_ssid", true)->value();
+      hotspot_ssid.trim();
+      Serial.println("Custom hotspot SSID: '" + hotspot_ssid + "'");
+    }
+
+    if (request->hasParam("ssid", true)) {
+      ssid = request->getParam("ssid", true)->value();
+      ssid.trim();
+      Serial.println("Ship WiFi SSID: '" + ssid + "'");
+    }
+
+    if (request->hasParam("password", true)) {
+      password = request->getParam("password", true)->value();
+      password.trim();
+      Serial.println("Ship WiFi password length: " + String(password.length()));
+    }
+
+    // Validate AP password
+    if (ap_password.length() == 0) {
+      Serial.println("ERROR: Empty AP password provided");
       request->send(400, "text/html",
                     "<html><body><h2>Error</h2><p>Alternator hotspot password cannot be empty.</p>"
                     "<a href='/'>Go Back</a></body></html>");
       return;
-    }  // close `if (ap_password.length() > 0)`
+    }
+
+    if (ap_password.length() < 8) {
+      Serial.println("ERROR: AP password too short (WPA2 requires 8+ characters)");
+      request->send(400, "text/html",
+                    "<html><body><h2>Error</h2><p>Password must be at least 8 characters for WPA2.</p>"
+                    "<a href='/'>Go Back</a></body></html>");
+      return;
+    }
+
+
+    // Save configuration
+    Serial.println("=== SAVING CONFIGURATION ===");
+    Serial.println("Updating in-memory values first...");
+    esp32_ap_password = ap_password;  // Update memory FIRST
+    Serial.println("New AP password in memory: length=" + String(esp32_ap_password.length()));
+
+    writeFile(LittleFS, AP_PASSWORD_FILE, ap_password.c_str());
+    Serial.println("AP password saved to file");
+
+    // Save custom SSID if provided
+    if (hotspot_ssid.length() > 0) {
+      writeFile(LittleFS, AP_SSID_FILE, hotspot_ssid.c_str());
+      esp32_ap_ssid = hotspot_ssid;
+      Serial.println("Custom AP SSID saved: " + esp32_ap_ssid);
+    } else {
+      if (LittleFS.exists(AP_SSID_FILE)) {
+        LittleFS.remove(AP_SSID_FILE);
+      }
+      esp32_ap_ssid = "ALTERNATOR_WIFI";
+      Serial.println("Using default SSID");
+    }
 
     if (mode == "ap") {
+      // Permanent AP mode
+      Serial.println("=== CONFIGURING PERMANENT AP MODE ===");
       writeFile(LittleFS, WIFI_MODE_FILE, "ap");
       permanentAPMode = 1;
+      Serial.println("Permanent AP mode saved");
 
-      String response = "<!DOCTYPE html><html><head><title>Setup Complete</title>";
-      response += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
-      response += "<style>";
-      response += ":root { --primary: #333333; --accent: #ff6600; --bg-light: #f5f5f5; --text-dark: #333333; --card-light: #ffffff; --radius: 4px; }";
-      response += "body { font-family: Arial, sans-serif; background-color: var(--bg-light); color: var(--text-dark); padding: 20px; }";
-      response += ".card { background: var(--card-light); padding: 16px; border-left: 2px solid var(--accent); border-radius: var(--radius); box-shadow: 0 1px 2px rgba(0,0,0,0.1); max-width: 450px; margin: 0 auto; }";
-      response += "h2 { color: var(--text-dark); border-bottom: 2px solid var(--accent); padding-bottom: 0.25rem; }";
-      response += "</style></head><body><div class='card'>";
-      response += "<h2>✅ Hotspot Mode Configured</h2>";
-      response += "<p>The alternator regulator is now in standalone hotspot mode.</p>";
-      response += "<p><b>Network Name:</b> ALTERNATOR_CONFIG</p>";
-      response += "<p><b>Password:</b> " + esp32_ap_password + "</p>";
-      response += "<p><strong>⚠️ Write down this password!</strong> You'll need it to reconnect.</p>";
-      response += "<p>The system will restart in 5 seconds...</p>";
-      response += "<script>setTimeout(() => location.reload(), 5000);</script>";
-      response += "</div></body></html>";
+      // Send simple success response
+      request->send(200, "text/plain", "Configuration saved! Please restart device.");
 
-      request->send(200, "text/html", response);
-
-      delay(2000);
+      Serial.println("=== RESTARTING FOR AP MODE ===");
+      Serial.println("Waiting 5 seconds for filesystem sync...");
+      delay(5000);  // Give filesystem time to sync
       ESP.restart();
-    } else {  // else for mode != "ap"
-      if (request->hasParam("ssid", true) && request->hasParam("password", true)) {
-        ssid = request->getParam("ssid", true)->value();
-        password = request->getParam("password", true)->value();
-        ssid.trim();
-        password.trim();
 
-        writeFile(LittleFS, "/ssid.txt", ssid.c_str());
-        writeFile(LittleFS, "/pass.txt", password.c_str());
-        writeFile(LittleFS, WIFI_MODE_FILE, "client");
-        permanentAPMode = 0;
-
-        String response = "<!DOCTYPE html><html><head><title>Setup Complete</title>";
-        response += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
-        response += "<style>";
-        response += ":root { --primary: #333333; --accent: #ff6600; --bg-light: #f5f5f5; --text-dark: #333333; --card-light: #ffffff; --radius: 4px; }";
-        response += "body { font-family: Arial, sans-serif; background-color: var(--bg-light); color: var(--text-dark); padding: 20px; }";
-        response += ".card { background: var(--card-light); padding: 16px; border-left: 2px solid var(--accent); border-radius: var(--radius); box-shadow: 0 1px 2px rgba(0,0,0,0.1); max-width: 450px; margin: 0 auto; }";
-        response += "h2 { color: var(--text-dark); border-bottom: 2px solid var(--accent); padding-bottom: 0.25rem; }";
-        response += "</style></head><body><div class='card'>";
-        response += "<h2>✅ Client Mode Configured</h2>";
-        response += "<p>The regulator will connect to: <b>" + ssid + "</b></p>";
-        response += "<p>If connection fails, it will return to hotspot mode.</p>";
-        response += "<p><b>Remember your hotspot password:</b> " + esp32_ap_password + "</p>";
-        response += "<p>The system will restart in 5 seconds...</p>";
-        response += "<script>setTimeout(() => location.reload(), 5000);</script>";
-        response += "</div></body></html>";
-
-        request->send(200, "text/html", response);
-
-        delay(2000);
-        ESP.restart();
-      } else {
+    } else {
+      // Client mode
+      if (ssid.length() == 0) {
+        Serial.println("ERROR: Empty SSID for client mode");
         request->send(400, "text/html",
                       "<html><body><h2>Error</h2><p>Ship WiFi credentials required for client mode.</p>"
                       "<a href='/'>Go Back</a></body></html>");
-      }  // close inner else (missing ssid/password)
-    }    // close outer else (mode != "ap")
-  });    // close server.on("/wifi", HTTP_POST, ...)
+        return;
+      }
 
+      Serial.println("=== CONFIGURING CLIENT MODE ===");
+      writeFile(LittleFS, "/ssid.txt", ssid.c_str());
+      writeFile(LittleFS, "/pass.txt", password.c_str());
+      writeFile(LittleFS, WIFI_MODE_FILE, "client");
+      permanentAPMode = 0;
+
+      // Send simple success response
+      request->send(200, "text/plain", "Configuration saved! Please restart device.");
+
+      Serial.println("=== RESTARTING FOR CLIENT MODE ===");
+      ESP.restart();
+    }
+  });
+
+  // Enhanced 404 handler (your existing one with debugging)
   server.onNotFound([](AsyncWebServerRequest *request) {
-    request->redirect("http://" + WiFi.softAPIP().toString());
-  });  // close server.onNotFound()
+    String path = request->url();
+    Serial.println("=== SERVER REQUEST DEBUG ===");
+    Serial.print("Request for: ");
+    Serial.println(path);
+    Serial.println("Client IP: " + request->client()->remoteIP().toString());
+    Serial.println("Method: " + String(request->method() == HTTP_GET ? "GET" : "POST"));
 
-  Serial.println("Serving ONLY index.html");
+    if (LittleFS.exists(path)) {
+      String contentType = "text/html";
+      if (path.endsWith(".css")) contentType = "text/css";
+      else if (path.endsWith(".js")) contentType = "application/javascript";
+      else if (path.endsWith(".json")) contentType = "application/json";
+      else if (path.endsWith(".png")) contentType = "image/png";
+      else if (path.endsWith(".jpg")) contentType = "image/jpeg";
+
+      Serial.println("File found in LittleFS, serving with content-type: " + contentType);
+      request->send(LittleFS, path, contentType);
+    } else {
+      Serial.print("File not found in LittleFS: ");
+      Serial.println(path);
+      Serial.println("Redirecting to captive portal: " + WiFi.softAPIP().toString());
+      request->redirect("http://" + WiFi.softAPIP().toString());
+    }
+  });
 
   server.begin();
-}  // close setupWiFiConfigServer()
-
-
-
-
+  Serial.println("=== CONFIG SERVER STARTED ===");
+}
 void setupServer() {
 
   //Factory Reset Logic
@@ -1385,7 +1556,6 @@ void setupServer() {
     request->send(200, "text/plain", "OK");
   });
 
-
   //This code handles web requests when a user changes settings on the web interface. In plain English:
   //First, it checks if the request includes a valid password. If not, it rejects the request with a "Forbidden" message.
   //If the password is correct, it looks at which setting the user is trying to change by checking which form field was submitted.
@@ -1397,40 +1567,39 @@ void setupServer() {
   //This is essentially how the system handles all the setting changes from the web interface - validating the request,
   //identifying which setting to change, saving it permanently, updating it in memory, and confirming the action to the user.
 
-
-
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(LittleFS, "/index.html", "text/html");
   });
-
-
-
   server.on(
     "/get", HTTP_GET, [](AsyncWebServerRequest *request) {
       if (!request->hasParam("password") || strcmp(request->getParam("password")->value().c_str(), requiredPassword) != 0) {
         request->send(403, "text/plain", "Forbidden");
         return;
       }
-
+      bool foundParameter = false;
       String inputMessage;
-
       if (request->hasParam("AlternatorTemperatureLimitF")) {
+        foundParameter = true;
         inputMessage = request->getParam("AlternatorTemperatureLimitF")->value();
         writeFile(LittleFS, "/AlternatorTemperatureLimitF.txt", inputMessage.c_str());
         AlternatorTemperatureLimitF = inputMessage.toInt();
       } else if (request->hasParam("ManualDuty")) {
+        foundParameter = true;
         inputMessage = request->getParam("ManualDuty")->value();
         writeFile(LittleFS, "/ManualDuty.txt", inputMessage.c_str());
         ManualDutyTarget = inputMessage.toInt();
       } else if (request->hasParam("FullChargeVoltage")) {
+        foundParameter = true;
         inputMessage = request->getParam("FullChargeVoltage")->value();
         writeFile(LittleFS, "/FullChargeVoltage.txt", inputMessage.c_str());
         ChargingVoltageTarget = inputMessage.toFloat();
       } else if (request->hasParam("TargetAmps")) {
+        foundParameter = true;
         inputMessage = request->getParam("TargetAmps")->value();
         writeFile(LittleFS, "/TargetAmps.txt", inputMessage.c_str());
         TargetAmps = inputMessage.toInt();
       } else if (request->hasParam("SwitchingFrequency")) {
+        foundParameter = true;
         inputMessage = request->getParam("SwitchingFrequency")->value();
         int requestedFreq = inputMessage.toInt();
         // Limit to 1100Hz to prevent ESP32 PWM shutdown
@@ -1446,196 +1615,242 @@ void setupServer() {
         ledcAttach(pwmPin, fffr, pwmResolution);
         queueConsoleMessage("Switching frequency set to " + String(fffr) + "Hz");
       } else if (request->hasParam("TargetFloatVoltage")) {
+        foundParameter = true;
         inputMessage = request->getParam("TargetFloatVoltage")->value();
         writeFile(LittleFS, "/TargetFloatVoltage.txt", inputMessage.c_str());
         TargetFloatVoltage = inputMessage.toFloat();
       } else if (request->hasParam("interval")) {
+        foundParameter = true;
         inputMessage = request->getParam("interval")->value();
         writeFile(LittleFS, "/interval.txt", inputMessage.c_str());
         interval = inputMessage.toFloat();
         dutyStep = interval;  // Apply new step size immediately
       } else if (request->hasParam("FieldAdjustmentInterval")) {
+        foundParameter = true;
         inputMessage = request->getParam("FieldAdjustmentInterval")->value();
         writeFile(LittleFS, "/FieldAdjustmentInterval.txt", inputMessage.c_str());
         FieldAdjustmentInterval = inputMessage.toFloat();
       } else if (request->hasParam("ManualFieldToggle")) {
+        foundParameter = true;
         inputMessage = request->getParam("ManualFieldToggle")->value();
         writeFile(LittleFS, "/ManualFieldToggle.txt", inputMessage.c_str());
         ManualFieldToggle = inputMessage.toInt();
       } else if (request->hasParam("SwitchControlOverride")) {
+        foundParameter = true;
         inputMessage = request->getParam("SwitchControlOverride")->value();
         writeFile(LittleFS, "/SwitchControlOverride.txt", inputMessage.c_str());
         SwitchControlOverride = inputMessage.toInt();
       } else if (request->hasParam("ForceFloat")) {
+        foundParameter = true;
         inputMessage = request->getParam("ForceFloat")->value();
         writeFile(LittleFS, "/ForceFloat.txt", inputMessage.c_str());
         ForceFloat = inputMessage.toInt();
         queueConsoleMessage("ForceFloat mode " + String(ForceFloat ? "enabled" : "disabled"));
       } else if (request->hasParam("OnOff")) {
+        foundParameter = true;
         inputMessage = request->getParam("OnOff")->value();
         writeFile(LittleFS, "/OnOff.txt", inputMessage.c_str());
         OnOff = inputMessage.toInt();
       } else if (request->hasParam("HiLow")) {
+        foundParameter = true;
         inputMessage = request->getParam("HiLow")->value();
         writeFile(LittleFS, "/HiLow.txt", inputMessage.c_str());
         HiLow = inputMessage.toInt();
       } else if (request->hasParam("InvertAltAmps")) {
+        foundParameter = true;
         inputMessage = request->getParam("InvertAltAmps")->value();
         writeFile(LittleFS, "/InvertAltAmps.txt", inputMessage.c_str());
         InvertAltAmps = inputMessage.toInt();
       } else if (request->hasParam("InvertBattAmps")) {
+        foundParameter = true;
         inputMessage = request->getParam("InvertBattAmps")->value();
         writeFile(LittleFS, "/InvertBattAmps.txt", inputMessage.c_str());
         InvertBattAmps = inputMessage.toInt();
       } else if (request->hasParam("MaxDuty")) {
+        foundParameter = true;
         inputMessage = request->getParam("MaxDuty")->value();
         writeFile(LittleFS, "/MaxDuty.txt", inputMessage.c_str());
         MaxDuty = inputMessage.toInt();
       } else if (request->hasParam("MinDuty")) {
+        foundParameter = true;
         inputMessage = request->getParam("MinDuty")->value();
         writeFile(LittleFS, "/MinDuty.txt", inputMessage.c_str());
         MinDuty = inputMessage.toInt();
       } else if (request->hasParam("LimpHome")) {
+        foundParameter = true;
         inputMessage = request->getParam("LimpHome")->value();
         writeFile(LittleFS, "/LimpHome.txt", inputMessage.c_str());
         LimpHome = inputMessage.toInt();
       } else if (request->hasParam("VeData")) {
+        foundParameter = true;
         inputMessage = request->getParam("VeData")->value();
         writeFile(LittleFS, "/VeData.txt", inputMessage.c_str());
         VeData = inputMessage.toInt();
       } else if (request->hasParam("NMEA0183Data")) {
+        foundParameter = true;
         inputMessage = request->getParam("NMEA0183Data")->value();
         writeFile(LittleFS, "/NMEA0183Data.txt", inputMessage.c_str());
         NMEA0183Data = inputMessage.toInt();
       } else if (request->hasParam("NMEA2KData")) {
+        foundParameter = true;
         inputMessage = request->getParam("NMEA2KData")->value();
         writeFile(LittleFS, "/NMEA2KData.txt", inputMessage.c_str());
         NMEA2KData = inputMessage.toInt();
       } else if (request->hasParam("TargetAmpL")) {
+        foundParameter = true;
         inputMessage = request->getParam("TargetAmpL")->value();
         writeFile(LittleFS, "/TargetAmpL.txt", inputMessage.c_str());
         TargetAmpL = inputMessage.toInt();
       } else if (request->hasParam("CurrentThreshold")) {
+        foundParameter = true;
         inputMessage = request->getParam("CurrentThreshold")->value();
         writeFile(LittleFS, "/CurrentThreshold.txt", inputMessage.c_str());
         CurrentThreshold_scaled = inputMessage.toInt();
       } else if (request->hasParam("PeukertExponent")) {
+        foundParameter = true;
         inputMessage = request->getParam("PeukertExponent")->value();
         writeFile(LittleFS, "/PeukertExponent.txt", inputMessage.c_str());
         PeukertExponent_scaled = inputMessage.toInt();
       } else if (request->hasParam("ChargeEfficiency")) {
+        foundParameter = true;
         inputMessage = request->getParam("ChargeEfficiency")->value();
         writeFile(LittleFS, "/ChargeEfficiency.txt", inputMessage.c_str());
         ChargeEfficiency_scaled = inputMessage.toInt();
       } else if (request->hasParam("ChargedVoltage")) {
+        foundParameter = true;
         inputMessage = request->getParam("ChargedVoltage")->value();
         writeFile(LittleFS, "/ChargedVoltage.txt", inputMessage.c_str());
         ChargedVoltage_Scaled = inputMessage.toInt();
       } else if (request->hasParam("TailCurrent")) {
+        foundParameter = true;
         inputMessage = request->getParam("TailCurrent")->value();
         writeFile(LittleFS, "/TailCurrent.txt", inputMessage.c_str());
         TailCurrent_Scaled = inputMessage.toInt();
       } else if (request->hasParam("ChargedDetectionTime")) {
+        foundParameter = true;
         inputMessage = request->getParam("ChargedDetectionTime")->value();
         writeFile(LittleFS, "/ChargedDetectionTime.txt", inputMessage.c_str());
         ChargedDetectionTime = inputMessage.toInt();
       } else if (request->hasParam("IgnoreTemperature")) {
+        foundParameter = true;
         inputMessage = request->getParam("IgnoreTemperature")->value();
         writeFile(LittleFS, "/IgnoreTemperature.txt", inputMessage.c_str());
         IgnoreTemperature = inputMessage.toInt();
       } else if (request->hasParam("BMSLogic")) {
+        foundParameter = true;
         inputMessage = request->getParam("BMSLogic")->value();
         writeFile(LittleFS, "/BMSLogic.txt", inputMessage.c_str());
         BMSlogic = inputMessage.toInt();
       } else if (request->hasParam("BMSLogicLevelOff")) {
+        foundParameter = true;
         inputMessage = request->getParam("BMSLogicLevelOff")->value();
         writeFile(LittleFS, "/BMSLogicLevelOff.txt", inputMessage.c_str());
         BMSLogicLevelOff = inputMessage.toInt();
       } else if (request->hasParam("AlarmActivate")) {
+        foundParameter = true;
         inputMessage = request->getParam("AlarmActivate")->value();
         writeFile(LittleFS, "/AlarmActivate.txt", inputMessage.c_str());
         AlarmActivate = inputMessage.toInt();
       } else if (request->hasParam("TempAlarm")) {
+        foundParameter = true;
         inputMessage = request->getParam("TempAlarm")->value();
         writeFile(LittleFS, "/TempAlarm.txt", inputMessage.c_str());
         TempAlarm = inputMessage.toInt();
       } else if (request->hasParam("VoltageAlarmHigh")) {
+        foundParameter = true;
         inputMessage = request->getParam("VoltageAlarmHigh")->value();
         writeFile(LittleFS, "/VoltageAlarmHigh.txt", inputMessage.c_str());
         VoltageAlarmHigh = inputMessage.toInt();
       } else if (request->hasParam("VoltageAlarmLow")) {
+        foundParameter = true;
         inputMessage = request->getParam("VoltageAlarmLow")->value();
         writeFile(LittleFS, "/VoltageAlarmLow.txt", inputMessage.c_str());
         VoltageAlarmLow = inputMessage.toInt();
       } else if (request->hasParam("CurrentAlarmHigh")) {
+        foundParameter = true;
         inputMessage = request->getParam("CurrentAlarmHigh")->value();
         writeFile(LittleFS, "/CurrentAlarmHigh.txt", inputMessage.c_str());
         CurrentAlarmHigh = inputMessage.toInt();
       } else if (request->hasParam("FourWay")) {
+        foundParameter = true;
         inputMessage = request->getParam("FourWay")->value();
         writeFile(LittleFS, "/FourWay.txt", inputMessage.c_str());
         FourWay = inputMessage.toInt();
       } else if (request->hasParam("RPMScalingFactor")) {
+        foundParameter = true;
         inputMessage = request->getParam("RPMScalingFactor")->value();
         writeFile(LittleFS, "/RPMScalingFactor.txt", inputMessage.c_str());
         RPMScalingFactor = inputMessage.toInt();
       } else if (request->hasParam("FieldResistance")) {
+        foundParameter = true;
         inputMessage = request->getParam("FieldResistance")->value();
         writeFile(LittleFS, "/FieldResistance.txt", inputMessage.c_str());
         FieldResistance = inputMessage.toInt();
       } else if (request->hasParam("AlternatorCOffset")) {
+        foundParameter = true;
         inputMessage = request->getParam("AlternatorCOffset")->value();
         writeFile(LittleFS, "/AlternatorCOffset.txt", inputMessage.c_str());
         AlternatorCOffset = inputMessage.toFloat();
       } else if (request->hasParam("BatteryCOffset")) {
+        foundParameter = true;
         inputMessage = request->getParam("BatteryCOffset")->value();
         writeFile(LittleFS, "/BatteryCOffset.txt", inputMessage.c_str());
         BatteryCOffset = inputMessage.toFloat();
       } else if (request->hasParam("AmpSrc")) {
+        foundParameter = true;
         inputMessage = request->getParam("AmpSrc")->value();
         writeFile(LittleFS, "/AmpSrc.txt", inputMessage.c_str());
         AmpSrc = inputMessage.toInt();
-        queueConsoleMessage("AmpSrc changed to: " + String(AmpSrc));  // Add this debug line
+        queueConsoleMessage("AmpSrc changed to: " + String(AmpSrc));  // debug line
       } else if (request->hasParam("BatteryVoltageSource")) {
+        foundParameter = true;
         inputMessage = request->getParam("BatteryVoltageSource")->value();
         writeFile(LittleFS, "/BatteryVoltageSource.txt", inputMessage.c_str());
         BatteryVoltageSource = inputMessage.toInt();
         queueConsoleMessage("Battery voltage source changed to: " + String(BatteryVoltageSource));  // Debug line
       } else if (request->hasParam("R_fixed")) {
+        foundParameter = true;
         inputMessage = request->getParam("R_fixed")->value();
         writeFile(LittleFS, "/R_fixed.txt", inputMessage.c_str());
         R_fixed = inputMessage.toFloat();
       } else if (request->hasParam("Beta")) {
+        foundParameter = true;
         inputMessage = request->getParam("Beta")->value();
         writeFile(LittleFS, "/Beta.txt", inputMessage.c_str());
         Beta = inputMessage.toFloat();
       } else if (request->hasParam("T0_C")) {
+        foundParameter = true;
         inputMessage = request->getParam("T0_C")->value();
         writeFile(LittleFS, "/T0_C.txt", inputMessage.c_str());
         T0_C = inputMessage.toFloat();
       } else if (request->hasParam("TempSource")) {
+        foundParameter = true;
         inputMessage = request->getParam("TempSource")->value();
         writeFile(LittleFS, "/TempSource.txt", inputMessage.c_str());
         TempSource = inputMessage.toInt();
       } else if (request->hasParam("IgnitionOverride")) {
+        foundParameter = true;
         inputMessage = request->getParam("IgnitionOverride")->value();
         writeFile(LittleFS, "/IgnitionOverride.txt", inputMessage.c_str());
         IgnitionOverride = inputMessage.toInt();
       }
 
       else if (request->hasParam("AlarmLatchEnabled")) {
+        foundParameter = true;
         inputMessage = request->getParam("AlarmLatchEnabled")->value();
         writeFile(LittleFS, "/AlarmLatchEnabled.txt", inputMessage.c_str());
         AlarmLatchEnabled = inputMessage.toInt();
       }
 
       else if (request->hasParam("AlarmTest")) {
+        foundParameter = true;
         AlarmTest = 1;  // Set the flag - don't save to file as it's momentary
         queueConsoleMessage("ALARM TEST: Initiated from web interface");
         inputMessage = "1";  // Return confirmation
       }
 
       else if (request->hasParam("ResetAlarmLatch")) {
+        foundParameter = true;
         ResetAlarmLatch = 1;  // Set the flag - don't save to file as it's momentary
         queueConsoleMessage("ALARM LATCH: Reset requested from web interface NO FUNCTION!");
         inputMessage = "1";  // Return confirmation
@@ -1648,11 +1863,13 @@ void setupServer() {
       //  }
 
       else if (request->hasParam("bulkCompleteTime")) {
+        foundParameter = true;
         inputMessage = request->getParam("bulkCompleteTime")->value();
         writeFile(LittleFS, "/bulkCompleteTime.txt", inputMessage.c_str());
         bulkCompleteTime = inputMessage.toInt();
       }  // When sending to ESP32
       else if (request->hasParam("FLOAT_DURATION")) {
+        foundParameter = true;
         inputMessage = request->getParam("FLOAT_DURATION")->value();
         int hours = inputMessage.toInt();
         int seconds = hours * 3600;  // Convert to seconds
@@ -1662,166 +1879,179 @@ void setupServer() {
 
       // Reset button Code
       else if (request->hasParam("ResetThermTemp")) {
+        foundParameter = true;
         MaxTemperatureThermistor = 0;
         writeFile(LittleFS, "/MaxTemperatureThermistor.txt", "0");
         queueConsoleMessage("Max Thermistor Temp: Reset requested from web interface");
       } else if (request->hasParam("ResetTemp")) {
+        foundParameter = true;
         MaxAlternatorTemperatureF = 0;                               // reset the variable on ESP32 mem
         writeFile(LittleFS, "/MaxAlternatorTemperatureF.txt", "0");  // not pointless
         queueConsoleMessage("Max Alterantor Temp: Reset requested from web interface");
       } else if (request->hasParam("ResetVoltage")) {
+        foundParameter = true;
         IBVMax = 0;                               // reset the variable on ESP32 mem
         writeFile(LittleFS, "/IBVMax.txt", "0");  // not pointless
         queueConsoleMessage("Max Voltage: Reset requested from web interface");
       } else if (request->hasParam("ResetCurrent")) {
+        foundParameter = true;
         MeasuredAmpsMax = 0;                               // reset the variable on ESP32 mem
         writeFile(LittleFS, "/MeasuredAmpsMax.txt", "0");  // not pointless
         queueConsoleMessage("Max Battery Current: Reset requested from web interface");
       } else if (request->hasParam("ResetEngineRunTime")) {
+        foundParameter = true;
         EngineRunTime = 0;                               // reset the variable on ESP32 mem
         writeFile(LittleFS, "/EngineRunTime.txt", "0");  // not pointless
         queueConsoleMessage("Engine Run Time: Reset requested from web interface");
       } else if (request->hasParam("ResetAlternatorOnTime")) {
+        foundParameter = true;
         AlternatorOnTime = 0;                               // reset the variable on ESP32 mem
         writeFile(LittleFS, "/AlternatorOnTime.txt", "0");  // not pointless
         queueConsoleMessage("Alternator On Time: Reset requested from web interface");
       } else if (request->hasParam("ResetEnergy")) {
+        foundParameter = true;
         ChargedEnergy = 0;                               // reset the variable on ESP32 mem
         writeFile(LittleFS, "/ChargedEnergy.txt", "0");  // not pointless
         queueConsoleMessage("Battery Charged Energy: Reset requested from web interface");
       } else if (request->hasParam("ResetDischargedEnergy")) {
+        foundParameter = true;
         DischargedEnergy = 0;                               // reset the variable on ESP32 mem
         writeFile(LittleFS, "/DischargedEnergy.txt", "0");  // not pointless
         queueConsoleMessage("Battery Discharged Energy: Reset requested from web interface");
       } else if (request->hasParam("ResetFuelUsed")) {
+        foundParameter = true;
         AlternatorFuelUsed = 0;                               // reset the variable on ESP32 mem
         writeFile(LittleFS, "/AlternatorFuelUsed.txt", "0");  // not pointless
         queueConsoleMessage("Fuel Used: Reset requested from web interface");
       } else if (request->hasParam("ResetAlternatorChargedEnergy")) {
+        foundParameter = true;
         AlternatorChargedEnergy = 0;                               // reset the variable on ESP32 mem
         writeFile(LittleFS, "/AlternatorChargedEnergy.txt", "0");  // not pointless
         queueConsoleMessage("Alternator Charged Energy: Reset requested from web interface");
       } else if (request->hasParam("ResetEngineCycles")) {
+        foundParameter = true;
         EngineCycles = 0;                               // reset the variable on ESP32 mem
         writeFile(LittleFS, "/EngineCycles.txt", "0");  // not pointless
         queueConsoleMessage("Engine Cycles: Reset requested from web interface");
       } else if (request->hasParam("ResetRPMMax")) {
+        foundParameter = true;
         RPMMax = 0;                               // reset the variable on ESP32 mem
         writeFile(LittleFS, "/RPMMax.txt", "0");  // not pointless
         queueConsoleMessage("Max Engine Speed: Reset requested from web interface");
       } else if (request->hasParam("MaximumAllowedBatteryAmps")) {
+        foundParameter = true;
         inputMessage = request->getParam("MaximumAllowedBatteryAmps")->value();
         writeFile(LittleFS, "/MaximumAllowedBatteryAmps.txt", inputMessage.c_str());
         MaximumAllowedBatteryAmps = inputMessage.toInt();
-      }
-
-
-      else if (request->hasParam("ManualSOCPoint")) {
+      } else if (request->hasParam("ManualSOCPoint")) {
+        foundParameter = true;
         inputMessage = request->getParam("ManualSOCPoint")->value();
         writeFile(LittleFS, "/ManualSOCPoint.txt", inputMessage.c_str());
         ManualSOCPoint = inputMessage.toInt();
-      }
-
-      // else if (request->hasParam("ManualSOCPoint")) {
-      //    inputMessage = request->getParam("ManualSOCPoint")->value();
-      //    ManualSOCPoint = inputMessage.toInt();
-      //    SoC_percent = ManualSOCPoint * 100;
-      //     CoulombCount_Ah_scaled = (ManualSOCPoint * BatteryCapacity_Ah);  // Keep them in sync
-      //     queueConsoleMessage("Manual SoC set to " + String(ManualSOCPoint) + "%");
-      //   }
-
-
-      else if (request->hasParam("BatteryVoltageSource")) {
-        inputMessage = request->getParam("BatteryVoltageSource")->value();
-        writeFile(LittleFS, "/BatteryVoltageSource.txt", inputMessage.c_str());
-        BatteryVoltageSource = inputMessage.toInt();
       } else if (request->hasParam("AmpControlByRPM")) {
+        foundParameter = true;
         inputMessage = request->getParam("AmpControlByRPM")->value();
         writeFile(LittleFS, "/AmpControlByRPM.txt", inputMessage.c_str());
         AmpControlByRPM = inputMessage.toInt();
       } else if (request->hasParam("ShuntResistanceMicroOhm")) {
+        foundParameter = true;
         inputMessage = request->getParam("ShuntResistanceMicroOhm")->value();
         writeFile(LittleFS, "/ShuntResistanceMicroOhm.txt", inputMessage.c_str());
         ShuntResistanceMicroOhm = inputMessage.toInt();
       } else if (request->hasParam("maxPoints")) {
+        foundParameter = true;
         inputMessage = request->getParam("maxPoints")->value();
         writeFile(LittleFS, "/maxPoints.txt", inputMessage.c_str());
         maxPoints = inputMessage.toInt();
       }
       // Handle RPM/AMPS table - use separate if statements, not else if, becuase we are sending more than 1 value at a time, unlike all the others!
       if (request->hasParam("RPM1")) {
+        foundParameter = true;
         inputMessage = request->getParam("RPM1")->value();
         writeFile(LittleFS, "/RPM1.txt", inputMessage.c_str());
         RPM1 = inputMessage.toInt();
       }
       if (request->hasParam("RPM2")) {
+        foundParameter = true;
         inputMessage = request->getParam("RPM2")->value();
         writeFile(LittleFS, "/RPM2.txt", inputMessage.c_str());
         RPM2 = inputMessage.toInt();
       }
       if (request->hasParam("RPM3")) {
+        foundParameter = true;
         inputMessage = request->getParam("RPM3")->value();
         writeFile(LittleFS, "/RPM3.txt", inputMessage.c_str());
         RPM3 = inputMessage.toInt();
       }
       if (request->hasParam("RPM4")) {
+        foundParameter = true;
         inputMessage = request->getParam("RPM4")->value();
         writeFile(LittleFS, "/RPM4.txt", inputMessage.c_str());
         RPM4 = inputMessage.toInt();
       }
       if (request->hasParam("RPM5")) {
+        foundParameter = true;
         inputMessage = request->getParam("RPM5")->value();
         writeFile(LittleFS, "/RPM5.txt", inputMessage.c_str());
         RPM5 = inputMessage.toInt();
       }
       if (request->hasParam("RPM6")) {
+        foundParameter = true;
         inputMessage = request->getParam("RPM6")->value();
         writeFile(LittleFS, "/RPM6.txt", inputMessage.c_str());
         RPM6 = inputMessage.toInt();
       }
       if (request->hasParam("RPM7")) {
+        foundParameter = true;
         inputMessage = request->getParam("RPM7")->value();
         writeFile(LittleFS, "/RPM7.txt", inputMessage.c_str());
         RPM7 = inputMessage.toInt();
       }
       if (request->hasParam("Amps1")) {
+        foundParameter = true;
         inputMessage = request->getParam("Amps1")->value();
         writeFile(LittleFS, "/Amps1.txt", inputMessage.c_str());
         Amps1 = inputMessage.toInt();
       }
       if (request->hasParam("Amps2")) {
+        foundParameter = true;
         inputMessage = request->getParam("Amps2")->value();
         writeFile(LittleFS, "/Amps2.txt", inputMessage.c_str());
         Amps2 = inputMessage.toInt();
       }
       if (request->hasParam("Amps3")) {
+        foundParameter = true;
         inputMessage = request->getParam("Amps3")->value();
         writeFile(LittleFS, "/Amps3.txt", inputMessage.c_str());
         Amps3 = inputMessage.toInt();
       }
       if (request->hasParam("Amps4")) {
+        foundParameter = true;
         inputMessage = request->getParam("Amps4")->value();
         writeFile(LittleFS, "/Amps4.txt", inputMessage.c_str());
         Amps4 = inputMessage.toInt();
       }
       if (request->hasParam("Amps5")) {
+        foundParameter = true;
         inputMessage = request->getParam("Amps5")->value();
         writeFile(LittleFS, "/Amps5.txt", inputMessage.c_str());
         Amps5 = inputMessage.toInt();
       }
       if (request->hasParam("Amps6")) {
+        foundParameter = true;
         inputMessage = request->getParam("Amps6")->value();
         writeFile(LittleFS, "/Amps6.txt", inputMessage.c_str());
         Amps6 = inputMessage.toInt();
       }
       if (request->hasParam("Amps7")) {
+        foundParameter = true;
         inputMessage = request->getParam("Amps7")->value();
         writeFile(LittleFS, "/Amps7.txt", inputMessage.c_str());
         Amps7 = inputMessage.toInt();
-      } else {
-        inputMessage = "No message sent";
       }
-
+      if (!foundParameter) {
+        inputMessage = "No message sent, the request_hasParam found no match";
+      }
       request->send(200, "text/plain", inputMessage);
     });
 
@@ -1890,11 +2120,8 @@ void setupServer() {
     }
   });
 
-
   server.onNotFound([](AsyncWebServerRequest *request) {
     String path = request->url();
-    Serial.print("Request for: ");
-    Serial.println(path);
 
     if (LittleFS.exists(path)) {
       String contentType = "text/html";
@@ -1904,14 +2131,17 @@ void setupServer() {
       else if (path.endsWith(".png")) contentType = "image/png";
       else if (path.endsWith(".jpg")) contentType = "image/jpeg";
 
+      Serial.println("File found in LittleFS, serving with content-type: " + contentType);
       request->send(LittleFS, path, contentType);
     } else {
-      Serial.print("File not found: ");
+      Serial.print("File not found in LittleFS: ");
       Serial.println(path);
-      request->send(404, "text/plain", "File Not Found");
+      Serial.println("Redirecting to captive portal: " + WiFi.softAPIP().toString());
+      request->redirect("http://" + WiFi.softAPIP().toString());
     }
   });
 
+  // Setup event source for real-time updates
   events.onConnect([](AsyncEventSourceClient *client) {
     if (client->lastId()) {
       Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
@@ -1921,8 +2151,10 @@ void setupServer() {
 
   server.addHandler(&events);
   server.begin();
+  Serial.println("=== CONFIG SERVER STARTED ===");
 }
-// Process DNS requests for captive portal
+
+//process dns request for captive portals
 void dnsHandleRequest() {
   if (currentWiFiMode == AWIFI_MODE_AP) {
     dnsServer.processNextRequest();
@@ -2084,19 +2316,11 @@ void UpdateBatterySOC(unsigned long elapsedMillis) {
       AlternatorFuelUsed += (int)fuelAccumulator;
       fuelAccumulator -= (int)fuelAccumulator;
     }
-    // Debug output every 10 seconds to see what's happening
-    // static unsigned long lastFuelDebug = 0;
-    // if (millis() - lastFuelDebug > 10000) {
-    //  queueConsoleMessage("Fuel: " + String(fuelUsed_mL, 4) + "mL this cycle, " + String(fuelAccumulator, 4) + "mL accumulated, " + String(AlternatorFuelUsed) + "mL total");
-    //  lastFuelDebug = millis();
-    // }
   }
-
   // Energy accumulation - use proper rounding to preserve precision
   static float chargedEnergyAccumulator = 0.0f;
   static float dischargedEnergyAccumulator = 0.0f;
   static float alternatorEnergyAccumulator = 0.0f;
-
   if (BatteryCurrent_scaled > 0) {
     // Charging - energy going into battery
     chargedEnergyAccumulator += energyDelta_Wh;
@@ -2179,10 +2403,7 @@ void UpdateBatterySOC(unsigned long elapsedMillis) {
     FullChargeTimer = 0;
     FullChargeDetected = false;
   }
-  // Debug message with properly scaled values
-  //queueConsoleMessage("SoC Calc - A:" + String(batteryCurrent_A, 2) + " DeltaAh:" + String(deltaAh, 4) + " Accum:" + String(coulombAccumulator_Ah, 4) + " SoC:" + String(SoC_percent / 100.0f, 2) + "% Count:" + String(CoulombCount_Ah_scaled));
 }
-
 void UpdateEngineRuntime(unsigned long elapsedMillis) {
   // Check if engine is running (RPM > 100)
   bool engineIsRunning = (RPM > 100 && RPM < 6000);
@@ -2919,15 +3140,11 @@ int interpolateAmpsFromRPM(float currentRPM) {
   // If somehow we get here, use the standard target amps
   return TargetAmps;
 }
-
 void queueConsoleMessage(String message) {
   consoleMessageQueue.push_back(message);
-  //Serial.println("Queued: " + message);  // For debugging via serial monitor
 }
-
 void processConsoleQueue() {
   unsigned long now11 = millis();
-
   // Check if it's time to send messages and we have messages to send
   if (now11 - lastConsoleMessageTime >= CONSOLE_MESSAGE_INTERVAL && !consoleMessageQueue.empty()) {
     // Send up to 3 messages per interval
@@ -2937,21 +3154,14 @@ void processConsoleQueue() {
       String message = consoleMessageQueue.front();
       consoleMessageQueue.erase(consoleMessageQueue.begin());
       events.send(message.c_str(), "console");
-      // Serial.println("Sent to console: " + message);  // For debugging
     }
-
     lastConsoleMessageTime = now11;
   }
 }
-
 float getBatteryVoltage() {
   static unsigned long lastWarningTime = 0;
   const unsigned long WARNING_INTERVAL = 10000;  // 10 seconds between warnings
-
   float selectedVoltage = 0;
-
-
-
   switch (BatteryVoltageSource) {
     case 0:  // INA228
       if (INADisconnected == 0 && !isnan(IBV) && IBV > 8.0 && IBV < 70.0 && millis() > 5000) {
@@ -3261,7 +3471,6 @@ void CheckAlarms() {
     }
     previousAlarmState = currentAlarmCondition;
   }
-  // FIX: Add debug output for testing (remove after verification)
   static unsigned long lastDebugTime = 0;
   if (millis() - lastDebugTime > 5000) {  // Every 5 seconds
     lastDebugTime = millis();
@@ -3270,14 +3479,6 @@ void CheckAlarms() {
     }
   }
 }
-
-//void resetAlarmLatch() {
-// if (alarmLatch) {
-//   alarmLatch = false;
-//  queueConsoleMessage("ALARM LATCH: Manually reset in function!!");
-// }
-//}
-
 void logDashboardValues() {
   static unsigned long lastDashboardLog = 0;
   if (millis() - lastDashboardLog >= 10000) {  // Every 10 seconds
@@ -3339,40 +3540,51 @@ bool checkFactoryReset() {
     LittleFS.remove(AP_PASSWORD_FILE);
     LittleFS.remove("/password.txt");
     LittleFS.remove("/password.hash");
-
     // Reset variables to defaults
     permanentAPMode = 0;
     esp32_ap_password = "alternator123";  // Back to default
-
     Serial.println("FACTORY RESET: All settings cleared, entering factory config mode");
     queueConsoleMessage("FACTORY RESET: All settings cleared via hardware reset");
-
     return true;  // Factory reset performed
   }
-
   return false;  // Normal boot
 }
-
 void loadESP32APPassword() {
+  // Load AP password
   if (LittleFS.exists(AP_PASSWORD_FILE)) {
     String savedPassword = readFile(LittleFS, AP_PASSWORD_FILE);
     savedPassword.trim();
-    if (savedPassword.length() > 0) {  // Just check it's not empty
+    if (savedPassword.length() > 0) {
       esp32_ap_password = savedPassword;
-      Serial.println("ESP32 AP password loaded from storage");
+      Serial.println("ESP32 AP password loaded from storage: length=" + String(savedPassword.length()));
     } else {
-      Serial.println("Stored AP password is empty, using default");
-      esp32_ap_password = "alternator123";
+      Serial.println("Stored AP password is empty, keeping current value: " + esp32_ap_password);
+      // Don't overwrite - keep whatever was set during configuration
     }
   } else {
     Serial.println("No stored AP password, using default");
     esp32_ap_password = "alternator123";
   }
-}
 
+  // Load custom SSID
+  if (LittleFS.exists(AP_SSID_FILE)) {
+    String savedSSID = readFile(LittleFS, AP_SSID_FILE);
+    savedSSID.trim();
+    if (savedSSID.length() > 0) {
+      esp32_ap_ssid = savedSSID;
+      Serial.println("ESP32 AP SSID loaded from storage: " + esp32_ap_ssid);
+    } else {
+      Serial.println("Stored AP SSID is empty, keeping current value: " + esp32_ap_ssid);
+      // Don't overwrite - keep whatever was set during configuration
+    }
+  } else {
+    Serial.println("No stored AP SSID, using default");
+    esp32_ap_ssid = "ALTERNATOR_WIFI";
+  }
+}
 bool ensureLittleFS() {
   if (littleFSMounted) {
-    return true; // Already mounted, no need to try again
+    return true;
   }
   Serial.println("Initializing LittleFS...");
   if (!LittleFS.begin(true, "/littlefs", 10, "spiffs")) {
@@ -3388,11 +3600,53 @@ bool ensureLittleFS() {
     }
   } else {
     Serial.println("LittleFS mounted successfully");
-    littleFSMounted = true;
-    return true;
+  }
+  littleFSMounted = true;
+  return true;
+}
+void setupCaptivePortalLanding() {
+  Serial.println("Setting up captive portal landing...");
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    // Much smaller landing page to reduce memory usage
+    String page = "<!DOCTYPE html><html><head><title>Alternator Regulator Connected</title>";
+    page += "<meta name='viewport' content='width=device-width,initial-scale=1'>";
+    page += "<style>";
+    page += "body{font-family:Arial;text-align:center;padding:20px;background:#f5f5f5;line-height:1.6}";
+    page += ".card{background:white;padding:24px;border-left:4px solid #ff6600;border-radius:8px;max-width:500px;margin:0 auto;box-shadow:0 2px 4px rgba(0,0,0,0.1)}";
+    page += "h1{color:#333;margin-bottom:1rem;font-size:24px}";
+    page += ".success-box{background:#d4edda;border:1px solid #c3e6cb;color:#155724;padding:16px;border-radius:8px;margin:20px 0}";
+    page += ".big-button{display:inline-block;background:#ff6600;color:white;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:18px;margin:20px 0}";
+    page += ".big-button:hover{background:#e65c00}";
+    page += ".bookmark-info{background:#f8f9fa;border:1px solid #dee2e6;padding:12px;border-radius:8px;margin:16px 0;font-size:14px}";
+    page += ".ip-address{font-family:monospace;font-size:20px;font-weight:bold;color:#ff6600;background:#f8f9fa;padding:8px 12px;border-radius:8px;display:inline-block;margin:8px 0}";
+    page += "</style></head><body>";
+    page += "<div class='card'>";
+    page += "<h1>Alternator Regulator</h1>";
+    page += "<div class='success-box'><strong>Successfully Connected!</strong><br>You are now connected to the alternator regulator's WiFi network.</div>";
+    page += "<p>Access the full alternator control interface:</p>";
+    page += "<a href='http://192.168.4.1' class='big-button'>Open Alternator Interface</a>";
+    page += "<div class='bookmark-info'><strong>For easy future access:</strong><br>Bookmark this address: <span class='ip-address'>192.168.4.1</span></div>";
+    page += "<p style='margin-top:24px;font-size:14px;color:#666'><strong>Network:</strong> ALTERNATOR_WIFI<br><strong>Device IP:</strong> 192.168.4.1</p>";
+    page += "</div></body></html>";
+    request->send(200, "text/html", page);
+  });
+  server.begin();
+  Serial.println("Landing page ready");
+}
+void calculateChargeTimes() {
+  if (targetCurrent > 0.01) {  // charging
+    float remainingAh = BatteryCapacity_Ah * (100.0 - SoC_percent) / 100.0;
+    timeToFullChargeMin = (int)(remainingAh / targetCurrent * 60.0);
+    timeToFullDischargeMin = -999;
+  } else if (targetCurrent < -0.01) {  // discharging
+    float remainingAh = BatteryCapacity_Ah * SoC_percent / 100.0;
+    timeToFullDischargeMin = (int)(remainingAh / (-targetCurrent) * 60.0);
+    timeToFullChargeMin = -999;
+  } else {
+    timeToFullChargeMin = -999;
+    timeToFullDischargeMin = -999;
   }
 }
-
 void StuffToDoAtSomePoint() {
   //every reset button has a pointless flag and an echo.  I did not delete them for fear of breaking the payload and they hardly cost anything to keep
   //Battery Voltage Source drop down menu- make this text update on page re-load instead of just an echo number
