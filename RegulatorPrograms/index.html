@@ -374,6 +374,42 @@ Contact me at mark@xengineering.net       -->
     }
 
 
+    /* Tool tip tooltip stuff */
+    .tooltip {
+      cursor: pointer;
+      color: var(--accent);
+      font-weight: bold;
+      font-size: 13px;
+      position: relative;
+      display: inline-block;
+      margin-left: 4px;
+    }
+
+    .tooltip-box {
+      display: none;
+      position: absolute;
+      top: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      white-space: normal;
+      z-index: 999;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      max-width: 300px;
+      min-width: 180px;
+      width: fit-content;
+    }
+
+
+    .tooltip.active .tooltip-box {
+      display: block;
+    }
+
+
     /* Main Tab Navigation */
     .main-tabs {
       display: flex;
@@ -1049,7 +1085,20 @@ Contact me at mark@xengineering.net       -->
     let reconnectionAttempts = 0;
     const maxReconnectionAttempts = 15; // Try for 30 seconds (15 attempts × 2 seconds)
 
+
+    // Touch support: tap once to show tooltip, tap elsewhere to hide, for tooltips tool tip tooltip tips
+    document.addEventListener("click", function (e) {
+      document.querySelectorAll(".tooltip").forEach(el => el.classList.remove("active"));
+      const tip = e.target.closest(".tooltip");
+      if (tip) {
+        tip.classList.add("active");
+        e.stopPropagation();
+      }
+    });
+
   </script>
+
+
 </head>
 
 <body><iframe name="hidden-form" style="display:none"></iframe>
@@ -1211,7 +1260,13 @@ Contact me at mark@xengineering.net       -->
 
             <hr />
             <div class="form-row">
-              <div class="form-label">Force Float Mode (<span id="ForceFloat_echo">0</span>):</div>
+              <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+                <span>Force Float Mode (<span id="ForceFloat_echo">0</span>):</span>
+                <span class="tooltip" onclick="this.classList.toggle('active')">
+                  ℹ️
+                  <span class="tooltip-box">Targets 0 amps in/out of battery</span>
+                </span>
+              </div>
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
@@ -1227,9 +1282,16 @@ Contact me at mark@xengineering.net       -->
               </div>
             </div>
 
+
             <hr />
             <div class="form-row">
-              <div class="form-label">Amp Target Source (<span id="AmpSrc_echo">0</span>):</div>
+              <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+                <span>Amp Target Source (<span id="AmpSrc_echo">0</span>):</span>
+                <span class="tooltip" onclick="this.classList.toggle('active')">
+                  ℹ️
+                  <span class="tooltip-box">Controller will use this selection for feedback</span>
+                </span>
+              </div>
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
@@ -1248,9 +1310,17 @@ Contact me at mark@xengineering.net       -->
               </div>
             </div>
 
+
             <hr />
             <div class="form-row">
-              <div class="form-label">Alternator Temp Limit (F) (<span id="TemperatureLimitF_echo">0</span>):</div>
+              <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+                <span>Alternator Temp Limit (F) (<span id="TemperatureLimitF_echo">0</span>):</span>
+                <span class="tooltip" onclick="this.classList.toggle('active')">
+                  ℹ️
+                  <span class="tooltip-box">30F offset from measured temp to true max temp not uncommon; set this lower
+                    accordingly</span>
+                </span>
+              </div>
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
@@ -1259,6 +1329,7 @@ Contact me at mark@xengineering.net       -->
                 </form>
               </div>
             </div>
+
 
             <hr />
             <div class="form-row">
@@ -1425,7 +1496,13 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Ignore Alt Temp (<span id="IgnoreTemperature_echo">0</span>):</div>
+            <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+              <span>Ignore Alt Temp (<span id="IgnoreTemperature_echo">0</span>):</span>
+              <span class="tooltip" onclick="this.classList.toggle('active')">
+                ℹ️
+                <span class="tooltip-box">For emergency use, if temp sensor is bad</span>
+              </span>
+            </div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1440,6 +1517,8 @@ Contact me at mark@xengineering.net       -->
               </form>
             </div>
           </div>
+
+
           <hr />
           <div class="form-row">
             <div class="form-label">Defer to BMS Control (<span id="BMSLogic_echo">0</span>):</div>
@@ -1479,7 +1558,13 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Min Field (%) (<span id="MinDuty_echo">0</span>):</div>
+            <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+              <span>Min Field (%) (<span id="MinDuty_echo">0</span>):</span>
+              <span class="tooltip" onclick="this.classList.toggle('active')">
+                ℹ️
+                <span class="tooltip-box">Engine Speed may register better if min field is kept >15% or so</span>
+              </span>
+            </div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1488,6 +1573,7 @@ Contact me at mark@xengineering.net       -->
               </form>
             </div>
           </div>
+
 
           <hr />
           <div class="form-row">
@@ -1503,7 +1589,13 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Field Resistance (Ohms) (<span id="FieldResistance_echo">0</span>):</div>
+            <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+              <span>Field Resistance (Ohms) (<span id="FieldResistance_echo">0</span>):</span>
+              <span class="tooltip" onclick="this.classList.toggle('active')">
+                ℹ️
+                <span class="tooltip-box">Only affects Field Amps calc, not important</span>
+              </span>
+            </div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1512,6 +1604,7 @@ Contact me at mark@xengineering.net       -->
               </form>
             </div>
           </div>
+
 
           <hr />
           <div class="form-row">
@@ -1630,7 +1723,13 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Limp Home Mode (<span id="LimpHome_echo">0</span>):</div>
+            <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+              <span>Limp Home Mode (<span id="LimpHome_echo">0</span>):</span>
+              <span class="tooltip" onclick="this.classList.toggle('active')">
+                ℹ️
+                <span class="tooltip-box">Will ignore all sensors and set a field of 50%</span>
+              </span>
+            </div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1645,6 +1744,7 @@ Contact me at mark@xengineering.net       -->
               </form>
             </div>
           </div>
+
 
         </div> <!-- closes .settings-card for Advanced -->
       </div>
@@ -1889,9 +1989,15 @@ Contact me at mark@xengineering.net       -->
               </form>
             </div>
           </div>
+
           <hr />
           <div class="form-row">
-            <div class="form-label">Shunt Resitance uOhms (micro)(<span id="ShuntResistanceMicroOhm_echo">0</span>):
+            <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+              <span>Shunt Resitance uOhms (micro)(<span id="ShuntResistanceMicroOhm_echo">0</span>):</span>
+              <span class="tooltip" onclick="this.classList.toggle('active')">
+                ℹ️
+                <span class="tooltip-box">Most common (Victron) = 100u</span>
+              </span>
             </div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
@@ -1901,6 +2007,8 @@ Contact me at mark@xengineering.net       -->
               </form>
             </div>
           </div>
+
+
           <hr />
           <div class="form-row">
             <div class="form-label">Set SoC Manually (%) (<span id="ManualSOCPoint_echo">0</span>):</div>
@@ -2074,14 +2182,20 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Switch Panel Override (<span id="SwitchControlOverride_echo">0</span>):</div>
+            <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+              <span>Switch Panel Override (<span id="SwitchControlOverride_echo">0</span>):</span>
+              <span class="tooltip" onclick="this.classList.toggle('active')">
+                ℹ️
+                <span class="tooltip-box">Obsolete, ignore</span>
+              </span>
+            </div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <span class="toggle-label">Off</span>
                 <label class="switch">
-                  <input id="SwitchControlOverride_checkbox" type="checkbox" onchange="if(handleUserToggle('SwitchControlOverride_checkbox', 'SwitchControlOverride',
-              'SwitchControlOverride')) { this.form.submit(); submitMessage(); }" />
+                  <input id="SwitchControlOverride_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('SwitchControlOverride_checkbox', 'SwitchControlOverride', 'SwitchControlOverride')) { this.form.submit(); submitMessage(); }" />
                   <span class="slider round"></span>
                 </label>
                 <span class="toggle-label">On</span>
@@ -2091,9 +2205,16 @@ Contact me at mark@xengineering.net       -->
             </div>
           </div>
 
+
           <hr />
           <div class="form-row">
-            <div class="form-label">Ignition Override (<span id="IgnitionOverride_echo">0</span>):</div>
+            <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+              <span>Ignition Override (<span id="IgnitionOverride_echo">0</span>):</span>
+              <span class="tooltip" onclick="this.classList.toggle('active')">
+                ℹ️
+                <span class="tooltip-box">Danger, this is a good way to accidentally leave the field on</span>
+              </span>
+            </div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -2108,6 +2229,7 @@ Contact me at mark@xengineering.net       -->
               </form>
             </div>
           </div>
+
 
           <div class="form-row">
             <div class="form-label">Change Password:</div>
@@ -2218,7 +2340,7 @@ Contact me at mark@xengineering.net       -->
             </div>
 
             <div class="card">
-              <p>Batt Discharged Energy</p>
+              <p>Battery Discharged Energy</p>
               <div class="reading" style="display: flex; align-items: center; gap: 4px;">
                 <span id="DischargedEnergyID">0</span><span>Wh</span>
                 <form action="/get" method="GET" target="hidden-form" style="display: inline;">
@@ -2240,7 +2362,15 @@ Contact me at mark@xengineering.net       -->
               <p class="reading"><span id="VictronCurrentID">0</span> A</p>
             </div>
 
+            <div class="card">
+              <p>Time to Full Charge</p>
+              <p class="reading"><span id="timeToFullChargeMinID">0</span> min</p>
+            </div>
 
+            <div class="card">
+              <p>Time to Full Discharge</p>
+              <p class="reading"><span id="timeToFullChargeMinID">0</span> min</p>
+            </div>
           </div>
         </div>
       </div>
@@ -2415,37 +2545,89 @@ Contact me at mark@xengineering.net       -->
           <div class="section-title">ESP32</div>
           <div class="grid">
             <div class="card">
-              <p>Loop Time</p>
-              <p class="reading"><span id="LoopTimeID">0</span> μs</p>
+              <p style="display: flex; align-items: center; justify-content: space-between;">
+                <span>Maximum Loop Time</span>
+                <span class="tooltip" onclick="this.classList.toggle('active')">
+                  ℹ️
+                  <span class="tooltip-box">15,000uS typ.</span>
+                </span>
+              </p>
+              <p class="reading"><span id="MaximumLoopTimeID">0</span> μs</p>
             </div>
+
             <div class="card">
               <p>Maximum Loop Time</p>
               <p class="reading"><span id="MaximumLoopTimeID">0</span> μs</p>
             </div>
             <div class="card">
-              <p>Analog Read Time (Max)</p>
+              <p style="display: flex; align-items: center; justify-content: space-between;">
+                <span>Analog Read Time (Max)</span>
+                <span class="tooltip" onclick="this.classList.toggle('active')">
+                  ℹ️
+                  <span class="tooltip-box">1,000uS typ.</span>
+                </span>
+              </p>
               <p class="reading"><span id="AnalogReadTimeID">0</span> μs</p>
             </div>
+
             <div class="card">
-              <p>Wifi Send Time</p>
+              <p style="display: flex; align-items: center; justify-content: space-between;">
+                <span>Wifi Send Time</span>
+                <span class="tooltip" onclick="this.classList.toggle('active')">
+                  ℹ️
+                  <span class="tooltip-box">14,000us typ.</span>
+                </span>
+              </p>
               <p class="reading"><span id="SendWifiTimeID">0</span> μs</p>
             </div>
+
             <div class="card">
-              <p>VE Dir. Read Time</p>
+              <p style="display: flex; align-items: center; justify-content: space-between;">
+                <span>VE Dir. Read Time</span>
+                <span class="tooltip" onclick="this.classList.toggle('active')">
+                  ℹ️
+                  <span class="tooltip-box">12,000us typ.</span>
+                </span>
+              </p>
               <p class="reading"><span id="VeTimeID">0</span> μs</p>
             </div>
+
             <div class="card">
-              <p>Wifi Strength</p>
+              <p style="display: flex; align-items: center; justify-content: space-between;">
+                <span>Wifi Strength</span>
+                <span class="tooltip" onclick="this.classList.toggle('active')">
+                  ℹ️
+                  <span class="tooltip-box">Above –67 dBm good. Below –75 dBm unstable</span>
+                </span>
+              </p>
               <p class="reading"><span id="WifiStrengthID">0</span> dB</p>
             </div>
+
             <div class="card">
-              <p>Wifi Heartbeat</p>
+              <p style="display: flex; align-items: center; justify-content: space-between;">
+                <span>Wifi Heartbeat</span>
+                <span class="tooltip" onclick="this.classList.toggle('active')">
+                  ℹ️
+                  <span class="tooltip-box">Increments...</span>
+                </span>
+              </p>
               <p class="reading"><span id="WifiHeartBeatID">0</span> #</p>
             </div>
+
             <div class="card">
-              <p>Free Heap Memory</p>
-              <p class="reading"><span id="FreeHeapID">0</span> kb</p>
+              <p style="display: flex; align-items: center; justify-content: space-between;">
+                <span>Free Heap Memory</span>
+                <span class="tooltip" onclick="this.classList.toggle('active')">
+                  ℹ️
+                  <span class="tooltip-box">132 kB+ typ., danger below 20 kB</span>
+                </span>
+              </p>
+              <p class="reading"><span id="FreeHeapID">0</span> kB</p>
             </div>
+
+
+
+
           </div>
         </div>
       </div>
@@ -2648,7 +2830,10 @@ Contact me at mark@xengineering.net       -->
       LongitudeNMEA: 116,
       SatelliteCountNMEA: 117,
       GPIO33_Status: 118,
-      fieldActiveStatus: 119
+      fieldActiveStatus: 119,
+      timeToFullChargeMin: 120,
+      timeToFullDischargeMin: 121
+
     };
 
     //Factory Reset Logic
@@ -3514,8 +3699,9 @@ Contact me at mark@xengineering.net       -->
           ["header-alt-current", "MeasuredAmps"],          // Add this
           ["header-batt-current", "Bcur"],                 // Add this
           ["header-alt-temp", "AlternatorTemperatureF"],   // Add this
-          ["header-rpm", "RPM"]                            // Add this
-
+          ["header-rpm", "RPM"],                          // Add this
+          ["timeToFullChargeMinID", "timeToFullChargeMin"],
+          ["timeToFullDischargeMinID", "timeToFullDischargeMin"]
 
         ];
 
@@ -3693,8 +3879,9 @@ Contact me at mark@xengineering.net       -->
             bulkCompleteTime: values[fieldIndexes.bulkCompleteTime],
             FLOAT_DURATION: values[fieldIndexes.FLOAT_DURATION],
             GPIO33_Status: values[fieldIndexes.GPIO33_Status],
-            fieldActiveStatus: values[fieldIndexes.fieldActiveStatus],  // Add this line
-
+            fieldActiveStatus: values[fieldIndexes.fieldActiveStatus],
+            timeToFullChargeMin: values[fieldIndexes.timeToFullChargeMin],
+            timeToFullDischargeMin: values[fieldIndexes.timeToFullDischargeMin]
 
           };
 
@@ -3725,7 +3912,7 @@ Contact me at mark@xengineering.net       -->
               }
             }
 
-            // Apply staleness using ages directly - much simpler!
+            // Apply staleness using ages directly 
             applyStaleStyleByAge("GPSHID", window.sensorAges.heading);                      // GPS heading
             applyStaleStyleByAge("LatitudeNMEA_ID", window.sensorAges.latitude);            // GPS latitude
             applyStaleStyleByAge("LongitudeNMEA_ID", window.sensorAges.longitude);          // GPS longitude
