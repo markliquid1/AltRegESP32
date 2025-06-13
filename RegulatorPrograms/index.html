@@ -374,6 +374,12 @@ Contact me at mark@xengineering.net       -->
     }
 
 
+    /* Input Validation, RPM table and others */
+    .input-error {
+      border: 2px solid red;
+    }
+
+
     /* Tool tip tooltip stuff */
     .tooltip {
       cursor: pointer;
@@ -1222,7 +1228,7 @@ Contact me at mark@xengineering.net       -->
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
-                  <input name="TargetAmps" type="number" step="1" min="0" />
+                  <input name="TargetAmps" type="number" step="1" min="0" max="500" />
                   <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
                 </form>
               </div>
@@ -1234,7 +1240,7 @@ Contact me at mark@xengineering.net       -->
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
-                  <input name="TargetAmpL" type="number" step="1" min="0" />
+                  <input name="TargetAmpL" type="number" step="1" min="0" max="500" />
                   <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
                 </form>
               </div>
@@ -1324,7 +1330,7 @@ Contact me at mark@xengineering.net       -->
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
-                  <input name="TemperatureLimitF" type="number" step="1" min="0" />
+                  <input name="TemperatureLimitF" type="number" step="1" min="0" max="350" />
                   <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
                 </form>
               </div>
@@ -1337,7 +1343,7 @@ Contact me at mark@xengineering.net       -->
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
-                  <input name="FullChargeVoltage" type="number" step="0.01" min="0" />
+                  <input name="FullChargeVoltage" type="number" step="0.01" min="1" max="70" />
                   <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
                 </form>
               </div>
@@ -1349,7 +1355,7 @@ Contact me at mark@xengineering.net       -->
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
-                  <input name="bulkCompleteTime" type="number" step="1" min="0" />
+                  <input name="bulkCompleteTime" type="number" step="1" min="1" max="600" />
                   <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
                 </form>
               </div>
@@ -1362,7 +1368,7 @@ Contact me at mark@xengineering.net       -->
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
-                  <input name="TargetFloatVoltage" type="number" step="0.01" min="0" />
+                  <input name="TargetFloatVoltage" type="number" step="0.01" min="1" max="70" />
                   <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
                 </form>
               </div>
@@ -1374,7 +1380,7 @@ Contact me at mark@xengineering.net       -->
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
-                  <input name="FLOAT_DURATION" type="number" step="1" min="0" />
+                  <input name="FLOAT_DURATION" type="number" step="1" min="1" max="72" />
                   <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
                 </form>
               </div>
@@ -1411,7 +1417,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="R_fixed" type="number" step="1" min="0" />
+                <input name="R_fixed" type="number" step="1" min="0" max="1000000" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1423,7 +1429,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="Beta" type="number" step="1" min="0" />
+                <input name="Beta" type="number" step="1" min="0" max="100000" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1435,7 +1441,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="T0_C" type="number" step="0.1" min="-50" />
+                <input name="T0_C" type="number" step="0.1" min="0" max="300" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1453,7 +1459,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="SwitchingFrequency" type="number" step="1" min="0" />
+                <input name="SwitchingFrequency" type="number" step="1" min="50" max="1100" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1464,7 +1470,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="interval" type="number" step="0.001" min="0" />
+                <input name="interval" type="number" step="0.01" min="0.01" max="100" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1476,7 +1482,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="FieldAdjustmentinterval" type="number" step="1" min="0" />
+                <input name="FieldAdjustmentinterval" type="number" step="1" min="10" max="100000" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1488,7 +1494,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="RPMScalingFactor" type="number" step="0.01" min="0" />
+                <input name="RPMScalingFactor" type="number" step="1" min="1" max="1000000" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1568,7 +1574,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="MinDuty" type="number" step="1" min="0" />
+                <input name="MinDuty" type="number" step="1" min="0" max="100" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1581,7 +1587,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="MaxDuty" type="number" step="1" min="0" />
+                <input name="MaxDuty" type="number" step="1" min="0" max="100" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1599,7 +1605,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="FieldResistance" type="number" step=".01" min="0" />
+                <input name="FieldResistance" type="number" step="0.01" min="0.01" max="100" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1715,7 +1721,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="ManualDuty" type="number" step="1" min="0" />
+                <input name="ManualDuty" type="number" step="1" min="0" max="100" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1741,6 +1747,113 @@ Contact me at mark@xengineering.net       -->
                 </label>
                 <span class="toggle-label">On</span>
                 <input id="LimpHome" name="LimpHome" type="number" value="" style="display:none;" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+              <span>SOC Auto-Correction (<span id="AutoShuntGainCorrection_echo">0</span>):</span>
+              <span class="tooltip" onclick="this.classList.toggle('active')">
+                ℹ️
+                <span class="tooltip-box">Automatically corrects battery current readings when full charge is detected.
+                  Only works with Battery Shunt (AmpSrc=1).</span>
+              </span>
+            </div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">Off</span>
+                <label class="switch">
+                  <input id="AutoShuntGainCorrection_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('AutoShuntGainCorrection_checkbox', 'AutoShuntGainCorrection', 'AutoShuntGainCorrection')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">On</span>
+                <input id="AutoShuntGainCorrection" name="AutoShuntGainCorrection" type="number" value=""
+                  style="display:none;" />
+                <button type="button" class="btn-secondary" onclick="resetDynamicShuntGain()"
+                  style="margin-left: 10px;">
+                  Reset Factor
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+              <span>Alternator Auto-Zero (<span id="AutoAltCurrentZero_echo">0</span>):</span>
+              <span class="tooltip" onclick="this.classList.toggle('active')">
+                ℹ️
+                <span class="tooltip-box">Automatically zeros alternator current reading every hour and when temperature
+                  changes 20°F.</span>
+              </span>
+            </div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <span class="toggle-label">Off</span>
+                <label class="switch">
+                  <input id="AutoAltCurrentZero_checkbox" type="checkbox"
+                    onchange="if(handleUserToggle('AutoAltCurrentZero_checkbox', 'AutoAltCurrentZero', 'AutoAltCurrentZero')) { this.form.submit(); submitMessage(); }" />
+                  <span class="slider round"></span>
+                </label>
+                <span class="toggle-label">On</span>
+                <input id="AutoAltCurrentZero" name="AutoAltCurrentZero" type="number" value="" style="display:none;" />
+                <button type="button" class="btn-secondary" onclick="resetDynamicAltZero()" style="margin-left: 10px;">
+                  Reset Zero
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+              <span>Winding Temp Offset (°F) (<span id="WindingTempOffset_echo">50.0</span>):</span>
+              <span class="tooltip" onclick="this.classList.toggle('active')">
+                ℹ️
+                <span class="tooltip-box">How much hotter windings are than case temperature. Typical: 40-60°F</span>
+              </span>
+            </div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="WindingTempOffset" type="number" step="0.1" min="0" max="100" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+              <span>Pulley Ratio (Alt:Engine) (<span id="PulleyRatio_echo">2.00</span>):</span>
+              <span class="tooltip" onclick="this.classList.toggle('active')">
+                ℹ️
+                <span class="tooltip-box">Alternator RPM = Engine RPM × this ratio. Common: 2.0-3.0</span>
+              </span>
+            </div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="PulleyRatio" type="number" step="0.01" min="1.0" max="5.0" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
+              </form>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
+            <div class="form-label">Set Alternator Life Manually (%) (<span id="ManualLifePercentage_echo">100</span>):
+            </div>
+            <div class="form-input">
+              <form action="/get" method="GET" target="hidden-form">
+                <input type="hidden" name="password" class="password_field">
+                <input name="ManualLifePercentage" type="number" step="1" min="0" max="100" />
+                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
@@ -1776,7 +1889,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="TempAlarm" type="number" step="1" min="0" />
+                <input name="TempAlarm" type="number" step="1" min="0" max="350" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1787,7 +1900,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="VoltageAlarmHigh" type="number" step="0.1" min="0" />
+                <input name="VoltageAlarmHigh" type="number" step="0.1" min="0" max="70" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1798,7 +1911,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="VoltageAlarmLow" type="number" step="0.1" min="0" />
+                <input name="VoltageAlarmLow" type="number" step="0.1" min="0" max="70" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1810,7 +1923,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="CurrentAlarmHigh" type="number" step="1" min="0" />
+                <input name="CurrentAlarmHigh" type="number" step="1" min="0" max="1000" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1824,7 +1937,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="MaximumAllowedBatteryAmps" type="number" step="1" min="0" />
+                <input name="MaximumAllowedBatteryAmps" type="number" step="1" min="0" max="1000" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1913,7 +2026,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="BatteryCapacity_Ah" type="number" step="1" min="0" max="3000" />
+                <input name="BatteryCapacity_Ah" type="number" step="1" min="1" max="10000" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1925,7 +2038,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="CurrentThreshold" type="number" step="0.1" min="0" />
+                <input name="CurrentThreshold" type="number" step="0.01" min="0.01" max="20" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1937,7 +2050,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="TailCurrent" type="number" step="0.1" min="0" />
+                <input name="TailCurrent" type="number" step="0.01" min="0.01" max="100" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1949,7 +2062,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="ChargedDetectionTime" type="number" step="1" min="0" />
+                <input name="ChargedDetectionTime" type="number" step="1" min="1" max="10000" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1962,7 +2075,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="PeukertExponent" type="number" step="0.01" min="1" />
+                <input name="PeukertExponent" type="number" step="0.01" min="0.5" max="2.0" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1973,7 +2086,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="ChargeEfficiency" type="number" step="1" min="50" max="100" />
+                <input name="ChargeEfficiency" type="number" step="1" min="30" max="150" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1984,7 +2097,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="ChargedVoltage" type="number" step="0.01" min="12" />
+                <input name="ChargedVoltage" type="number" step="0.01" min="5" max="70" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -2002,7 +2115,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="ShuntResistanceMicroOhm" type="number" step="1" min="12" />
+                <input name="ShuntResistanceMicroOhm" type="number" step="1" min="1" max="5000" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -2152,7 +2265,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="AlternatorCOffset" type="number" step=".01" min="-100" max="100" />
+                <input name="AlternatorCOffset" type="number" step="0.01" min="-100" max="100" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -2163,7 +2276,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="BatteryCOffset" type="number" step=".01" min="-100" max="100" />
+                <input name="BatteryCOffset" type="number" step="0.01" min="-100" max="100" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -2174,7 +2287,7 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="maxPoints" type="number" step="1" min="5" max="10000" />
+                <input name="maxPoints" type="number" step="1" min="10" max="1000" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -2371,9 +2484,16 @@ Contact me at mark@xengineering.net       -->
               <p>Time to Full Discharge</p>
               <p class="reading"><span id="timeToFullChargeMinID">0</span> min</p>
             </div>
+
+            <div class="card">
+              <p>SOC Gain Factor (Auto-Learned)</p>
+              <p class="reading"><span id="DynamicShuntGainFactorID">1.000</span></p>
+            </div>
+
           </div>
         </div>
       </div>
+
 
       <!-- Alternator Live Data Sub-tab -->
       <div id="livedata-alternator" class="sub-tab-content">
@@ -2452,6 +2572,10 @@ Contact me at mark@xengineering.net       -->
               </div>
             </div>
 
+            <div class="card">
+              <p>Alt Current Zero Offset (Auto-Learned)</p>
+              <p class="reading"><span id="DynamicAltCurrentZeroID">0.000</span> A</p>
+            </div>
 
             <div class="card">
               <p>Max Alternator Temp</p>
@@ -2464,6 +2588,39 @@ Contact me at mark@xengineering.net       -->
                     id="ResetTemp_button">Reset</button>
                 </form>
               </div>
+            </div>
+
+            <div class="card">
+              <p>Insulation Life Remaining</p>
+              <p class="reading" id="insulation-life-display">
+                <span id="InsulationLifePercentID">100.0</span>%
+                <span id="insulation-indicator"
+                  style="margin-left: 8px; font-size: 12px; font-weight: bold;">Good</span>
+              </p>
+            </div>
+
+            <div class="card">
+              <p>Bearing Grease Life Remaining</p>
+              <p class="reading" id="grease-life-display">
+                <span id="GreaseLifePercentID">100.0</span>%
+                <span id="grease-indicator" style="margin-left: 8px; font-size: 12px; font-weight: bold;">Good</span>
+              </p>
+            </div>
+
+            <div class="card">
+              <p>Brush Life Remaining</p>
+              <p class="reading" id="brush-life-display">
+                <span id="BrushLifePercentID">100.0</span>%
+                <span id="brush-indicator" style="margin-left: 8px; font-size: 12px; font-weight: bold;">Good</span>
+              </p>
+            </div>
+
+            <div class="card">
+              <p>Predicted Life Remaining</p>
+              <p class="reading" id="predicted-life-display">
+                <span id="PredictedLifeHoursID">10000</span> hours
+                <span id="predicted-indicator" style="margin-left: 8px; font-size: 12px; font-weight: bold;">Good</span>
+              </p>
             </div>
 
             <div class="card">
@@ -2832,7 +2989,18 @@ Contact me at mark@xengineering.net       -->
       GPIO33_Status: 118,
       fieldActiveStatus: 119,
       timeToFullChargeMin: 120,
-      timeToFullDischargeMin: 121
+      timeToFullDischargeMin: 121,
+      AutoShuntGainCorrection: 122,
+      DynamicShuntGainFactor: 123,
+      AutoAltCurrentZero: 124,
+      DynamicAltCurrentZero: 125,
+      InsulationLifePercent: 126,
+      GreaseLifePercent: 127,
+      BrushLifePercent: 128,
+      PredictedLifeHours: 129,
+      LifeIndicatorColor: 130,
+      WindingTempOffset: 131,
+      PulleyRatio: 132
 
     };
 
@@ -3574,6 +3742,8 @@ Contact me at mark@xengineering.net       -->
         updateCheckbox("TempSource_checkbox", data.TempSource, "TempSource");
         updateCheckbox("AlarmLatchEnabled_checkbox", data.AlarmLatchEnabled, "AlarmLatchEnabled");
         updateCheckbox("ForceFloat_checkbox", data.ForceFloat, "ForceFloat");
+        updateCheckbox("AutoShuntGainCorrection_checkbox", data.AutoShuntGainCorrection, "AutoShuntGainCorrection");
+        updateCheckbox("AutoAltCurrentZero_checkbox", data.AutoAltCurrentZero, "AutoAltCurrentZero");
 
       } catch (e) {
         console.log("Error updating toggle states: " + e.message);
@@ -3701,7 +3871,13 @@ Contact me at mark@xengineering.net       -->
           ["header-alt-temp", "AlternatorTemperatureF"],   // Add this
           ["header-rpm", "RPM"],                          // Add this
           ["timeToFullChargeMinID", "timeToFullChargeMin"],
-          ["timeToFullDischargeMinID", "timeToFullDischargeMin"]
+          ["timeToFullDischargeMinID", "timeToFullDischargeMin"],
+          ["DynamicShuntGainFactorID", "DynamicShuntGainFactor"],
+          ["DynamicAltCurrentZeroID", "DynamicAltCurrentZero"],
+          ["InsulationLifePercentID", "InsulationLifePercent"],
+          ["GreaseLifePercentID", "GreaseLifePercent"],
+          ["BrushLifePercentID", "BrushLifePercent"],
+          ["PredictedLifeHoursID", "PredictedLifeHours"]
 
         ];
 
@@ -3881,7 +4057,18 @@ Contact me at mark@xengineering.net       -->
             GPIO33_Status: values[fieldIndexes.GPIO33_Status],
             fieldActiveStatus: values[fieldIndexes.fieldActiveStatus],
             timeToFullChargeMin: values[fieldIndexes.timeToFullChargeMin],
-            timeToFullDischargeMin: values[fieldIndexes.timeToFullDischargeMin]
+            timeToFullDischargeMin: values[fieldIndexes.timeToFullDischargeMin],
+            AutoShuntGainCorrection: values[fieldIndexes.AutoShuntGainCorrection],
+            DynamicShuntGainFactor: values[fieldIndexes.DynamicShuntGainFactor],
+            AutoAltCurrentZero: values[fieldIndexes.AutoAltCurrentZero],
+            DynamicAltCurrentZero: values[fieldIndexes.DynamicAltCurrentZero],
+            InsulationLifePercent: values[fieldIndexes.InsulationLifePercent],
+            GreaseLifePercent: values[fieldIndexes.GreaseLifePercent],
+            BrushLifePercent: values[fieldIndexes.BrushLifePercent],
+            PredictedLifeHours: values[fieldIndexes.PredictedLifeHours],
+            LifeIndicatorColor: values[fieldIndexes.LifeIndicatorColor],
+            WindingTempOffset: values[fieldIndexes.WindingTempOffset],
+            PulleyRatio: values[fieldIndexes.PulleyRatio]
 
           };
 
@@ -3993,6 +4180,23 @@ Contact me at mark@xengineering.net       -->
                 const seconds = totalSeconds % 60;  // Remaining seconds
                 newTextContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
               }
+              // cool dynamic adjustments
+              else if (["DynamicShuntGainFactor", "DynamicAltCurrentZero"].includes(key)) {
+                newTextContent = (value / 1000).toFixed(3);
+              }
+              //alternator life parameter scaling
+              // Values scaled by 100 on server (transmitted as integer × 100)
+              else if (["InsulationLifePercent", "GreaseLifePercent", "BrushLifePercent"].includes(key)) {
+                newTextContent = (value / 100).toFixed(1);
+              }
+              // Values scaled by 10 on server (transmitted as integer × 10)
+              else if (["WindingTempOffset"].includes(key)) {
+                newTextContent = (value / 10).toFixed(1);
+              }
+              // Values scaled by 100 on server (transmitted as integer × 100)  
+              else if (["PulleyRatio"].includes(key)) {
+                newTextContent = (value / 100).toFixed(2);
+              }
               // Settings echo values that need scaling
               else if (["TargetAmps", "TargetAmpL"].includes(key)) {
                 newTextContent = value;  // These are not scaled - transmitted as integer amps
@@ -4011,6 +4215,7 @@ Contact me at mark@xengineering.net       -->
           };
 
           updateFields(telemetryFields);  // only visible span updates
+          updateLifeIndicators(data); // for the alternator lifetime calculation
 
           // document.getElementById('header-alternator-enable').checked = (data.OnOff === 1); // no idea, don't ask
 
@@ -4250,6 +4455,21 @@ Contact me at mark@xengineering.net       -->
           }
           if ('FLOAT_DURATION' in data) {
             document.getElementById('FLOAT_DURATION_echo').textContent = Math.round(data.FLOAT_DURATION / 3600);
+          }
+          if ('AutoShuntGainCorrection' in data) {
+            document.getElementById('AutoShuntGainCorrection_echo').textContent = data.AutoShuntGainCorrection;
+          }
+          if ('AutoAltCurrentZero' in data) {
+            document.getElementById('AutoAltCurrentZero_echo').textContent = data.AutoAltCurrentZero;
+          }
+          if ('WindingTempOffset' in data) {
+            document.getElementById('WindingTempOffset_echo').textContent = (data.WindingTempOffset / 10).toFixed(1);
+          }
+          if ('PulleyRatio' in data) {
+            document.getElementById('PulleyRatio_echo').textContent = (data.PulleyRatio / 100).toFixed(2);
+          }
+          if ('ManualLifePercentage' in data) {
+            document.getElementById('ManualLifePercentage_echo').textContent = data.ManualLifePercentage;
           }
           if ('AlarmLatchState' in data) {
             const latchDisplay = document.getElementById('AlarmLatchState_display');
@@ -4507,6 +4727,10 @@ Contact me at mark@xengineering.net       -->
       document.getElementById("TempSource_checkbox").checked = (document.getElementById("TempSource").value === "1");
       document.getElementById("admin_password").addEventListener("change", updatePasswordFields);
 
+      setupInputValidation(); // Client side input validation of settings
+
+
+
     }); // ← ADD THIS LINE
 
     // graying of obsolete data debug
@@ -4553,10 +4777,7 @@ Contact me at mark@xengineering.net       -->
       // Add active class to clicked sub-tab
       event.target.classList.add('active');
     }
-
-
     // Frozen page response stuff
-
     function showRecoveryOptions() {
       // Don't show multiple recovery dialogs
       if (document.getElementById('recoveryDialog')) return;
@@ -4576,26 +4797,20 @@ Contact me at mark@xengineering.net       -->
   `;
       document.body.appendChild(recoveryDiv);
     }
-
     function retryConnection() {
       closeRecovery();
       location.reload();
     }
-
     function closeRecovery() {
       const dialog = document.getElementById('recoveryDialog');
       if (dialog) {
         dialog.remove();
       }
     }
-
-
     function enterOfflineMode() {
       closeRecovery();
-
       // Don't run multiple times
       if (document.getElementById('offlineBanner')) return;
-
       // Disable all form controls and buttons except reconnect and tab navigation
       document.querySelectorAll('input[type="submit"], button, input[type="checkbox"], input[type="number"], input[type="text"], input[type="password"], select').forEach(el => {
         // Skip the dark mode toggle, reconnect buttons, and tab navigation
@@ -4620,9 +4835,226 @@ Contact me at mark@xengineering.net       -->
         cornerStatus.textContent = 'OFFLINE MODE';
         cornerStatus.style.backgroundColor = '#ff6600';
       }
-
       console.log('Entered offline mode - all readings marked as stale');
     }
+    function validateRPMOrder() {
+      // Find the specific form containing RPM inputs
+      const rpmForm = document.querySelector('form input[name="RPM1"]')?.closest('form');
+      if (!rpmForm) {
+        console.warn('RPM form not found');
+        return;
+      }
+
+      const saveButton = rpmForm.querySelector('input[type="submit"]');
+      let valid = true;
+      let errorMessage = '';
+
+      // Clear previous error styles
+      for (let i = 1; i <= 7; i++) {
+        const input = document.getElementById(`RPM${i}_input`);
+        if (input) {
+          input.classList.remove('input-error');
+          input.title = ''; // Clear tooltip
+        }
+      }
+
+      // Check each pair for ascending order
+      for (let i = 2; i <= 7; i++) {
+        const prevInput = document.getElementById(`RPM${i - 1}_input`);
+        const currInput = document.getElementById(`RPM${i}_input`);
+
+        if (!prevInput || !currInput) continue;
+
+        const prev = prevInput.valueAsNumber;
+        const curr = currInput.valueAsNumber;
+
+        // Only validate if both values are entered and valid
+        if (!isNaN(prev) && !isNaN(curr) && prev > 0 && curr > 0) {
+          if (curr <= prev) {
+            currInput.classList.add('input-error');
+            currInput.title = `RPM${i} must be greater than RPM${i - 1} (${prev})`;
+            prevInput.classList.add('input-error');
+            prevInput.title = `RPM${i - 1} must be less than RPM${i} (${curr})`;
+            valid = false;
+            errorMessage = 'RPM values must be in ascending order';
+          }
+        }
+      }
+
+      if (saveButton) {
+        saveButton.disabled = !valid;
+        saveButton.title = valid ? '' : errorMessage;
+      }
+
+      return valid;
+    }
+
+    function validateSettings() {
+      const validations = [
+        {
+          inputs: ['TargetFloatVoltage', 'FullChargeVoltage'],
+          check: (float, bulk) => !isNaN(float) && !isNaN(bulk) && float >= bulk,
+          error: 'Float voltage must be less than bulk voltage'
+        },
+        {
+          inputs: ['TargetAmpL', 'TargetAmps'],
+          check: (low, normal) => !isNaN(low) && !isNaN(normal) && low > normal,
+          error: 'Low amp target must be less than or equal to normal amp target'
+        },
+        {
+          inputs: ['MinDuty', 'MaxDuty'],
+          check: (min, max) => !isNaN(min) && !isNaN(max) && min >= max,
+          error: 'Minimum duty cycle must be less than maximum duty cycle'
+        }
+      ];
+
+      // Clear all previous error states
+      document.querySelectorAll('.input-error').forEach(el => {
+        el.classList.remove('input-error');
+        el.title = '';
+      });
+
+      validations.forEach(validation => {
+        const [input1Name, input2Name] = validation.inputs;
+        const input1 = document.querySelector(`input[name="${input1Name}"]`);
+        const input2 = document.querySelector(`input[name="${input2Name}"]`);
+
+        if (!input1 || !input2) return;
+
+        const value1 = input1.valueAsNumber;
+        const value2 = input2.valueAsNumber;
+        const button1 = input1.closest('form')?.querySelector('input[type="submit"]');
+        const button2 = input2.closest('form')?.querySelector('input[type="submit"]');
+
+        if (validation.check(value1, value2)) {
+          // Add error styling
+          input1.classList.add('input-error');
+          input2.classList.add('input-error');
+          input1.title = validation.error;
+          input2.title = validation.error;
+
+          // Disable buttons
+          if (button1) {
+            button1.disabled = true;
+            button1.title = validation.error;
+          }
+          if (button2) {
+            button2.disabled = true;
+            button2.title = validation.error;
+          }
+        } else {
+          // Re-enable buttons if no error
+          if (button1) {
+            button1.disabled = false;
+            button1.title = '';
+          }
+          if (button2) {
+            button2.disabled = false;
+            button2.title = '';
+          }
+        }
+      });
+    }
+
+    //  validation called in the window load event, for client side checking of input values
+    function setupInputValidation() {
+      // Settings validation
+      const settingsInputs = ["TargetFloatVoltage", "FullChargeVoltage", "TargetAmpL", "TargetAmps", "MinDuty", "MaxDuty"];
+
+      settingsInputs.forEach(name => {
+        const input = document.querySelector(`input[name="${name}"]`);
+        if (input) {
+          input.addEventListener("input", validateSettings);
+          input.addEventListener("blur", validateSettings); // Also validate on blur
+        } else {
+          console.warn(`Validation input not found: ${name}`);
+        }
+      });
+
+      // RPM validation
+      for (let i = 1; i <= 7; i++) {
+        const rpmInput = document.getElementById(`RPM${i}_input`);
+        if (rpmInput) {
+          rpmInput.addEventListener('input', validateRPMOrder);
+          rpmInput.addEventListener('blur', validateRPMOrder);
+        }
+      }
+
+      // Run initial validation
+      setTimeout(() => {
+        validateSettings();
+        validateRPMOrder();
+      }, 100); // Small delay to ensure all data is loaded
+    }
+    //Dynamic adjustment factors
+    function resetDynamicShuntGain() {
+      if (!currentAdminPassword) {
+        alert("Please unlock settings first");
+        return;
+      }
+      updatePasswordFields();
+
+      const formData = new FormData();
+      formData.append("password", currentAdminPassword);
+      formData.append("ResetDynamicShuntGain", "1");
+
+      fetch("/get?" + new URLSearchParams(formData).toString())
+        .then(() => {
+          console.log("SOC gain factor reset requested");
+        })
+        .catch(err => console.error("Reset failed:", err));
+    }
+
+    function resetDynamicAltZero() {
+      if (!currentAdminPassword) {
+        alert("Please unlock settings first");
+        return;
+      }
+      updatePasswordFields();
+
+      const formData = new FormData();
+      formData.append("password", currentAdminPassword);
+      formData.append("ResetDynamicAltZero", "1");
+
+      fetch("/get?" + new URLSearchParams(formData).toString())
+        .then(() => {
+          console.log("Alternator zero offset reset requested");
+        })
+        .catch(err => console.error("Reset failed:", err));
+    }
+
+    function updateLifeIndicators(data) {
+      const indicatorColors = ['#00a19a', '#ff9800', '#f44336']; // Green, Yellow, Red
+      const colorNames = ['Good', 'Caution', 'Critical'];
+
+      const indicators = [
+        { id: 'insulation-indicator', percent: data.InsulationLifePercent },
+        { id: 'grease-indicator', percent: data.GreaseLifePercent },
+        { id: 'brush-indicator', percent: data.BrushLifePercent },
+        { id: 'predicted-indicator', hours: data.PredictedLifeHours }
+      ];
+
+      indicators.forEach(indicator => {
+        const element = document.getElementById(indicator.id);
+        if (!element) return;
+
+        let colorIndex = 0; // Default green
+
+        if (indicator.percent !== undefined) {
+          // For percentage indicators
+          if (indicator.percent < 20) colorIndex = 2;      // Red below 20%
+          else if (indicator.percent < 50) colorIndex = 1; // Yellow below 50%
+        } else if (indicator.hours !== undefined) {
+          // For predicted hours indicator
+          if (indicator.hours < 1000) colorIndex = 2;      // Red below 1000 hours
+          else if (indicator.hours < 5000) colorIndex = 1; // Yellow below 5000 hours
+        }
+
+        element.style.color = indicatorColors[colorIndex];
+        element.textContent = colorNames[colorIndex];
+      });
+    }
+
 
   </script>
 
@@ -4730,6 +5162,11 @@ Contact me at mark@xengineering.net       -->
     <span id="ForceFloat_echo" style="display:none;">0</span>
     <span id="bulkCompleteTime_echo" style="display:none;">0</span>
     <span id="FLOAT_DURATION_echo" style="display:none;">0</span>
+    <span id="AutoShuntGainCorrection_echo" style="display:none;">0</span>
+    <span id="AutoAltCurrentZero_echo" style="display:none;">0</span>
+    <span id="WindingTempOffset_echo" style="display:none;">50.0</span>
+    <span id="PulleyRatio_echo" style="display:none;">2.00</span>
+    <span id="ManualLifePercentage_echo" style="display:none;">100</span>
 
 
 
@@ -4818,6 +5255,11 @@ Contact me at mark@xengineering.net       -->
     <input id="ForceFloat" style="display:none;" value="0" />
     <input id="bulkCompleteTime" style="display:none;" value="0" />
     <input id="FLOAT_DURATION" style="display:none;" value="0" />
+    <input id="AutoShuntGainCorrection" style="display:none;" value="0" />
+    <input id="AutoAltCurrentZero" style="display:none;" value="0" />
+    <input id="WindingTempOffset" style="display:none;" value="50.0" />
+    <input id="PulleyRatio" style="display:none;" value="2.00" />
+    <input id="ManualLifePercentage" style="display:none;" value="100" />
 
   </div>
 </body>
