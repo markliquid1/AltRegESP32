@@ -24,4 +24,4 @@ ComponentDebuggingNotes ------  smaller programs that were used for debugging sp
 
 Notes on Code Philosophy:
 --------------------------------------------------------------------------
-In order to minimally discourage inexperienced programmers, this code is not split up into .h and .cpp files, multiple HTML files, etc, which would have greatly improved organization.  The penalty to pay is long programs.  I find it to be an ok tradeoff because it keeps the code recognizeable to beginners. 
+In order to minimally discourage inexperienced programmers, this code is not split up into .h and .cpp files, multiple HTML files, etc, which would have greatly improved organization.  The penalty to pay is long programs.  I find it to be an ok tradeoff because it keeps the code recognizeable to beginners. Update: another (lucky, unintentional, huge) benefit is that it's easier to copy and paste these large files into AI chats.  AI (mostly Claude, a little ChatGPT) wrote 90% of this code.  Absolutely incredible what it can do in 2025, and the future will be even better.
