@@ -30,7 +30,7 @@ INA228 INA(0x40);
 #define ESP32_CAN_RX_PIN GPIO_NUM_16  //
 #define ESP32_CAN_TX_PIN GPIO_NUM_17  //
 
-#include <NMEA2000_CAN.h>
+#include <NMEA2000_CAN.h>               // Thank you Timo Lappalainen, great stuff!
 #include <N2kMessages.h>
 #include <N2kMessagesEnumToStr.h>  // questionably needed
 #include <WiFi.h>
@@ -48,13 +48,13 @@ INA228 INA(0x40);
 #include <String>                        // Console message queue system
 #include "esp_task_wdt.h"                //Watch dog to prevent hung up code from wreaking havoc
 #include "esp_log.h"                     // get rid of spam in serial monitor
-#include <TinyGPSPlus.h>                 // used for NMEA0183, not currently implemented
+#include <TinyGPSPlus.h>                 // used for NMEA0183, was working great but not currently implemented
 
 
 //WIFI STUFF
 // Settings - these will be moved to LittleFS
-const char *default_ssid = "WRONG";      // Default SSID if no saved credentials  //MN2G   // Maybe delete?
-const char *default_password = "WRONG";  // Default password if no saved credentials // 5FENYC8ABC       //Maybe delete?
+const char *default_ssid = "MN2G";            // Default SSID if no saved credentials  //MN2G   // Maybe delete?
+const char *default_password = "5FENYC8ABC";  // Default password if no saved credentials // 5FENYC8ABC       //Maybe delete?
 //these will be the custom network created by the user in AP mode
 String esp32_ap_ssid = "ALTERNATOR_WIFI";  // Default SSID
 const char *AP_SSID_FILE = "/apssid.txt";  // File to store custom SSID
@@ -153,9 +153,10 @@ int TargetAmps = 40;  //Normal alternator output, for best performance, set to s
 int TargetAmpL = 25;  //Alternator output in Lo mode
 int uTargetAmps = 3;  // the one that gets used as the real target
 
-float TargetFloatVoltage = 13.4;  // self-explanatory
-float FullChargeVoltage = 13.9;   // this could have been called TargetBulkVoltage to be more clear
-float ChargingVoltageTarget = 0;  // This becomes active target
+float TargetFloatVoltage = 13.4;                       // self-explanatory
+float FullChargeVoltage = 13.9;                        // this could have been called Target Bulk Voltage to be more clear
+float ChargingVoltageTarget = 0;                       // This becomes active target
+float VoltageHardwareLimit = FullChargeVoltage + 0.1;  // could make this a setting later, but this should be decently safe
 bool inBulkStage = true;
 unsigned long bulkCompleteTime = 1000;  // milliseconds
 unsigned long bulkCompleteTimer = 0;    // this is a timer, don't change
@@ -255,6 +256,63 @@ int DataSaveInterval = 300000;            // Save data every 5 minutes (300,000 
 // Accumulators for runtime tracking
 unsigned long engineRunAccumulator = 0;     // Milliseconds accumulator for engine runtime
 unsigned long alternatorOnAccumulator = 0;  // Milliseconds accumulator for alternator runtime
+
+//ALternator Lifetime Prediction
+// Thermal Stress Calculation - Settings
+float WindingTempOffset = 50.0;        // User configurable winding temp offset (°F)
+float PulleyRatio = 2.0;               // User configurable pulley ratio
+int ManualLifePercentage = 100;        // Manual override for life remaining %
+
+// Thermal Stress Calculation - Accumulated Damage
+float CumulativeInsulationDamage = 0.0;   // 0.0 to 1.0 (1.0 = end of life)
+float CumulativeGreaseDamage = 0.0;       // 0.0 to 1.0 (1.0 = end of life)  
+float CumulativeBrushDamage = 0.0;        // 0.0 to 1.0 (1.0 = end of life)
+
+// Thermal Stress Calculation - Current Status
+float InsulationLifePercent = 100.0;     // Current insulation life remaining %
+float GreaseLifePercent = 100.0;         // Current grease life remaining %
+float BrushLifePercent = 100.0;          // Current brush life remaining %
+float PredictedLifeHours = 10000.0;      // Minimum predicted life remaining
+int LifeIndicatorColor = 0;              // 0=green, 1=yellow, 2=red
+
+// Timing
+unsigned long lastThermalUpdateTime = 0; // Last thermal calculation time
+const unsigned long THERMAL_UPDATE_INTERVAL = 10000; // 10 seconds
+
+// Physical Constants
+const float EA_INSULATION = 1.0f;        // eV, activation energy
+const float BOLTZMANN_K = 8.617e-5f;      // eV/K
+const float T_REF_K = 373.15f;            // 100°C reference temperature in Kelvin
+const float L_REF_INSUL = 100000.0f;      // Reference insulation life at 100°C (hours)
+const float L_REF_GREASE = 40000.0f;      // Reference grease life at 158°F (hours)
+const float L_REF_BRUSH = 5000.0f;        // Reference brush life at 6000 RPM and 150°F (hours)
+
+//Cool dynamic factors
+// SOC Correction Dynamic Learning
+int AutoShuntGainCorrection = 0;           // 0=off, 1=on - enable/disable auto-correction
+float DynamicShuntGainFactor = 1.0;        // Learned gain correction factor (starts at 1.0)
+int ResetDynamicShuntGain = 0;             // Momentary reset button (0=normal, 1=reset)
+unsigned long lastGainCorrectionTime = 0;  // Last time gain correction was applied
+
+// SOC Correction Protection Constants
+const float MAX_GAIN_ADJUSTMENT_PER_CYCLE = 0.05;            // Max 5% change per full charge detection
+const float MIN_DYNAMIC_GAIN_FACTOR = 0.8;                   // Don't go below 80%
+const float MAX_DYNAMIC_GAIN_FACTOR = 1.2;                   // Don't go above 120%
+const float MAX_REASONABLE_ERROR = 0.2;                      // Don't correct if error > 20%
+const unsigned long MIN_GAIN_CORRECTION_INTERVAL = 3600000;  // 1 hour minimum between corrections
+
+// Alternator Current Auto-Zeroing
+int AutoAltCurrentZero = 0;         // 0=off, 1=on - enable/disable auto-zeroing
+float DynamicAltCurrentZero = 0.0;  // Learned zero offset (starts at 0.0)
+int ResetDynamicAltZero = 0;        // Momentary reset button (0=normal, 1=reset)
+
+// Auto-zeroing timing and state tracking
+unsigned long lastAutoZeroTime = 0;                // Last time auto-zero was performed
+float lastAutoZeroTemp = -999.0;                   // Temperature when last auto-zero was done
+unsigned long autoZeroStartTime = 0;               // When current auto-zero cycle started (0 = not active)
+const unsigned long AUTO_ZERO_DURATION = 10000;    // 10 seconds at zero field
+const unsigned long AUTO_ZERO_INTERVAL = 3600000;  // 1 hour in milliseconds
+const float AUTO_ZERO_TEMP_DELTA = 20.0;           // 20°F temperature change triggers auto-zero
 
 
 //Momentary Buttons and alarm logic
@@ -588,36 +646,13 @@ void setup() {
   digitalWrite(33, LOW);  // Start with alarm off
   // PWM setup (needed for basic operation)
   ledcAttach(pwmPin, fffr, pwmResolution);
-  // ============ WATCHDOG ============
-  // Simple watchdog setup - don't try to deinit, just reconfigure
-  //This will trigger a hardware reset if necessary
-  //If code hangs: ESP32 reboots in 10 seconds, resumes operation
-  //If code crashes: ESP32 reboots immediately, resumes operation
-  //If hardware fails: ESP32 may reboot forever, but alternator field turns OFF (safe state)
-  // esp_task_wdt_config_t wdt_config = {
-  //   .timeout_ms = 10000,    // 10 seconds timeout
-  //   .idle_core_mask = 0,   // Don't watch idle cores (like original)
-  //   .trigger_panic = true  // Restart on timeout
-  // };
-  // esp_err_t wdt_result = esp_task_wdt_reconfigure(&wdt_config);
-  // if (wdt_result != ESP_OK) {
-  //   Serial.printf("Watchdog reconfigure failed: %s\n", esp_err_to_name(wdt_result));
-  //   // Try simple init instead
-  //   esp_task_wdt_add(NULL);
-  // } else {
-  //   esp_task_wdt_add(NULL);
-  //   Serial.println("Watchdog reconfigured to 10s timeout");
-  // }
-  //   if (!ensureLittleFS()) {
-  //     Serial.println("CRITICAL: Cannot continue without filesystem");
-  //     // Don't call queueConsoleMessage yet - WiFi isn't set up
-  //   }
-  // MOVE ALL FILE-DEPENDENT FUNCTIONS BEFORE setupWiFi()
-  ensureLittleFS();
+  if (!ensureLittleFS()) {
+    Serial.println("CRITICAL: Cannot continue without filesystem");
+  }
   bool factoryResetPerformed = checkFactoryReset();  // Must do this before setting up wifi
   loadESP32APPassword();                             // Must do this before setting up wifi
-  InitPersistentVariables();  // load all persistent variables from LittleFS.  If no files exist, create them.
-  InitSystemSettings();       // load all settings from LittleFS.  If no files exist, create them.
+  InitPersistentVariables();                         // load all persistent variables from LittleFS.  If no files exist, create them.
+  InitSystemSettings();                              // load all settings from LittleFS.  If no files exist, create them.
   loadPasswordHash();
   setupWiFi();  // NOW setup WiFi with all settings properly loaded
   esp_log_level_set("esp32-hal-i2c-ng", ESP_LOG_WARN);
@@ -632,9 +667,29 @@ void setup() {
     queueConsoleMessage("System started - reset reason: " + String(reset_reason));
   }
   Serial.println("=== SETUP COMPLETE ===");
+
+  // Enable watchdog - only after setup is complete
+  Serial.println("Enabling watchdog protection...");
+  // What Happens During Watchdog Reset:
+  //Watchdog triggers (after 15 seconds of hang)
+  //ESP32 immediately reboots (hardware reset)
+  //ALL GPIO pins reset to 0 (including pin 4 field enable)
+  //Field control pin 4 goes LOW → Field turns OFF
+  //Alternator output stops → Batteries safe
+  //ESP32 restarts and runs setup()
+  //Normal operation resumes
+  esp_task_wdt_config_t wdt_config = {
+    .timeout_ms = 15000,   // 15 seconds in milliseconds
+    .idle_core_mask = 0,   // Don't monitor idle cores
+    .trigger_panic = true  // Reboot on timeout
+  };
+  esp_task_wdt_init(&wdt_config);  // Initialize with config
+  esp_task_wdt_add(NULL);          // Add main loop task to monitoring
+  queueConsoleMessage("Watchdog enabled: 15 second timeout for safety");
 }
 
 void loop() {
+  esp_task_wdt_reset();              // Feed the watchdog to prevent timeout
   starttime = esp_timer_get_time();  // Record start time for Loop
   currentTime = millis();
 
@@ -646,6 +701,9 @@ void loop() {
     lastSOCUpdateTime = currentTime;
     UpdateEngineRuntime(elapsedMillis);
     UpdateBatterySOC(elapsedMillis);
+    handleSocGainReset();  // do the dynamic updates
+    handleAltZeroReset();  // do the dynamic udpates
+    handleManualLifeOverride(); // alternator lifetime modeling
   }
   // Periodic Data Save Logic - run every DataSaveInterval
   if (currentTime - lastDataSaveTime >= DataSaveInterval) {  // have to figure out an appropriate rate for this to not wear out Flash memory
@@ -678,8 +736,11 @@ void loop() {
       //Alarm stuff
       GPIO33_Status = digitalRead(33);  // Store the reading, this could be obviously simplified later, but whatever
       CheckAlarms();
+      calculateThermalStress(); // alternator lifetime modeling
       UpdateDisplay();
-      AdjustField();  // This may need to get moved if it takes any power, but have to be careful we don't get stuck with Field On!
+      checkAutoZeroTriggers();  //Auto-zero processing (must be before AdjustField)
+      processAutoZero();        //Auto-zero processing (must be before AdjustField)
+      AdjustField();            // This may need to get moved if it takes any power, but have to be careful we don't get stuck with Field On!
       // Ignition = !digitalRead(39);  // see if ignition is on    (fix this later)
       if (IgnitionOverride == 1) {
         Ignition = 1;
