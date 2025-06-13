@@ -19,7 +19,6 @@
 // Helper function to organize hardware initialization
 void initializeHardware() {
   Serial.println("Starting hardware initialization...");
-
   //NMEA2K
   OutputStream = &Serial;
   //   while (!Serial)
@@ -49,10 +48,15 @@ void initializeHardware() {
     INADisconnected = 0;
   }
   // at least 529ms for an update with these settings for average and conversion time
-  INA.setMode(11);                       // Bh = Continuous shunt and bus voltage
-  INA.setAverage(4);                     //0h = 1, 1h = 4, 2h = 16, 3h = 64, 4h = 128, 5h = 256, 6h = 512, 7h = 1024     Applies to all channels
-  INA.setBusVoltageConversionTime(7);    // Sets the conversion time of the bus voltage measurement: 0h = 50 µs, 1h = 84 µs, 2h = 150 µs, 3h = 280 µs, 4h = 540 µs, 5h = 1052 µs, 6h = 2074 µs, 7h = 4120 µs
-  INA.setShuntVoltageConversionTime(7);  // Sets the conversion time of the bus voltage measurement: 0h = 50 µs, 1h = 84 µs, 2h = 150 µs, 3h = 280 µs, 4h = 540 µs, 5h = 1052 µs, 6h = 2074 µs, 7h = 4120 µs
+  INA.setMode(11);                                                      // Bh = Continuous shunt and bus voltage
+  INA.setAverage(4);                                                    //0h = 1, 1h = 4, 2h = 16, 3h = 64, 4h = 128, 5h = 256, 6h = 512, 7h = 1024     Applies to all channels
+  INA.setBusVoltageConversionTime(7);                                   // Sets the conversion time of the bus voltage measurement: 0h = 50 µs, 1h = 84 µs, 2h = 150 µs, 3h = 280 µs, 4h = 540 µs, 5h = 1052 µs, 6h = 2074 µs, 7h = 4120 µs
+  INA.setShuntVoltageConversionTime(7);                                 // Sets the conversion time of the bus voltage measurement: 0h = 50 µs, 1h = 84 µs, 2h = 150 µs, 3h = 280 µs, 4h = 540 µs, 5h = 1052 µs, 6h = 2074 µs, 7h = 4120 µs
+  uint16_t thresholdLSB = (uint16_t)(VoltageHardwareLimit / 0.003125);  //  INA228 uses 3.125mV per LSB for bus voltage
+  INA.setBusOvervoltageTH(thresholdLSB);
+  INA.setDiagnoseAlertBit(INA228_DIAG_BUS_OVER_LIMIT);  // Enable bus overvoltage alert
+  queueConsoleMessage("INA228 Direct Hardware Overvoltage Protection Enabled");
+
 
   if (setupDisplay()) {
     Serial.println("Display ready for use");
@@ -124,6 +128,11 @@ void setDutyPercent(int percent) {  // Function to set PWM duty cycle by percent
 // Function 6: AdjustField() - PWM Field Control with Freshness Tracking
 void AdjustField() {
   if (millis() - prev_millis22 > FieldAdjustmentInterval) {  // adjust field every FieldAdjustmentInterval milliseconds
+                                                             //Block any field control/changes during auto-zero of current sensor
+    if (autoZeroStartTime > 0) {
+      prev_millis22 = millis();
+      return;  // Let processAutoZero() handle field control
+    }
     // Update charging stage (bulk/float logic)
     updateChargingStage();
     float currentBatteryVoltage = getBatteryVoltage();
@@ -303,7 +312,10 @@ void ReadAnalogInputs() {
     if (INADisconnected == 0) {
       int start33 = micros();  // Start timing analog input reading
       lastINARead = millis();
-
+      if (INA.getDiagnoseAlertBit(INA228_DIAG_BUS_OVER_LIMIT)) {  // this is direct hardware protection for an overvoltage condition, bypassing the ESP32 entirely
+        queueConsoleMessage("WARNING: INA228 overvoltage tripped!  Field MOSFET disabled until corrected");
+        INA.clearDiagnoseAlertBit(INA228_DIAG_BUS_OVER_LIMIT);  // Clear the alert bit for next detection
+      }
       try {
         IBV = INA.getBusVoltage();
         ShuntVoltage_mV = INA.getShuntVoltage_mV();
@@ -315,13 +327,15 @@ void ReadAnalogInputs() {
             Bcur = Bcur * -1;  // swap sign if necessary
           }
           Bcur = Bcur + BatteryCOffset;
+          // ADD: Apply dynamic gain correction only when enabled AND using INA228 shunt
+          if (AutoShuntGainCorrection == 1 && AmpSrc == 1) {
+            Bcur = Bcur * DynamicShuntGainFactor;
+          }
           BatteryCurrent_scaled = Bcur * 100;
-
           // Only mark fresh on successful, valid readings
           MARK_FRESH(IDX_IBV);
           MARK_FRESH(IDX_BCUR);
         }
-
         int end33 = micros();               // End timing
         AnalogReadTime2 = end33 - start33;  // Store elapsed time
         if (AnalogReadTime2 > AnalogReadTime) {
@@ -374,6 +388,10 @@ void ReadAnalogInputs() {
               MeasuredAmps = MeasuredAmps * -1;  // swap sign if necessary
             }
             MeasuredAmps = MeasuredAmps - AlternatorCOffset;
+            // Apply dynamic zero correction only when enabled
+            if (AutoAltCurrentZero == 1) {
+              MeasuredAmps = MeasuredAmps - DynamicAltCurrentZero;
+            }
             if (MeasuredAmps > -500 && MeasuredAmps < 500) {  // Sanity check
               MARK_FRESH(IDX_MEASURED_AMPS);                  // Only mark fresh on valid reading
             }
@@ -427,13 +445,21 @@ void ReadAnalogInputs() {
   }
 }
 void TempTask(void *parameter) {
+  // Add temperature task to watchdog monitoring
+  esp_task_wdt_add(NULL);
+
   for (;;) {
+    // Feed watchdog at start of each temperature cycle
+    esp_task_wdt_reset();
     // Step 1: Trigger a conversion
     sensors.requestTemperaturesByAddress(tempDeviceAddress);
 
     // Step 2: Wait for conversion to complete while other things run
-    vTaskDelay(pdMS_TO_TICKS(5000));  // This is the spacing between reads
-
+    // Break the 5-second delay into smaller chunks and feed watchdog
+    for (int i = 0; i < 50; i++) {  // 50 x 100ms = 5000ms
+      vTaskDelay(pdMS_TO_TICKS(100));
+      if (i % 15 == 0) esp_task_wdt_reset();  // Feed watchdog every 1.5 seconds
+    }
     // Step 3: Read the completed result
     uint8_t scratchPad[9];
     if (sensors.readScratchPad(tempDeviceAddress, scratchPad)) {
@@ -967,8 +993,8 @@ void SendWifiData() {
                                   // CSV field order: see index.html -> fields[] mapping
       char payload[1400];         // >1400 the wifi transmission won't fit in 1 packet
       snprintf(payload, sizeof(payload),
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d%d,%d,%d,%d,%d,%d,"
+               "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
                "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
@@ -1090,24 +1116,35 @@ void SendWifiData() {
                SafeInt(TempSource),        //103
                SafeInt(IgnitionOverride),  //104
                // More Readings
-               SafeInt(temperatureThermistor),     // 105
-               SafeInt(MaxTemperatureThermistor),  // 106
-               SafeInt(VictronCurrent, 100),       // 107
-                                                   //AlarmStuff
-               SafeInt(AlarmTest),                 // New index: 108
-               SafeInt(AlarmLatchEnabled),         // New index: 109
-               SafeInt(alarmLatch ? 1 : 0),        // New index: 110 (current latch state)
-               SafeInt(ResetAlarmLatch),           // New index: 111
-               SafeInt(ForceFloat),                //  112
-               SafeInt(bulkCompleteTime),          // 113
-               SafeInt(FLOAT_DURATION),            // 114
-               SafeInt(LatitudeNMEA * 1000000),    // 115 - Convert to integer with 6 decimal precision
-               SafeInt(LongitudeNMEA * 1000000),   // 116 - Convert to integer with 6 decimal precision
-               SafeInt(SatelliteCountNMEA),        // 117
-               SafeInt(GPIO33_Status),             //  118
-               SafeInt(fieldActiveStatus),         // 119
-               SafeInt(timeToFullChargeMin),       // 120
-               SafeInt(timeToFullDischargeMin)     // 121
+               SafeInt(temperatureThermistor),         // 105
+               SafeInt(MaxTemperatureThermistor),      // 106
+               SafeInt(VictronCurrent, 100),           // 107
+                                                       //AlarmStuff
+               SafeInt(AlarmTest),                     // New index: 108
+               SafeInt(AlarmLatchEnabled),             // New index: 109
+               SafeInt(alarmLatch ? 1 : 0),            // New index: 110 (current latch state)
+               SafeInt(ResetAlarmLatch),               // New index: 111
+               SafeInt(ForceFloat),                    //  112
+               SafeInt(bulkCompleteTime),              // 113
+               SafeInt(FLOAT_DURATION),                // 114
+               SafeInt(LatitudeNMEA * 1000000),        // 115 - Convert to integer with 6 decimal precision
+               SafeInt(LongitudeNMEA * 1000000),       // 116 - Convert to integer with 6 decimal precision
+               SafeInt(SatelliteCountNMEA),            // 117
+               SafeInt(GPIO33_Status),                 //  118
+               SafeInt(fieldActiveStatus),             // 119
+               SafeInt(timeToFullChargeMin),           // 120
+               SafeInt(timeToFullDischargeMin),        // 121
+               SafeInt(AutoShuntGainCorrection),       // 122
+               SafeInt(DynamicShuntGainFactor, 1000),  // 123 (multiply by 1000 for 3 decimal precision)
+               SafeInt(AutoAltCurrentZero),            // 124
+               SafeInt(DynamicAltCurrentZero, 1000),   // 125 (multiply by 1000 for 3 decimal
+               SafeInt(InsulationLifePercent, 100),    // XX% * 100 for 2 decimal precision
+               SafeInt(GreaseLifePercent, 100),        // XX% * 100 for 2 decimal precision
+               SafeInt(BrushLifePercent, 100),         // XX% * 100 for 2 decimal precision
+               SafeInt(PredictedLifeHours),            // Integer hours
+               SafeInt(LifeIndicatorColor),            // 0=green, 1=yellow, 2=red
+               SafeInt(WindingTempOffset, 10),         // User setting * 10 for 1 decimal
+               SafeInt(PulleyRatio, 100)               // 132    User setting * 100 for 2 decimals
 
 
       );
@@ -1964,6 +2001,43 @@ void setupServer() {
         writeFile(LittleFS, "/maxPoints.txt", inputMessage.c_str());
         maxPoints = inputMessage.toInt();
       }
+      // Dynamic gain corrections
+      else if (request->hasParam("AutoShuntGainCorrection")) {
+        foundParameter = true;
+        inputMessage = request->getParam("AutoShuntGainCorrection")->value();
+        writeFile(LittleFS, "/AutoShuntGainCorrection.txt", inputMessage.c_str());
+        AutoShuntGainCorrection = inputMessage.toInt();
+      } else if (request->hasParam("AutoAltCurrentZero")) {
+        foundParameter = true;
+        inputMessage = request->getParam("AutoAltCurrentZero")->value();
+        writeFile(LittleFS, "/AutoAltCurrentZero.txt", inputMessage.c_str());
+        AutoAltCurrentZero = inputMessage.toInt();
+      } else if (request->hasParam("ResetDynamicShuntGain")) {
+        foundParameter = true;
+        ResetDynamicShuntGain = 1;  // Set the flag - don't save to file as it's momentary
+        queueConsoleMessage("SOC Gain: Reset requested from web interface");
+        inputMessage = "1";  // Return confirmation
+      } else if (request->hasParam("ResetDynamicAltZero")) {
+        foundParameter = true;
+        ResetDynamicAltZero = 1;  // Set the flag - don't save to file as it's momentary
+        queueConsoleMessage("Alt Zero: Reset requested from web interface");
+        inputMessage = "1";  // Return confirmation
+      } else if (request->hasParam("WindingTempOffset")) {
+        foundParameter = true;
+        inputMessage = request->getParam("WindingTempOffset")->value();
+        writeFile(LittleFS, "/WindingTempOffset.txt", inputMessage.c_str());
+        WindingTempOffset = inputMessage.toFloat();
+      } else if (request->hasParam("PulleyRatio")) {
+        foundParameter = true;
+        inputMessage = request->getParam("PulleyRatio")->value();
+        writeFile(LittleFS, "/PulleyRatio.txt", inputMessage.c_str());
+        PulleyRatio = inputMessage.toFloat();
+      } else if (request->hasParam("ManualLifePercentage")) {
+        foundParameter = true;
+        inputMessage = request->getParam("ManualLifePercentage")->value();
+        ManualLifePercentage = inputMessage.toInt();
+        // Don't save to file - this is a momentary action like ManualSOCPoint
+      }
       // Handle RPM/AMPS table - use separate if statements, not else if, becuase we are sending more than 1 value at a time, unlike all the others!
       if (request->hasParam("RPM1")) {
         foundParameter = true;
@@ -2398,6 +2472,7 @@ void UpdateBatterySOC(unsigned long elapsedMillis) {
       FullChargeDetected = true;
       coulombAccumulator_Ah = 0.0f;
       queueConsoleMessage("BATTERY: Full charge detected - SoC reset to 100%");
+      applySocGainCorrection();  // apply automatic dynamic correction to shunt sensor
     }
   } else {
     FullChargeTimer = 0;
@@ -2969,6 +3044,31 @@ void InitSystemSettings() {  // load all settings from LittleFS.  If no files ex
   } else {
     FLOAT_DURATION = readFile(LittleFS, "/FLOAT_DURATION.txt").toInt();
   }
+
+  // ADD: Dynamic correction settings (add with other settings)
+  if (!LittleFS.exists("/AutoShuntGainCorrection.txt")) {
+    writeFile(LittleFS, "/AutoShuntGainCorrection.txt", String(AutoShuntGainCorrection).c_str());
+  } else {
+    AutoShuntGainCorrection = readFile(LittleFS, "/AutoShuntGainCorrection.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/AutoAltCurrentZero.txt")) {
+    writeFile(LittleFS, "/AutoAltCurrentZero.txt", String(AutoAltCurrentZero).c_str());
+  } else {
+    AutoAltCurrentZero = readFile(LittleFS, "/AutoAltCurrentZero.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/WindingTempOffset.txt")) {
+    writeFile(LittleFS, "/WindingTempOffset.txt", String(WindingTempOffset, 1).c_str());
+  } else {
+    WindingTempOffset = readFile(LittleFS, "/WindingTempOffset.txt").toFloat();
+  }
+
+  if (!LittleFS.exists("/PulleyRatio.txt")) {
+    writeFile(LittleFS, "/PulleyRatio.txt", String(PulleyRatio, 2).c_str());
+  } else {
+    PulleyRatio = readFile(LittleFS, "/PulleyRatio.txt").toFloat();
+  }
 }
 
 void InitPersistentVariables() {
@@ -3088,6 +3188,55 @@ void InitPersistentVariables() {
   } else {
     AlternatorChargedEnergy = readFile(LittleFS, "/AlternatorChargedEnergy.txt").toInt();
   }
+
+  // ADD: Dynamic correction persistent values (add with other persistent vars)
+  if (!LittleFS.exists("/DynamicShuntGainFactor.txt")) {
+    writeFile(LittleFS, "/DynamicShuntGainFactor.txt", "1.0");
+  } else {
+    DynamicShuntGainFactor = readFile(LittleFS, "/DynamicShuntGainFactor.txt").toFloat();
+  }
+
+  if (!LittleFS.exists("/DynamicAltCurrentZero.txt")) {
+    writeFile(LittleFS, "/DynamicAltCurrentZero.txt", "0.0");
+  } else {
+    DynamicAltCurrentZero = readFile(LittleFS, "/DynamicAltCurrentZero.txt").toFloat();
+  }
+
+  if (!LittleFS.exists("/lastGainCorrectionTime.txt")) {
+    writeFile(LittleFS, "/lastGainCorrectionTime.txt", "0");
+  } else {
+    lastGainCorrectionTime = readFile(LittleFS, "/lastGainCorrectionTime.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/lastAutoZeroTime.txt")) {
+    writeFile(LittleFS, "/lastAutoZeroTime.txt", "0");
+  } else {
+    lastAutoZeroTime = readFile(LittleFS, "/lastAutoZeroTime.txt").toInt();
+  }
+
+  if (!LittleFS.exists("/lastAutoZeroTemp.txt")) {
+    writeFile(LittleFS, "/lastAutoZeroTemp.txt", "-999.0");
+  } else {
+    lastAutoZeroTemp = readFile(LittleFS, "/lastAutoZeroTemp.txt").toFloat();
+  }
+  // ADD: Thermal stress damage values
+if (!LittleFS.exists("/CumulativeInsulationDamage.txt")) {
+  writeFile(LittleFS, "/CumulativeInsulationDamage.txt", "0.0");
+} else {
+  CumulativeInsulationDamage = readFile(LittleFS, "/CumulativeInsulationDamage.txt").toFloat();
+}
+
+if (!LittleFS.exists("/CumulativeGreaseDamage.txt")) {
+  writeFile(LittleFS, "/CumulativeGreaseDamage.txt", "0.0");  
+} else {
+  CumulativeGreaseDamage = readFile(LittleFS, "/CumulativeGreaseDamage.txt").toFloat();
+}
+
+if (!LittleFS.exists("/CumulativeBrushDamage.txt")) {
+  writeFile(LittleFS, "/CumulativeBrushDamage.txt", "0.0");
+} else {
+  CumulativeBrushDamage = readFile(LittleFS, "/CumulativeBrushDamage.txt").toFloat();
+}
 }
 
 int interpolateAmpsFromRPM(float currentRPM) {
@@ -3647,9 +3796,278 @@ void calculateChargeTimes() {
     timeToFullDischargeMin = -999;
   }
 }
+
+//Dyamic cool stuff
+// ===== SOC GAIN CORRECTION FUNCTIONS =====
+
+void applySocGainCorrection() {
+  // Only apply if feature is enabled AND using INA228 battery shunt
+  if (AutoShuntGainCorrection == 0 || AmpSrc != 1) {
+    return;
+  }
+
+  // Check minimum time interval
+  unsigned long now = millis();
+  if (now - lastGainCorrectionTime < MIN_GAIN_CORRECTION_INTERVAL) {
+    queueConsoleMessage("SOC Gain: Correction blocked, too soon since last adjustment");
+    return;
+  }
+
+  // Calculate actual vs expected capacity
+  float expectedCapacity = BatteryCapacity_Ah;
+  float calculatedCapacity = CoulombCount_Ah_scaled / 100.0;  // Convert from scaled value
+
+  // Sanity check - make sure we have reasonable values
+  if (calculatedCapacity < 10 || expectedCapacity < 10) {
+    queueConsoleMessage("SOC Gain: Invalid capacity values, skipping correction");
+    return;
+  }
+
+  // Calculate error ratio
+  float errorRatio = abs(expectedCapacity - calculatedCapacity) / expectedCapacity;
+
+  // Check if error is too large to be reasonable
+  if (errorRatio > MAX_REASONABLE_ERROR) {
+    queueConsoleMessage("SOC Gain: Error too large (" + String(errorRatio * 100, 1) + "%), ignoring correction");
+    return;
+  }
+
+  // Calculate desired correction factor
+  float desiredCorrectionFactor = expectedCapacity / calculatedCapacity;
+  float currentFactor = DynamicShuntGainFactor;
+  float newFactor = currentFactor * desiredCorrectionFactor;
+
+  // Limit the adjustment rate per cycle
+  float maxChange = currentFactor * MAX_GAIN_ADJUSTMENT_PER_CYCLE;
+  if (newFactor > currentFactor + maxChange) {
+    newFactor = currentFactor + maxChange;
+    queueConsoleMessage("SOC Gain: Correction limited to maximum change rate");
+  } else if (newFactor < currentFactor - maxChange) {
+    newFactor = currentFactor - maxChange;
+    queueConsoleMessage("SOC Gain: Correction limited to maximum change rate");
+  }
+
+  // Apply bounds checking
+  if (newFactor > MAX_DYNAMIC_GAIN_FACTOR) {
+    newFactor = MAX_DYNAMIC_GAIN_FACTOR;
+    queueConsoleMessage("SOC Gain: Factor hit maximum limit (" + String(MAX_DYNAMIC_GAIN_FACTOR, 2) + "), check system");
+  } else if (newFactor < MIN_DYNAMIC_GAIN_FACTOR) {
+    newFactor = MIN_DYNAMIC_GAIN_FACTOR;
+    queueConsoleMessage("SOC Gain: Factor hit minimum limit (" + String(MIN_DYNAMIC_GAIN_FACTOR, 2) + "), check system");
+  }
+
+  // Apply the correction
+  DynamicShuntGainFactor = newFactor;
+  lastGainCorrectionTime = now;
+
+  // Save to persistent storage
+  writeFile(LittleFS, "/DynamicShuntGainFactor.txt", String(DynamicShuntGainFactor, 4).c_str());
+  writeFile(LittleFS, "/lastGainCorrectionTime.txt", String(lastGainCorrectionTime).c_str());
+
+  queueConsoleMessage("SOC Gain: Corrected from " + String(currentFactor, 4) + " to " + String(newFactor, 4) + " (Calc:" + String(calculatedCapacity, 1) + "Ah, Expected:" + String(expectedCapacity, 1) + "Ah)");
+}
+
+void handleSocGainReset() {
+  if (ResetDynamicShuntGain == 1) {
+    DynamicShuntGainFactor = 1.0;
+    lastGainCorrectionTime = 0;
+    ResetDynamicShuntGain = 0;  // Clear the momentary flag
+
+    // Save to persistent storage
+    writeFile(LittleFS, "/DynamicShuntGainFactor.txt", "1.0");
+    writeFile(LittleFS, "/lastGainCorrectionTime.txt", "0");
+
+    queueConsoleMessage("SOC Gain: Dynamic gain factor reset to 1.0");
+  }
+}
+
+// ===== ALTERNATOR AUTO-ZERO FUNCTIONS =====
+
+void checkAutoZeroTriggers() {
+  // Only check if feature is enabled
+  if (AutoAltCurrentZero == 0) {
+    return;
+  }
+
+  // Don't start if already in progress
+  if (autoZeroStartTime > 0) {
+    return;
+  }
+
+  // Make sure engine is running
+  if (RPM < 200) {
+    return;
+  }
+
+  unsigned long now = millis();
+  bool shouldTrigger = false;
+  String triggerReason = "";
+
+  // Check time-based trigger (1 hour)
+  if (now - lastAutoZeroTime >= AUTO_ZERO_INTERVAL) {
+    shouldTrigger = true;
+    triggerReason = "scheduled interval";
+  }
+
+  // Check temperature-based trigger (20°F change)
+  float currentTemp = (TempSource == 0) ? AlternatorTemperatureF : temperatureThermistor;
+  if (lastAutoZeroTemp > -900 && abs(currentTemp - lastAutoZeroTemp) >= AUTO_ZERO_TEMP_DELTA) {
+    shouldTrigger = true;
+    triggerReason = "temperature change (" + String(abs(currentTemp - lastAutoZeroTemp), 1) + "°F)";
+  }
+
+  if (shouldTrigger) {
+    startAutoZero(triggerReason);
+  }
+}
+
+void startAutoZero(String reason) {
+  autoZeroStartTime = millis();
+  queueConsoleMessage("Auto-zero: Starting alternator current zeroing (" + reason + ")");
+}
+
+void processAutoZero() {
+  // Cancel if feature gets disabled during active cycle
+  if (AutoAltCurrentZero == 0) {
+    if (autoZeroStartTime > 0) {
+      autoZeroStartTime = 0;  // Cancel active cycle
+      queueConsoleMessage("Auto-zero: Cancelled - feature disabled");
+    }
+    return;
+  }
+
+  // Only process if auto-zero is active
+  if (autoZeroStartTime == 0) {
+    return;
+  }
+
+  unsigned long now = millis();
+  unsigned long elapsed = now - autoZeroStartTime;
+
+  if (elapsed < AUTO_ZERO_DURATION) {
+    // Still in zeroing phase - force field to minimum
+    dutyCycle = MinDuty;
+    setDutyPercent((int)dutyCycle);
+    digitalWrite(4, 0);  // Disable field completely for more accurate zero
+  } else {
+    // Zeroing complete - capture the reading and restore normal operation
+    float currentTemp = (TempSource == 0) ? AlternatorTemperatureF : temperatureThermistor;
+    DynamicAltCurrentZero = MeasuredAmps;  // Capture current reading as new zero
+
+    lastAutoZeroTime = now;
+    lastAutoZeroTemp = currentTemp;
+    autoZeroStartTime = 0;  // Clear active flag
+
+    // Save to persistent storage
+    writeFile(LittleFS, "/DynamicAltCurrentZero.txt", String(DynamicAltCurrentZero, 3).c_str());
+    writeFile(LittleFS, "/lastAutoZeroTime.txt", String(lastAutoZeroTime).c_str());
+    writeFile(LittleFS, "/lastAutoZeroTemp.txt", String(lastAutoZeroTemp, 1).c_str());
+
+    queueConsoleMessage("Auto-zero: Complete, new zero offset: " + String(DynamicAltCurrentZero, 3) + "A");
+  }
+}
+
+void handleAltZeroReset() {
+  if (ResetDynamicAltZero == 1) {
+    DynamicAltCurrentZero = 0.0;
+    lastAutoZeroTime = 0;
+    lastAutoZeroTemp = -999.0;
+    autoZeroStartTime = 0;    // Cancel any active auto-zero
+    ResetDynamicAltZero = 0;  // Clear the momentary flag
+
+    // Save to persistent storage
+    writeFile(LittleFS, "/DynamicAltCurrentZero.txt", "0.0");
+    writeFile(LittleFS, "/lastAutoZeroTime.txt", "0");
+    writeFile(LittleFS, "/lastAutoZeroTemp.txt", "-999.0");
+
+    queueConsoleMessage("Auto-zero: Dynamic alternator zero offset reset to 0.0");
+  }
+}
+
+void calculateThermalStress() {
+  unsigned long now = millis();
+  if (now - lastThermalUpdateTime < THERMAL_UPDATE_INTERVAL) {
+    return; // Not time to update yet
+  }
+  
+  float elapsedSeconds = (now - lastThermalUpdateTime) / 1000.0f;  //  
+  lastThermalUpdateTime = now;
+  
+  // Calculate component temperatures
+  float T_winding_F = TempToUse + WindingTempOffset;
+  float T_bearing_F = TempToUse + 40.0f;  //  
+  float T_brush_F = TempToUse + 50.0f;    //  
+  
+  // Calculate alternator RPM
+  float Alt_RPM = RPM * PulleyRatio;
+  
+  // Calculate individual component lives
+  float T_winding_K = (T_winding_F - 32.0f) * 5.0f/9.0f + 273.15f;  //   to all
+  float L_insul = L_REF_INSUL * exp(EA_INSULATION / BOLTZMANN_K * (1.0f/T_winding_K - 1.0f/T_REF_K));
+  L_insul = min(L_insul, 10000.0f);  //  
+  
+  float L_grease_base = L_REF_GREASE * pow(0.5f, (T_bearing_F - 158.0f) / 18.0f);  //   to all
+  float L_grease = L_grease_base * (6000.0f / max(Alt_RPM, 100.0f));  //  
+  L_grease = min(L_grease, 10000.0f);  //  
+  
+  float temp_factor = 1.0f + 0.0025f * (T_brush_F - 150.0f);  //   to all
+  float L_brush = (L_REF_BRUSH * 6000.0f / max(Alt_RPM, 100.0f)) / max(temp_factor, 0.1f);  //  
+  L_brush = min(L_brush, 10000.0f);  //  
+  
+  // Calculate damage rates (damage per hour)
+  float insul_damage_rate = 1.0f / L_insul;  //  
+  float grease_damage_rate = 1.0f / L_grease;  //  
+  float brush_damage_rate = 1.0f / L_brush;  //  
+  
+  // Accumulate damage over elapsed time
+  float hours_elapsed = elapsedSeconds / 3600.0f;  //  
+  CumulativeInsulationDamage += insul_damage_rate * hours_elapsed;
+  CumulativeGreaseDamage += grease_damage_rate * hours_elapsed;
+  CumulativeBrushDamage += brush_damage_rate * hours_elapsed;
+  
+  // Constrain damage to 0-1 range
+  CumulativeInsulationDamage = constrain(CumulativeInsulationDamage, 0.0f, 1.0f);  //  
+  CumulativeGreaseDamage = constrain(CumulativeGreaseDamage, 0.0f, 1.0f);  //  
+  CumulativeBrushDamage = constrain(CumulativeBrushDamage, 0.0f, 1.0f);  //  
+  
+  // Calculate remaining life percentages
+  InsulationLifePercent = (1.0f - CumulativeInsulationDamage) * 100.0f;  //  
+  GreaseLifePercent = (1.0f - CumulativeGreaseDamage) * 100.0f;  //  
+  BrushLifePercent = (1.0f - CumulativeBrushDamage) * 100.0f;  //  
+  
+  // Calculate predicted life hours (minimum of current rates)
+  float min_damage_rate = max({insul_damage_rate, grease_damage_rate, brush_damage_rate});
+  PredictedLifeHours = 1.0f / min_damage_rate;  //  
+  
+  // Set indicator color
+  if (PredictedLifeHours > 5000.0f) {  //  
+    LifeIndicatorColor = 0; // Green
+  } else if (PredictedLifeHours > 1000.0f) {  //  
+    LifeIndicatorColor = 1; // Yellow  
+  } else {
+    LifeIndicatorColor = 2; // Red
+  }
+}
+
+void handleManualLifeOverride() {
+  if (ManualLifePercentage >= 0 && ManualLifePercentage <= 100) {
+    float life_fraction = ManualLifePercentage / 100.0;
+    CumulativeInsulationDamage = 1.0 - life_fraction;
+    CumulativeGreaseDamage = 1.0 - life_fraction;
+    CumulativeBrushDamage = 1.0 - life_fraction;
+
+    // Save to persistent storage
+    writeFile(LittleFS, "/CumulativeInsulationDamage.txt", String(CumulativeInsulationDamage, 6).c_str());
+    writeFile(LittleFS, "/CumulativeGreaseDamage.txt", String(CumulativeGreaseDamage, 6).c_str());
+    writeFile(LittleFS, "/CumulativeBrushDamage.txt", String(CumulativeBrushDamage, 6).c_str());
+
+    queueConsoleMessage("Alternator life manually set to " + String(ManualLifePercentage) + "%");
+    ManualLifePercentage = -1;  // Clear the override flag
+  }
+}
+
 void StuffToDoAtSomePoint() {
   //every reset button has a pointless flag and an echo.  I did not delete them for fear of breaking the payload and they hardly cost anything to keep
   //Battery Voltage Source drop down menu- make this text update on page re-load instead of just an echo number
   // Is it possible to power up if the igniton is off?  A bunch of setup functions may fail?
-  // What happens when rpm table is screwed up by an idiot
 }
