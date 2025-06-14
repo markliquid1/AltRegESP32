@@ -306,137 +306,276 @@ void AdjustField() {
   }
 }
 
+// void ReadAnalogInputs() {
+//   unsigned long now = millis();
+
+//   switch (i2cStage) {
+//     case I2C_IDLE:
+//       if (now - lastINARead >= AnalogInputReadInterval) {
+//         i2cStage = I2C_CHECK_INA_ALERT;
+//         lastINARead = now;
+//       } else {
+//         i2cStage = I2C_TRIGGER_ADS;
+//       }
+//       break;
+
+//     case I2C_CHECK_INA_ALERT:
+//       if (INADisconnected != 0) {
+//         i2cStage = I2C_TRIGGER_ADS;
+//         break;
+//       }
+//       if (INA.getDiagnoseAlertBit(INA228_DIAG_BUS_OVER_LIMIT)) {
+//         queueConsoleMessage("WARNING: INA228 overvoltage tripped!");
+//         INA.clearDiagnoseAlertBit(INA228_DIAG_BUS_OVER_LIMIT);
+//       }
+//       i2cStage = I2C_READ_INA_BUS;
+//       break;
+
+//     case I2C_READ_INA_BUS:
+//       start33 = micros();
+//       try {
+//         IBV = INA.getBusVoltage();
+//         i2cStage = I2C_READ_INA_SHUNT;
+//       } catch (...) {
+//         Serial.println("INA228 bus voltage read failed");
+//         queueConsoleMessage("INA228 bus voltage read failed");
+//         i2cStage = I2C_TRIGGER_ADS;
+//       }
+//       break;
+
+//     case I2C_READ_INA_SHUNT:
+//       try {
+//         ShuntVoltage_mV = INA.getShuntVoltage_mV();
+//         i2cStage = I2C_PROCESS_INA;
+//       } catch (...) {
+//         Serial.println("INA228 shunt voltage read failed");
+//         queueConsoleMessage("INA228 shunt voltage read failed");
+//         i2cStage = I2C_TRIGGER_ADS;
+//       }
+//       break;
+
+//     case I2C_PROCESS_INA:
+//       {
+//         unsigned long end33 = micros();
+//         AnalogReadTime2 = end33 - start33;
+//         if (AnalogReadTime2 > AnalogReadTime) AnalogReadTime = AnalogReadTime2;
+//         i2cStage = I2C_TRIGGER_ADS;
+//       }
+//       break;
+
+//     case I2C_TRIGGER_ADS:
+//       if (ADS1115Disconnected != 0) {
+//         queueConsoleMessage("ADS1115 not connected");
+//         i2cStage = I2C_IDLE;
+//         break;
+//       }
+//       switch (adsChannel) {
+//         case 0: adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_0); break;
+//         case 1: adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_1); break;
+//         case 2: adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_2); break;
+//         case 3: adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_3); break;
+//       }
+//       adc.triggerConversion();
+//       i2cStageTimer = now;
+//       i2cStage = I2C_WAIT_ADS;
+//       break;
+
+//     case I2C_WAIT_ADS:
+//       if (now - i2cStageTimer >= ADSConversionDelay) {
+//         i2cStage = I2C_READ_ADS;
+//       }
+//       break;
+
+//     case I2C_READ_ADS:
+//       Raw = adc.getConversion();
+//       i2cStage = I2C_PROCESS_ADS;
+//       break;
+
+//     case I2C_PROCESS_ADS:
+//       switch (adsChannel) {
+//         case 0:
+//           Channel0V = Raw / 32767.0 * 6.144 / 0.0697674419;
+//           BatteryV = Channel0V;
+//           if (BatteryV > 5.0 && BatteryV < 70.0) MARK_FRESH(IDX_BATTERY_V);
+//           break;
+//         case 1:
+//           Channel1V = Raw / 32767.0 * 6.144 * 2;
+//           MeasuredAmps = (Channel1V - 2.5) * 100;
+//           if (InvertAltAmps == 1) MeasuredAmps *= -1;
+//           MeasuredAmps -= AlternatorCOffset;
+//           if (AutoAltCurrentZero == 1) MeasuredAmps -= DynamicAltCurrentZero;
+//           if (MeasuredAmps > -500 && MeasuredAmps < 500) MARK_FRESH(IDX_MEASURED_AMPS);
+//           break;
+//         case 2:
+//           Channel2V = Raw / 32767.0 * 2 * 6.144 * RPMScalingFactor;
+//           RPM = (Channel2V < 100) ? 0 : Channel2V;
+//           if (RPM >= 0 && RPM < 10000) MARK_FRESH(IDX_RPM);
+//           break;
+//         case 3:
+//           Channel3V = Raw / 32767.0 * 6.144 * 833 * 2;
+//           temperatureThermistor = thermistorTempC(Channel3V);
+//           if (temperatureThermistor > 500) temperatureThermistor = -99;
+//           if (Channel3V > 150) Channel3V = -99;
+//           if (Channel3V > 0 && Channel3V < 100) MARK_FRESH(IDX_CHANNEL3V);
+//           if (temperatureThermistor > -50 && temperatureThermistor < 200) MARK_FRESH(IDX_THERMISTOR_TEMP);
+//           break;
+//       }
+//       adsChannel = (adsChannel + 1) % 4;
+
+//       // Peak value tracking and charge calc after full ADS cycle
+//       if (adsChannel == 0) {
+//         if (!isnan(IBV) && IBV > IBVMax) IBVMax = IBV;
+//         if (MeasuredAmps > MeasuredAmpsMax) MeasuredAmpsMax = MeasuredAmps;
+//         if (RPM > RPMMax) RPMMax = RPM;
+//         if (!isnan(MaxAlternatorTemperatureF) && AlternatorTemperatureF > MaxAlternatorTemperatureF) MaxAlternatorTemperatureF = AlternatorTemperatureF;
+//         if (!isnan(MaxTemperatureThermistor) && temperatureThermistor > MaxTemperatureThermistor) MaxTemperatureThermistor = temperatureThermistor;
+//         calculateChargeTimes();
+//         prev_millis3 = now;
+//       }
+//       i2cStage = I2C_IDLE;
+//       break;
+//   }
+// }
+
 void ReadAnalogInputs() {
-  unsigned long now = millis();
-
-  switch (i2cStage) {
-    case I2C_IDLE:
-      if (now - lastINARead >= AnalogInputReadInterval) {
-        i2cStage = I2C_CHECK_INA_ALERT;
-        lastINARead = now;
-      } else {
-        i2cStage = I2C_TRIGGER_ADS;
+  // INA228 Battery Monitor
+  if (millis() - lastINARead >= AnalogInputReadInterval) {  // could go down to 600 here, but this logic belongs in Loop anyway
+    if (INADisconnected == 0) {
+      int start33 = micros();  // Start timing analog input reading
+      lastINARead = millis();
+      if (INA.getDiagnoseAlertBit(INA228_DIAG_BUS_OVER_LIMIT)) {  // this is direct hardware protection for an overvoltage condition, bypassing the ESP32 entirely
+        queueConsoleMessage("WARNING: INA228 overvoltage tripped!  Field MOSFET disabled until corrected");
+        INA.clearDiagnoseAlertBit(INA228_DIAG_BUS_OVER_LIMIT);  // Clear the alert bit for next detection
       }
-      break;
-
-    case I2C_CHECK_INA_ALERT:
-      if (INADisconnected != 0) {
-        i2cStage = I2C_TRIGGER_ADS;
-        break;
-      }
-      if (INA.getDiagnoseAlertBit(INA228_DIAG_BUS_OVER_LIMIT)) {
-        queueConsoleMessage("WARNING: INA228 overvoltage tripped!");
-        INA.clearDiagnoseAlertBit(INA228_DIAG_BUS_OVER_LIMIT);
-      }
-      i2cStage = I2C_READ_INA_BUS;
-      break;
-
-    case I2C_READ_INA_BUS:
-      start33 = micros();
       try {
         IBV = INA.getBusVoltage();
-        i2cStage = I2C_READ_INA_SHUNT;
-      } catch (...) {
-        Serial.println("INA228 bus voltage read failed");
-        queueConsoleMessage("INA228 bus voltage read failed");
-        i2cStage = I2C_TRIGGER_ADS;
-      }
-      break;
-
-    case I2C_READ_INA_SHUNT:
-      try {
         ShuntVoltage_mV = INA.getShuntVoltage_mV();
-        i2cStage = I2C_PROCESS_INA;
+
+        // Sanity check the readings
+        if (!isnan(IBV) && IBV > 5.0 && IBV < 70.0 && !isnan(ShuntVoltage_mV)) {
+          Bcur = ShuntVoltage_mV * 1000.0f / ShuntResistanceMicroOhm;
+          if (InvertBattAmps == 1) {
+            Bcur = Bcur * -1;  // swap sign if necessary
+          }
+          Bcur = Bcur + BatteryCOffset;
+          // ADD: Apply dynamic gain correction only when enabled AND using INA228 shunt
+          if (AutoShuntGainCorrection == 1 && AmpSrc == 1) {
+            Bcur = Bcur * DynamicShuntGainFactor;
+          }
+          BatteryCurrent_scaled = Bcur * 100;
+          // Only mark fresh on successful, valid readings
+          MARK_FRESH(IDX_IBV);
+          MARK_FRESH(IDX_BCUR);
+        }
+        int end33 = micros();               // End timing
+        AnalogReadTime2 = end33 - start33;  // Store elapsed time
+        if (AnalogReadTime2 > AnalogReadTime) {
+          AnalogReadTime = AnalogReadTime2;
+        }
       } catch (...) {
-        Serial.println("INA228 shunt voltage read failed");
-        queueConsoleMessage("INA228 shunt voltage read failed");
-        i2cStage = I2C_TRIGGER_ADS;
+        // INA228 read failed - do not call MARK_FRESH
+        Serial.println("INA228 read failed");
+        queueConsoleMessage("INA228 read failed");
       }
-      break;
+    }
+  }
 
-    case I2C_PROCESS_INA:
-      {
-        unsigned long end33 = micros();
-        AnalogReadTime2 = end33 - start33;
-        if (AnalogReadTime2 > AnalogReadTime) AnalogReadTime = AnalogReadTime2;
-        i2cStage = I2C_TRIGGER_ADS;
-      }
-      break;
+  //ADS1115 reading is based on trigger→wait→read so as to not waste time
+  if (ADS1115Disconnected != 0) {
+    queueConsoleMessage("theADS1115 was not connected and triggered a return");
+    return;  // Early exit - no MARK_FRESH calls
+  }
 
-    case I2C_TRIGGER_ADS:
-      if (ADS1115Disconnected != 0) {
-        queueConsoleMessage("ADS1115 not connected");
-        i2cStage = I2C_IDLE;
-        break;
-      }
-      switch (adsChannel) {
+  unsigned long now = millis();
+  switch (adsState) {
+    case ADS_IDLE:
+      switch (adsCurrentChannel) {
         case 0: adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_0); break;
         case 1: adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_1); break;
         case 2: adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_2); break;
         case 3: adc.setMux(ADS1115_REG_CONFIG_MUX_SINGLE_3); break;
       }
       adc.triggerConversion();
-      i2cStageTimer = now;
-      i2cStage = I2C_WAIT_ADS;
+      adsStartTime = now;
+      adsState = ADS_WAITING_FOR_CONVERSION;
       break;
 
-    case I2C_WAIT_ADS:
-      if (now - i2cStageTimer >= ADSConversionDelay) {
-        i2cStage = I2C_READ_ADS;
-      }
-      break;
+    case ADS_WAITING_FOR_CONVERSION:
+      if (now - adsStartTime >= ADSConversionDelay) {
+        Raw = adc.getConversion();
 
-    case I2C_READ_ADS:
-      Raw = adc.getConversion();
-      i2cStage = I2C_PROCESS_ADS;
-      break;
+        switch (adsCurrentChannel) {
+          case 0:
+            Channel0V = Raw / 32767.0 * 6.144 / 0.0697674419;  // voltage divider is 1,000,000 and 75,000 ohms
+            BatteryV = Channel0V;
+            if (BatteryV > 5.0 && BatteryV < 70.0) {  // Sanity check
+              MARK_FRESH(IDX_BATTERY_V);              // Only mark fresh on valid reading
+            }
+            break;
+          case 1:
+            Channel1V = Raw / 32767.0 * 6.144 * 2;   // voltage divider is 2:1, so this gets us to volts
+            MeasuredAmps = (Channel1V - 2.5) * 100;  // alternator current
+            if (InvertAltAmps == 1) {
+              MeasuredAmps = MeasuredAmps * -1;  // swap sign if necessary
+            }
+            MeasuredAmps = MeasuredAmps - AlternatorCOffset;
+            // Apply dynamic zero correction only when enabled
+            if (AutoAltCurrentZero == 1) {
+              MeasuredAmps = MeasuredAmps - DynamicAltCurrentZero;
+            }
+            if (MeasuredAmps > -500 && MeasuredAmps < 500) {  // Sanity check
+              MARK_FRESH(IDX_MEASURED_AMPS);                  // Only mark fresh on valid reading
+            }
+            break;
+          case 2:
+            Channel2V = Raw / 32767.0 * 2 * 6.144 * RPMScalingFactor;
+            RPM = Channel2V;
+            if (RPM < 100) {
+              RPM = 0;
+            }
+            if (RPM >= 0 && RPM < 10000) {  // Sanity check
+              MARK_FRESH(IDX_RPM);          // Only mark fresh on valid reading
+            }
+            break;
+          case 3:
+            Channel3V = Raw / 32767.0 * 6.144 * 833 * 2;
+            temperatureThermistor = thermistorTempC(Channel3V);
+            if (temperatureThermistor > 500) {
+              temperatureThermistor = -99;
+            }
+            if (Channel3V > 150) {
+              Channel3V = -99;
+            }
+            if (Channel3V > 0 && Channel3V < 100) {  // Sanity check for Channel3V
+              MARK_FRESH(IDX_CHANNEL3V);
+            }
+            if (temperatureThermistor > -50 && temperatureThermistor < 200) {  // Sanity check for temp
+              MARK_FRESH(IDX_THERMISTOR_TEMP);
+            }
+            break;
+        }
 
-    case I2C_PROCESS_ADS:
-      switch (adsChannel) {
-        case 0:
-          Channel0V = Raw / 32767.0 * 6.144 / 0.0697674419;
-          BatteryV = Channel0V;
-          if (BatteryV > 5.0 && BatteryV < 70.0) MARK_FRESH(IDX_BATTERY_V);
-          break;
-        case 1:
-          Channel1V = Raw / 32767.0 * 6.144 * 2;
-          MeasuredAmps = (Channel1V - 2.5) * 100;
-          if (InvertAltAmps == 1) MeasuredAmps *= -1;
-          MeasuredAmps -= AlternatorCOffset;
-          if (AutoAltCurrentZero == 1) MeasuredAmps -= DynamicAltCurrentZero;
-          if (MeasuredAmps > -500 && MeasuredAmps < 500) MARK_FRESH(IDX_MEASURED_AMPS);
-          break;
-        case 2:
-          Channel2V = Raw / 32767.0 * 2 * 6.144 * RPMScalingFactor;
-          RPM = (Channel2V < 100) ? 0 : Channel2V;
-          if (RPM >= 0 && RPM < 10000) MARK_FRESH(IDX_RPM);
-          break;
-        case 3:
-          Channel3V = Raw / 32767.0 * 6.144 * 833 * 2;
-          temperatureThermistor = thermistorTempC(Channel3V);
-          if (temperatureThermistor > 500) temperatureThermistor = -99;
-          if (Channel3V > 150) Channel3V = -99;
-          if (Channel3V > 0 && Channel3V < 100) MARK_FRESH(IDX_CHANNEL3V);
-          if (temperatureThermistor > -50 && temperatureThermistor < 200) MARK_FRESH(IDX_THERMISTOR_TEMP);
-          break;
-      }
-      adsChannel = (adsChannel + 1) % 4;
+        adsCurrentChannel = (adsCurrentChannel + 1) % 4;
+        adsState = ADS_IDLE;
 
-      // Peak value tracking and charge calc after full ADS cycle
-      if (adsChannel == 0) {
-        if (!isnan(IBV) && IBV > IBVMax) IBVMax = IBV;
-        if (MeasuredAmps > MeasuredAmpsMax) MeasuredAmpsMax = MeasuredAmps;
-        if (RPM > RPMMax) RPMMax = RPM;
-        if (!isnan(MaxAlternatorTemperatureF) && AlternatorTemperatureF > MaxAlternatorTemperatureF) MaxAlternatorTemperatureF = AlternatorTemperatureF;
-        if (!isnan(MaxTemperatureThermistor) && temperatureThermistor > MaxTemperatureThermistor) MaxTemperatureThermistor = temperatureThermistor;
-        calculateChargeTimes();
-        prev_millis3 = now;
+        if (adsCurrentChannel == 0) {
+          prev_millis3 = now;  // finished full cycle
+        }
       }
-      i2cStage = I2C_IDLE;
       break;
   }
-}
 
+  calculateChargeTimes();  // calculate charge/discharge times
+
+  // Lazy check and update of maximum values, clean this up later if desired
+  if (!isnan(IBV) && IBV > IBVMax) IBVMax = IBV;
+  if (MeasuredAmps > MeasuredAmpsMax) MeasuredAmpsMax = MeasuredAmps;
+  if (RPM > RPMMax) RPMMax = RPM;
+  if (!isnan(MaxAlternatorTemperatureF) && AlternatorTemperatureF > MaxAlternatorTemperatureF) MaxAlternatorTemperatureF = AlternatorTemperatureF;
+  if (!isnan(MaxTemperatureThermistor) && temperatureThermistor > MaxTemperatureThermistor) {
+    MaxTemperatureThermistor = temperatureThermistor;
+  }
+}
 
 void TempTask(void *parameter) {
   esp_task_wdt_add(NULL);
