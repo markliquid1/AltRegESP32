@@ -49,6 +49,8 @@ INA228 INA(0x40);
 #include "esp_task_wdt.h"                //Watch dog to prevent hung up code from wreaking havoc
 #include "esp_log.h"                     // get rid of spam in serial monitor
 #include <TinyGPSPlus.h>                 // used for NMEA0183, was working great but not currently implemented
+#include <math.h>                        // For pow() function needed by Peukert calculation
+
 
 
 //WIFI STUFF
@@ -110,9 +112,19 @@ unsigned long lastStackWarningTime = 0;
 const unsigned long WARNING_THROTTLE_INTERVAL = 30000;  // 30 seconds
 
 //Console
-std::vector<String> consoleMessageQueue;
 unsigned long lastConsoleMessageTime = 0;
 const unsigned long CONSOLE_MESSAGE_INTERVAL = 2000;  // 60 seconds
+// Fixed-size circular buffer:
+struct ConsoleMessage {
+  char message[128];  // Fixed size instead of dynamic String
+  unsigned long timestamp;
+};
+#define CONSOLE_QUEUE_SIZE 10  // Reduced from potentially unlimited vector
+ConsoleMessage consoleQueue[CONSOLE_QUEUE_SIZE];
+volatile int consoleHead = 0;
+volatile int consoleTail = 0;
+volatile int consoleCount = 0;
+
 
 // DNS Server for captive portal
 DNSServer dnsServer;
@@ -244,8 +256,28 @@ double LatitudeNMEA = 0.0;           // GPS Latitude
 double LongitudeNMEA = 0.0;          // GPS Longitude
 int SatelliteCountNMEA = 0;          // Number of satellites
 
-// ADS1115
+//Badass State machine
+const unsigned long ADSConversionDelay = 155;  // 125 ms for 8 SPS but... Recommendation:Raise ADSConversionDelay to 150 or 160 ms — this gives ~20–30% margin without hurting performance much.     Can change this back later
+enum I2CReadStage {
+  I2C_IDLE,
+  I2C_CHECK_INA_ALERT,
+  I2C_READ_INA_BUS,
+  I2C_READ_INA_SHUNT,
+  I2C_PROCESS_INA,
+  I2C_TRIGGER_ADS,
+  I2C_WAIT_ADS,
+  I2C_READ_ADS,
+  I2C_PROCESS_ADS
+};
+
+I2CReadStage i2cStage = I2C_IDLE;
+uint8_t adsChannel = 0;
+unsigned long i2cStageTimer = 0;
 int16_t Raw = 0;
+unsigned long lastINARead = 0;
+unsigned long start33 = 0;
+
+// ADS1115
 float Channel0V, Channel1V, Channel2V, Channel3V;
 float BatteryV, MeasuredAmps, RPM;  //Readings from ADS1115
 //float voltage;                      // This is the one that gets populated by dropdown menu selection (battery voltage source)
@@ -253,11 +285,14 @@ float MeasuredAmpsMax;  // used to track maximum alternator output
 float RPMMax;           // used to track maximum RPM
 int ADS1115Disconnected = 0;
 
+
+
 // Battery SOC Monitoring Variables
 int BatteryCapacity_Ah = 300;         // Battery capacity in Amp-hours
 int SoC_percent = 7500;               // State of Charge percentage (0-100) but have to multiply by 100 for annoying reasons, but go with it
 int ManualSOCPoint = 25;              // Used to set it manually
 int CoulombCount_Ah_scaled = 7500;    // Current energy in battery (Ah × 100 for precision)
+float PeukertRatedCurrent_A = 15.0f;  // Standard discharge rate for Peukert (C/20), will be calculated from capacity
 bool FullChargeDetected = false;      // Flag for full charge detection
 unsigned long FullChargeTimer = 600;  // Timer for full charge detection, 10 minutes
 // Timing variables
@@ -267,7 +302,7 @@ unsigned long lastSOCUpdateTime = 0;      // Last time SOC was updated
 unsigned long lastEngineMonitorTime = 0;  // Last time engine metrics were updated
 unsigned long lastDataSaveTime = 0;       // Last time data was saved to LittleFS
 int SOCUpdateInterval = 2000;             // Update SOC every 2 seconds.   Don't make this smaller than 1 without study
-int DataSaveInterval = 300000;            // Save data every 5 minutes (300,000 ms).  Flash will hit 20K cycle end of life in 70 years, good enough!
+int DataSaveInterval = 60000;             // Save data every 1 minutes, good for 20 year durability of flash memory
 // Accumulators for runtime tracking
 unsigned long engineRunAccumulator = 0;     // Milliseconds accumulator for engine runtime
 unsigned long alternatorOnAccumulator = 0;  // Milliseconds accumulator for alternator runtime
@@ -294,7 +329,7 @@ int LifeIndicatorColor = 0;           // 0=green, 1=yellow, 2=red
 // Timing
 unsigned long lastThermalUpdateTime = 0;              // Last thermal calculation time
 const unsigned long THERMAL_UPDATE_INTERVAL = 10000;  // 10 seconds
-const int AnalogInputReadInterval = 900;     // self explanatory
+const int AnalogInputReadInterval = 900;              // self explanatory
 
 // Physical Constants
 const float EA_INSULATION = 1.0f;     // eV, activation energy
@@ -349,7 +384,7 @@ int CurrentThreshold_scaled = 100;    // Ignore currents below this (A × 100)
 int PeukertExponent_scaled = 105;     // Peukert exponent × 100 (112 = 1.12)
 int ChargeEfficiency_scaled = 99;     // Charging efficiency % (0-100)
 int ChargedVoltage_Scaled = 1450;     // Voltage threshold for "charged" (V × 100)
-int TailCurrent_Scaled = 200;         // Current threshold for "charged" (% of capacity × 100 so 200 = 2%)
+int TailCurrent_Scaled = 2;           // Ignore the name, it appears to be working as a straight percentage
 int ShuntResistanceMicroOhm = 100;    // Shunt resistance in microohms
 int ChargedDetectionTime = 1000;      // Time at charged state to consider 100% (seconds)
 int IgnoreTemperature = 0;            // If no temp sensor, set to 1
@@ -432,7 +467,6 @@ static unsigned long prev_millis3;   // used to delay sampling of ADS1115 to eve
 static unsigned long prev_millis33;    // used to delay sampling of Serial Data (ve direct)
 static unsigned long prev_millis743;   // used to read NMEA2K Network Every X seconds
 static unsigned long prev_millis5;     // used to initiate wifi data exchange
-static unsigned long lastINARead = 0;  // don't read the INA228 needlessly often
 // Global variable to track ESP32 restart time
 unsigned long lastRestartTime = 0;
 const unsigned long RESTART_INTERVAL = 3600000;  // 1 hour in milliseconds = 3600000 so 900000 this is 15 mins
@@ -523,9 +557,10 @@ bool displayAvailable = false;  // Global flag to track if display is working
 VeDirectFrameHandler myve;
 
 // WIFI STUFF
-AsyncWebServer server(80);               // Create AsyncWebServer object on port 80
-AsyncEventSource events("/events");      // Create an Event Source on /events
-unsigned long webgaugesinterval = 1000;  // delay in ms between sensor updates on webpage
+AsyncWebServer server(80);                  // Create AsyncWebServer object on port 80
+AsyncEventSource events("/events");         // Create an Event Source on /events
+unsigned long webgaugesinterval = 1000;     // delay in ms between sensor updates on webpage
+unsigned long healthystuffinterval = 5000;  // check hardware health parameters only every 5 seconds, not that they consume much
 
 // WiFi provisioning settings
 const char *WIFI_SSID_FILE = "/ssid.txt";
@@ -565,17 +600,6 @@ tNMEA2000Handler NMEA2000Handlers[] = {
 };
 
 Stream *OutputStream;
-
-//ADS1115 more pre-setup crap
-enum ADS1115_State {
-  ADS_IDLE,
-  ADS_WAITING_FOR_CONVERSION
-};
-
-ADS1115_State adsState = ADS_IDLE;
-uint8_t adsCurrentChannel = 0;
-unsigned long adsStartTime = 0;
-const unsigned long ADSConversionDelay = 155;  // 125 ms for 8 SPS but... Recommendation:Raise ADSConversionDelay to 150 or 160 ms — this gives ~20–30% margin without hurting performance much.     Can change this back later
 
 // Forward declarations for WiFi functions
 String readFile(fs::FS &fs, const char *path);
@@ -670,8 +694,8 @@ void setup() {
     Serial.println("CRITICAL: Cannot continue without filesystem");
   }
 
-  InitPersistentVariables();                         // load all persistent variables from LittleFS.  If no files exist, create them.
-  InitSystemSettings();                              // load all settings from LittleFS.  If no files exist, create them.
+  InitPersistentVariables();  // load all persistent variables from LittleFS.  If no files exist, create them.
+  InitSystemSettings();       // load all settings from LittleFS.  If no files exist, create them.
   loadPasswordHash();
   setupWiFi();  // NOW setup WiFi with all settings properly loaded
   esp_log_level_set("esp32-hal-i2c-ng", ESP_LOG_WARN);
@@ -718,8 +742,8 @@ void loop() {
     lastSOCUpdateTime = currentTime;
     UpdateEngineRuntime(elapsedMillis);
     UpdateBatterySOC(elapsedMillis);
-    handleSocGainReset();        // do the dynamic updates
-    handleAltZeroReset();        // do the dynamic udpates
+    handleSocGainReset();  // do the dynamic updates
+    handleAltZeroReset();  // do the dynamic udpates
   }
   // Periodic Data Save Logic - run every DataSaveInterval
   if (currentTime - lastDataSaveTime >= DataSaveInterval) {  // have to figure out an appropriate rate for this to not wear out Flash memory
@@ -763,6 +787,7 @@ void loop() {
       logDashboardValues();         // just nice to have some history in the Console
       updateSystemHealthMetrics();  // Add after existing health monitoring calls
       // Power management and WiFi logic moved to after the switch statement
+      SomeHealthyStuff();  // do what used to be done in SendWifiData
       SendWifiData();
       // Client-specific connection monitoring
       if (mode == CLIENT_MODE) {
@@ -816,7 +841,7 @@ void loop() {
   // }
 
 
-  if (millis() - prev_millis7888 > 3000) {  // every 3 seconds reset the maximum loop time
+  if (millis() - prev_millis7888 > 1500) {  // every 1.5 seconds reset the maximum loop time
     MaximumLoopTime = 0;
     prev_millis7888 = millis();
   }
