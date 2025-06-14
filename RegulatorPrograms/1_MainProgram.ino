@@ -30,7 +30,7 @@ INA228 INA(0x40);
 #define ESP32_CAN_RX_PIN GPIO_NUM_16  //
 #define ESP32_CAN_TX_PIN GPIO_NUM_17  //
 
-#include <NMEA2000_CAN.h>               // Thank you Timo Lappalainen, great stuff!
+#include <NMEA2000_CAN.h>  // Thank you Timo Lappalainen, great stuff!
 #include <N2kMessages.h>
 #include <N2kMessagesEnumToStr.h>  // questionably needed
 #include <WiFi.h>
@@ -52,9 +52,7 @@ INA228 INA(0x40);
 
 
 //WIFI STUFF
-// Settings - these will be moved to LittleFS
-const char *default_ssid = "MN2G";            // Default SSID if no saved credentials  //MN2G   // Maybe delete?
-const char *default_password = "5FENYC8ABC";  // Default password if no saved credentials // 5FENYC8ABC       //Maybe delete?
+// 5FENYC8ABC       // Delete later
 //these will be the custom network created by the user in AP mode
 String esp32_ap_ssid = "ALTERNATOR_WIFI";  // Default SSID
 const char *AP_SSID_FILE = "/apssid.txt";  // File to store custom SSID
@@ -93,6 +91,23 @@ unsigned long lastIdle1Time = 0;  // Previous IDLE1 task runtime counter
 unsigned long lastCheckTime = 0;  // Last time CPU load was measured
 int cpuLoadCore0 = 0;             // CPU load percentage for Core 0
 int cpuLoadCore1 = 0;             // CPU load percentage for Core 1
+
+//More health monitoring
+// Session and health tracking (add with other globals)
+unsigned long sessionStartTime = 0;
+unsigned long wifiSessionStartTime = 0;
+unsigned long lastSessionDuration = 0;  // minutes, persistent
+int lastSessionMaxLoopTime = 0;         // microseconds, persistent
+int lastSessionMinHeap = 999999;        // KB, persistent
+int wifiReconnectsThisSession = 0;
+int wifiReconnectsTotal = 0;             // persistent
+String lastResetReason = "Unknown";      // persistent
+String lastWifiResetReason = "Unknown";  // persistent
+int sessionMinHeap = 999999;             // Current session minimum
+// Warning throttling
+unsigned long lastHeapWarningTime = 0;
+unsigned long lastStackWarningTime = 0;
+const unsigned long WARNING_THROTTLE_INTERVAL = 30000;  // 30 seconds
 
 //Console
 std::vector<String> consoleMessageQueue;
@@ -259,33 +274,35 @@ unsigned long alternatorOnAccumulator = 0;  // Milliseconds accumulator for alte
 
 //ALternator Lifetime Prediction
 // Thermal Stress Calculation - Settings
-float WindingTempOffset = 50.0;        // User configurable winding temp offset (°F)
-float PulleyRatio = 2.0;               // User configurable pulley ratio
-int ManualLifePercentage = 100;        // Manual override for life remaining %
+float WindingTempOffset = 50.0;  // User configurable winding temp offset (°F)
+float PulleyRatio = 2.0;         // User configurable pulley ratio
+int ManualLifePercentage = 100;  // Manual override for life remaining %
 
 // Thermal Stress Calculation - Accumulated Damage
-float CumulativeInsulationDamage = 0.0;   // 0.0 to 1.0 (1.0 = end of life)
-float CumulativeGreaseDamage = 0.0;       // 0.0 to 1.0 (1.0 = end of life)  
-float CumulativeBrushDamage = 0.0;        // 0.0 to 1.0 (1.0 = end of life)
+float CumulativeInsulationDamage = 0.0;  // 0.0 to 1.0 (1.0 = end of life)
+float CumulativeGreaseDamage = 0.0;      // 0.0 to 1.0 (1.0 = end of life)
+float CumulativeBrushDamage = 0.0;       // 0.0 to 1.0 (1.0 = end of life)
 
 // Thermal Stress Calculation - Current Status
-float InsulationLifePercent = 100.0;     // Current insulation life remaining %
-float GreaseLifePercent = 100.0;         // Current grease life remaining %
-float BrushLifePercent = 100.0;          // Current brush life remaining %
-float PredictedLifeHours = 10000.0;      // Minimum predicted life remaining
-int LifeIndicatorColor = 0;              // 0=green, 1=yellow, 2=red
+float InsulationLifePercent = 100.0;  // Current insulation life remaining %
+float GreaseLifePercent = 100.0;      // Current grease life remaining %
+float BrushLifePercent = 100.0;       // Current brush life remaining %
+float PredictedLifeHours = 10000.0;   // Minimum predicted life remaining
+int LifeIndicatorColor = 0;           // 0=green, 1=yellow, 2=red
+
 
 // Timing
-unsigned long lastThermalUpdateTime = 0; // Last thermal calculation time
-const unsigned long THERMAL_UPDATE_INTERVAL = 10000; // 10 seconds
+unsigned long lastThermalUpdateTime = 0;              // Last thermal calculation time
+const unsigned long THERMAL_UPDATE_INTERVAL = 10000;  // 10 seconds
+const int AnalogInputReadInterval = 900;     // self explanatory
 
 // Physical Constants
-const float EA_INSULATION = 1.0f;        // eV, activation energy
-const float BOLTZMANN_K = 8.617e-5f;      // eV/K
-const float T_REF_K = 373.15f;            // 100°C reference temperature in Kelvin
-const float L_REF_INSUL = 100000.0f;      // Reference insulation life at 100°C (hours)
-const float L_REF_GREASE = 40000.0f;      // Reference grease life at 158°F (hours)
-const float L_REF_BRUSH = 5000.0f;        // Reference brush life at 6000 RPM and 150°F (hours)
+const float EA_INSULATION = 1.0f;     // eV, activation energy
+const float BOLTZMANN_K = 8.617e-5f;  // eV/K
+const float T_REF_K = 373.15f;        // 100°C reference temperature in Kelvin
+const float L_REF_INSUL = 100000.0f;  // Reference insulation life at 100°C (hours)
+const float L_REF_GREASE = 40000.0f;  // Reference grease life at 158°F (hours)
+const float L_REF_BRUSH = 5000.0f;    // Reference brush life at 6000 RPM and 150°F (hours)
 
 //Cool dynamic factors
 // SOC Correction Dynamic Learning
@@ -581,52 +598,54 @@ const char WIFI_CONFIG_HTML[] PROGMEM = R"rawliteral(
 <style>
 body{font-family:Arial;padding:20px;background:#f5f5f5}
 .card{background:white;padding:20px;border-radius:8px;max-width:400px;margin:0 auto}
-h1{color:#333;margin-bottom:20px}
+h1{color:#333;margin-bottom:20px;text-align:center}
 input,select{width:100%;padding:8px;margin:5px 0;border:1px solid #ddd;border-radius:4px}
-button{background:#ff6600;color:white;padding:10px 20px;border:none;border-radius:4px;cursor:pointer;width:100%}
-button:hover{background:#e55a00}
+button{background:#00a19a;color:white;padding:10px 20px;border:none;border-radius:4px;cursor:pointer;width:100%}
+button:hover{background:#008c86}
 .radio-group{margin:10px 0}
 .radio-group input{width:auto;margin-right:5px}
 .info-box{background:#e8f4f8;border:1px solid #bee5eb;color:#0c5460;padding:12px;border-radius:4px;margin:10px 0;font-size:14px}
-.hotspot-options{display:none;background:#f8f9fa;padding:15px;border-radius:4px;margin:10px 0}
 </style>
 <script>
 function toggleHotspotOptions() {
   const mode = document.querySelector('input[name="mode"]:checked').value;
-  const hotspotOptions = document.getElementById('hotspot-options');
-  if (mode === 'ap') {
-    hotspotOptions.style.display = 'block';
+  const clientFields = document.getElementById('client-options');
+  if (mode === 'client') {
+    clientFields.style.display = 'block';
   } else {
-    hotspotOptions.style.display = 'none';
+    clientFields.style.display = 'none';
   }
 }
 </script>
 </head><body>
 <div class="card">
-<h1>Alternator WiFi Setup</h1>
+<h1>WiFi Setup</h1>
 <form action="/wifi" method="POST">
 
-<label>Alternator Hotspot Password:</label>
-<input type="password" name="ap_password" required placeholder="For accessing alternator interface">
-<div class="info-box">This password will be used to connect to the alternator's WiFi network</div>
-
 <div class="radio-group">
-<label>Connection Mode:</label><br>
-<input type="radio" name="mode" value="client" checked onchange="toggleHotspotOptions()"> Connect to Ship WiFi<br>
-<input type="radio" name="mode" value="ap" onchange="toggleHotspotOptions()"> Standalone Hotspot
+<label><strong>Connection Mode:</strong></label><br>
+<input type="radio" name="mode" value="client" checked onchange="toggleHotspotOptions()"> Connect to ship's existing WiFi Network<br>
+<input type="radio" name="mode" value="ap" onchange="toggleHotspotOptions()"> Alternator Controller will create a new and independent hotspot
 </div>
 
-<div id="hotspot-options" class="hotspot-options">
-<label>Custom Hotspot Name (optional):</label>
-<input type="text" id="hotspot_ssid" name="hotspot_ssid" placeholder="ALTERNATOR_WIFI">
-<div class="info-box">Leave blank to use default name "ALTERNATOR_WIFI"</div>
+<label>New Hotspot Name (SSID):</label>
+<input type="text" id="hotspot_ssid" name="hotspot_ssid" placeholder="No entry = keep default: ALTERNATOR_WIFI">
+
+<label>New Hotspot Password:</label>
+<input type="password" name="ap_password" placeholder="No entry = keep default: alternator123">
+
+<div id="client-options">
+<label>Ship's WiFi Name (SSID):</label>
+<input type="text" id="ssid" name="ssid" placeholder="Leave blank if using hotspot mode">
+
+<label>Ship's WiFi Password:</label>
+<input type="password" name="password" placeholder="Leave blank if using hotspot mode">
 </div>
 
-<label>Ship WiFi Name (SSID):</label>
-<input type="text" id="ssid" name="ssid" placeholder="Leave blank for hotspot mode">
-
-<label>Ship WiFi Password:</label>
-<input type="password" name="password" placeholder="Leave blank for hotspot mode">
+<div class="info-box">
+When complete, Save Configuration.  The controller will disconnect from ALTERNATOR_WIFI.  If this page then hangs up, cancel / close after 10 seconds.<br>
+Reconnect to your selected network to access the full user interface.
+</div>
 
 <button type="submit">Save Configuration</button>
 </form>
@@ -636,8 +655,9 @@ function toggleHotspotOptions() {
 
 void setup() {
   // Essential hardware setup first
-  setCpuFrequencyMhz(240);
   Serial.begin(115200);
+  captureResetReason();
+  setCpuFrequencyMhz(240);
   pinMode(4, OUTPUT);     // This pin is used to provide a high signal to Field Enable pin
   digitalWrite(4, LOW);   // Start with field off
   pinMode(2, OUTPUT);     // This pin is used to provide a heartbeat (pin 2 of ESP32 is the LED)
@@ -649,8 +669,7 @@ void setup() {
   if (!ensureLittleFS()) {
     Serial.println("CRITICAL: Cannot continue without filesystem");
   }
-  bool factoryResetPerformed = checkFactoryReset();  // Must do this before setting up wifi
-  loadESP32APPassword();                             // Must do this before setting up wifi
+
   InitPersistentVariables();                         // load all persistent variables from LittleFS.  If no files exist, create them.
   InitSystemSettings();                              // load all settings from LittleFS.  If no files exist, create them.
   loadPasswordHash();
@@ -659,9 +678,7 @@ void setup() {
   queueConsoleMessage("System starting up...");
   initializeHardware();  // Initialize hardware systems
   esp_reset_reason_t reset_reason = esp_reset_reason();
-  if (reset_reason == ESP_RST_TASK_WDT) {
-    queueConsoleMessage("CRITICAL: System recovered from watchdog reset - code was hung");
-  } else if (reset_reason == ESP_RST_SW) {
+  if (reset_reason == ESP_RST_SW) {
     queueConsoleMessage("System restarted - scheduled maintenance");
   } else {
     queueConsoleMessage("System started - reset reason: " + String(reset_reason));
@@ -701,9 +718,8 @@ void loop() {
     lastSOCUpdateTime = currentTime;
     UpdateEngineRuntime(elapsedMillis);
     UpdateBatterySOC(elapsedMillis);
-    handleSocGainReset();  // do the dynamic updates
-    handleAltZeroReset();  // do the dynamic udpates
-    handleManualLifeOverride(); // alternator lifetime modeling
+    handleSocGainReset();        // do the dynamic updates
+    handleAltZeroReset();        // do the dynamic udpates
   }
   // Periodic Data Save Logic - run every DataSaveInterval
   if (currentTime - lastDataSaveTime >= DataSaveInterval) {  // have to figure out an appropriate rate for this to not wear out Flash memory
@@ -733,10 +749,9 @@ void loop() {
           prev_millis743 = millis();
         }
       }
-      //Alarm stuff
       GPIO33_Status = digitalRead(33);  // Store the reading, this could be obviously simplified later, but whatever
       CheckAlarms();
-      calculateThermalStress(); // alternator lifetime modeling
+      calculateThermalStress();  // alternator lifetime modeling
       UpdateDisplay();
       checkAutoZeroTriggers();  //Auto-zero processing (must be before AdjustField)
       processAutoZero();        //Auto-zero processing (must be before AdjustField)
@@ -745,7 +760,8 @@ void loop() {
       if (IgnitionOverride == 1) {
         Ignition = 1;
       }
-      logDashboardValues();  // just nice to have some history in the Console
+      logDashboardValues();         // just nice to have some history in the Console
+      updateSystemHealthMetrics();  // Add after existing health monitoring calls
       // Power management and WiFi logic moved to after the switch statement
       SendWifiData();
       // Client-specific connection monitoring
