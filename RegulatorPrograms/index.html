@@ -742,39 +742,82 @@ Contact me at mark@xengineering.net       -->
     }
 
     .btn-secondary {
-      background-color: #e0e0e0;
-      color: #333;
-      border: 1px solid #ccc;
-      padding: 4px 8px;
-      /* Reduced from 6px 12px */
-      border-radius: var(--radius);
-      cursor: pointer;
-      font-size: 11px;
-      /* Reduced from 12px */
-      transition: all 0.3s ease;
-      height: 24px;
-      /* Smaller for secondary buttons */
-      line-height: 1.2;
-    }
+  background-color: #e0e0e0;
+  color: #333;
+  border: 1px solid #ccc;
+  padding: 4px 8px;
+  /* Reduced from 6px 12px */
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 11px;
+  /* Reduced from 12px */
+  transition: all 0.3s ease;
+  height: 24px;
+  /* Smaller for secondary buttons */
+  line-height: 1.2;
+}
 
-    .btn-secondary:hover {
-      background-color: #d0d0d0;
-      border-color: var(--accent);
-      color: var(--accent);
-      transform: translateY(-1px);
-    }
+.btn-secondary:hover {
+  background-color: #d0d0d0;
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
 
-    .dark-mode .btn-secondary {
-      background-color: #333333;
-      color: #aaaaaa;
-      border: 1px solid #555555;
-    }
+/* Active state for press feedback */
+.btn-secondary:active {
+  background-color: #c0c0c0;
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(0);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 
-    .dark-mode .btn-secondary:hover {
-      background-color: #444444;
-      border-color: var(--accent);
-      color: var(--accent);
-    }
+/* Pulse animation for visual feedback */
+@keyframes button-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(0, 161, 154, 0.4);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 4px rgba(0, 161, 154, 0.2);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(0, 161, 154, 0);
+  }
+}
+
+.btn-secondary.button-pulse {
+  animation: button-pulse 0.4s ease-out;
+}
+
+/* Dark mode styles */
+.dark-mode .btn-secondary {
+  background-color: #333333;
+  color: #aaaaaa;
+  border: 1px solid #555555;
+}
+
+.dark-mode .btn-secondary:hover {
+  background-color: #444444;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.dark-mode .btn-secondary:active {
+  background-color: #2a2a2a;
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(0);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode pulse animation */
+.dark-mode .btn-secondary.button-pulse {
+  animation: button-pulse 0.4s ease-out;
+}
 
     /* Locking Settings Capability */
 
@@ -1223,7 +1266,7 @@ Contact me at mark@xengineering.net       -->
 
             <hr />
             <div class="form-row">
-              <div class="form-label">Target Alternator Output (Normal) (A) (<span id="TargetAmps_echo">0</span>):
+              <div class="form-label">Target Alternator Output (Normal) (A) (<span id="TargetAmps_echo">?</span>):
               </div>
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
@@ -1236,7 +1279,7 @@ Contact me at mark@xengineering.net       -->
 
             <hr />
             <div class="form-row">
-              <div class="form-label">Target Alternator Output (Low) (A) (<span id="TargetAmpL_echo">0</span>):</div>
+              <div class="form-label">Target Alternator Output (Low) (A) (<span id="TargetAmpL_echo">?</span>):</div>
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
@@ -1248,7 +1291,7 @@ Contact me at mark@xengineering.net       -->
 
             <hr />
             <div class="form-row">
-              <div class="form-label">Target Alternator Output (<span id="HiLow_echo">0</span>):</div>
+              <div class="form-label">Target Alternator Output (<span id="HiLow_echo">?</span>):</div>
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
@@ -1267,7 +1310,7 @@ Contact me at mark@xengineering.net       -->
             <hr />
             <div class="form-row">
               <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-                <span>Force Float Mode (<span id="ForceFloat_echo">0</span>):</span>
+                <span>Force Float Mode (<span id="ForceFloat_echo">?</span>):</span>
                 <span class="tooltip" onclick="this.classList.toggle('active')">
                   ℹ️
                   <span class="tooltip-box">Targets 0 amps in/out of battery</span>
@@ -1292,7 +1335,7 @@ Contact me at mark@xengineering.net       -->
             <hr />
             <div class="form-row">
               <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-                <span>Amp Target Source (<span id="AmpSrc_echo">0</span>):</span>
+                <span>Amp Target Source (<span id="AmpSrc_echo">?</span>):</span>
                 <span class="tooltip" onclick="this.classList.toggle('active')">
                   ℹ️
                   <span class="tooltip-box">Controller will use this selection for feedback</span>
@@ -1320,7 +1363,7 @@ Contact me at mark@xengineering.net       -->
             <hr />
             <div class="form-row">
               <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-                <span>Alternator Temp Limit (F) (<span id="TemperatureLimitF_echo">0</span>):</span>
+                <span>Alternator Temp Limit (F) (<span id="TemperatureLimitF_echo">?</span>):</span>
                 <span class="tooltip" onclick="this.classList.toggle('active')">
                   ℹ️
                   <span class="tooltip-box">30F offset from measured temp to true max temp not uncommon; set this lower
@@ -1339,7 +1382,7 @@ Contact me at mark@xengineering.net       -->
 
             <hr />
             <div class="form-row">
-              <div class="form-label">Bulk Voltage (<span id="FullChargeVoltage_echo">0</span>):</div>
+              <div class="form-label">Bulk Voltage (<span id="FullChargeVoltage_echo">?</span>):</div>
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
@@ -1351,7 +1394,7 @@ Contact me at mark@xengineering.net       -->
 
             <hr />
             <div class="form-row">
-              <div class="form-label">Bulk Completion Time (sec) (<span id="bulkCompleteTime_echo">0</span>):</div>
+              <div class="form-label">Bulk Completion Time (sec) (<span id="bulkCompleteTime_echo">?</span>):</div>
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
@@ -1363,7 +1406,7 @@ Contact me at mark@xengineering.net       -->
 
             <hr />
             <div class="form-row">
-              <div class="form-label">Float Voltage (<span id="TargetFloatVoltage_echo">0</span>):
+              <div class="form-label">Float Voltage (<span id="TargetFloatVoltage_echo">?</span>):
               </div>
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
@@ -1376,7 +1419,7 @@ Contact me at mark@xengineering.net       -->
 
             <hr />
             <div class="form-row">
-              <div class="form-label">Float Duration (hrs) (<span id="FLOAT_DURATION_echo">0</span>):</div>
+              <div class="form-label">Float Duration (hrs) (<span id="FLOAT_DURATION_echo">?</span>):</div>
               <div class="form-input">
                 <form action="/get" method="GET" target="hidden-form">
                   <input type="hidden" name="password" class="password_field">
@@ -1395,7 +1438,7 @@ Contact me at mark@xengineering.net       -->
           <div class="section-title">Thermistor</div>
 
           <div class="form-row">
-            <div class="form-label">Temp Source (<span id="TempSource_echo">0</span>):</div>
+            <div class="form-label">Temp Source (<span id="TempSource_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1413,7 +1456,7 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Series Resistor R_fixed Ω (<span id="R_fixed_echo">0</span>):</div>
+            <div class="form-label">Series Resistor R_fixed Ω (<span id="R_fixed_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1425,7 +1468,7 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Thermistor Beta (<span id="Beta_echo">0</span>):</div>
+            <div class="form-label">Thermistor Beta (<span id="Beta_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1437,7 +1480,7 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Reference Temp T0 °C (<span id="T0_C_echo">0</span>):</div>
+            <div class="form-label">Reference Temp T0 °C (<span id="T0_C_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1455,7 +1498,7 @@ Contact me at mark@xengineering.net       -->
         <div class="settings-card">
           <div class="section-title">Advanced</div>
           <div class="form-row">
-            <div class="form-label">Field Switching Freq (hz) (<span id="SwitchingFrequency_echo">0</span>):</div>
+            <div class="form-label">Field Switching Freq (hz) (<span id="SwitchingFrequency_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1466,7 +1509,7 @@ Contact me at mark@xengineering.net       -->
           </div>
           <hr />
           <div class="form-row">
-            <div class="form-label">Field Adj Step (V) (<span id="interval_echo">0</span>):</div>
+            <div class="form-label">Field Adj Step (V) (<span id="interval_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1477,12 +1520,12 @@ Contact me at mark@xengineering.net       -->
           </div>
           <hr />
           <div class="form-row">
-            <div class="form-label">Field Adj. Time Interval (ms) (<span id="FieldAdjustmentinterval_echo">0</span>):
+            <div class="form-label">Field Adj. Time Interval (ms) (<span id="FieldAdjustmentInterval_echo">?</span>):
             </div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="FieldAdjustmentinterval" type="number" step="1" min="10" max="100000" />
+                <input name="FieldAdjustmentInterval" type="number" step="1" min="1" max="10000" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
@@ -1490,7 +1533,7 @@ Contact me at mark@xengineering.net       -->
           <hr />
 
           <div class="form-row">
-            <div class="form-label">RPM Scaling Factor (<span id="RPMScalingFactor_echo">0</span>):</div>
+            <div class="form-label">RPM Scaling Factor (<span id="RPMScalingFactor_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1527,7 +1570,7 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Defer to BMS Control (<span id="BMSLogic_echo">0</span>):</div>
+            <div class="form-label">Defer to BMS Control (<span id="BMSLogic_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1546,7 +1589,7 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Charge on ___ BMS Signal (<span id="BMSLogicLevelOff_echo">0</span>):</div>
+            <div class="form-label">Charge on ___ BMS Signal (<span id="BMSLogicLevelOff_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1565,7 +1608,7 @@ Contact me at mark@xengineering.net       -->
           <hr />
           <div class="form-row">
             <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-              <span>Min Field (%) (<span id="MinDuty_echo">0</span>):</span>
+              <span>Min Field (%) (<span id="MinDuty_echo">?</span>):</span>
               <span class="tooltip" onclick="this.classList.toggle('active')">
                 ℹ️
                 <span class="tooltip-box">Engine Speed may register better if min field is kept >15% or so</span>
@@ -1583,7 +1626,7 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Max Field (%) (<span id="MaxDuty_echo">0</span>):</div>
+            <div class="form-label">Max Field (%) (<span id="MaxDuty_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1596,7 +1639,7 @@ Contact me at mark@xengineering.net       -->
           <hr />
           <div class="form-row">
             <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-              <span>Field Resistance (Ohms) (<span id="FieldResistance_echo">0</span>):</span>
+              <span>Field Resistance (Ohms) (<span id="FieldResistance_echo">?</span>):</span>
               <span class="tooltip" onclick="this.classList.toggle('active')">
                 ℹ️
                 <span class="tooltip-box">Only affects Field Amps calc, not important</span>
@@ -1614,7 +1657,7 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">RPM-Based Charging Curve (<span id="AmpControlByRPM_echo">0</span>):</div>
+            <div class="form-label">RPM-Based Charging Curve (<span id="AmpControlByRPM_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1699,7 +1742,7 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Manual Field Enable (<span id="ManualFieldToggle_echo">0</span>):</div>
+            <div class="form-label">Manual Field Enable (<span id="ManualFieldToggle_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1717,7 +1760,7 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Manual Field PWM (%) (<span id="ManualDuty_echo">0</span>):</div>
+            <div class="form-label">Manual Field PWM (%) (<span id="ManualDuty_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -1730,7 +1773,7 @@ Contact me at mark@xengineering.net       -->
           <hr />
           <div class="form-row">
             <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-              <span>Limp Home Mode (<span id="LimpHome_echo">0</span>):</span>
+              <span>Limp Home Mode (<span id="LimpHome_echo">?</span>):</span>
               <span class="tooltip" onclick="this.classList.toggle('active')">
                 ℹ️
                 <span class="tooltip-box">Will ignore all sensors and set a field of 50%</span>
@@ -1773,18 +1816,26 @@ Contact me at mark@xengineering.net       -->
                 <span class="toggle-label">On</span>
                 <input id="AutoShuntGainCorrection" name="AutoShuntGainCorrection" type="number" value=""
                   style="display:none;" />
-                <button type="button" class="btn-secondary" onclick="resetDynamicShuntGain()"
-                  style="margin-left: 10px;">
-                  Reset Factor
-                </button>
+                <input type="hidden" name="ResetDynamicShuntGain" id="ResetDynamicShuntGain" value="0" />
+                <button type="button" class="btn-secondary" onclick="resetParameter('ResetDynamicShuntGain')"
+                  id="ResetDynamicShuntGain_button">Reset Factor</button>
               </form>
             </div>
           </div>
 
           <hr />
           <div class="form-row">
+            <div class="form-label">SOC Gain Factor (Current Value):</div>
+            <div class="form-input">
+              <span id="DynamicShuntGainFactor_display"
+                style="font-weight: bold; color: var(--accent); font-size: 14px;">?</span>
+            </div>
+          </div>
+
+          <hr />
+          <div class="form-row">
             <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-              <span>Alternator Auto-Zero (<span id="AutoAltCurrentZero_echo">0</span>):</span>
+              <span>Alternator Auto-Zero (<span id="AutoAltCurrentZero_echo">?</span>):</span>
               <span class="tooltip" onclick="this.classList.toggle('active')">
                 ℹ️
                 <span class="tooltip-box">Automatically zeros alternator current reading every hour and when temperature
@@ -1802,9 +1853,9 @@ Contact me at mark@xengineering.net       -->
                 </label>
                 <span class="toggle-label">On</span>
                 <input id="AutoAltCurrentZero" name="AutoAltCurrentZero" type="number" value="" style="display:none;" />
-                <button type="button" class="btn-secondary" onclick="resetDynamicAltZero()" style="margin-left: 10px;">
-                  Reset Zero
-                </button>
+                <input type="hidden" name="ResetDynamicAltZero" id="ResetDynamicAltZero" value="0" />
+                <button type="button" class="btn-secondary" onclick="resetParameter('ResetDynamicAltZero')"
+                  id="ResetDynamicAltZero_button">Reset Zero</button>
               </form>
             </div>
           </div>
@@ -1812,7 +1863,7 @@ Contact me at mark@xengineering.net       -->
           <hr />
           <div class="form-row">
             <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-              <span>Winding Temp Offset (°F) (<span id="WindingTempOffset_echo">50.0</span>):</span>
+              <span>Winding Temp Offset (°F) (<span id="WindingTempOffset_echo">?</span>):</span>
               <span class="tooltip" onclick="this.classList.toggle('active')">
                 ℹ️
                 <span class="tooltip-box">How much hotter windings are than case temperature. Typical: 40-60°F</span>
@@ -1830,7 +1881,7 @@ Contact me at mark@xengineering.net       -->
           <hr />
           <div class="form-row">
             <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-              <span>Pulley Ratio (Alt:Engine) (<span id="PulleyRatio_echo">2.00</span>):</span>
+              <span>Pulley Ratio (Alt:Engine) (<span id="PulleyRatio_echo">?</span>):</span>
               <span class="tooltip" onclick="this.classList.toggle('active')">
                 ℹ️
                 <span class="tooltip-box">Alternator RPM = Engine RPM × this ratio. Common: 2.0-3.0</span>
@@ -1839,25 +1890,29 @@ Contact me at mark@xengineering.net       -->
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
-                <input name="PulleyRatio" type="number" step="0.01" min="1.0" max="5.0" />
+                <input name="PulleyRatio" type="number" step="0.01" min="1.0" max="10.0" />
                 <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
 
-          <hr />
           <div class="form-row">
-            <div class="form-label">Set Alternator Life Manually (%) (<span id="ManualLifePercentage_echo">100</span>):
+            <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+              <span>Set Alternator Life Manually (%) (<span id="ManualLifePercentage_echo">?</span>):</span>
+              <span class="tooltip" onclick="this.classList.toggle('active')">
+                ℹ️
+                <span class="tooltip-box">This will adjust life for brushes, bearings, insulation all together, meant
+                  for zero-ing all together</span>
+              </span>
             </div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
-                <input type="hidden" name="password" class="password_field">
+                <input type="hidden" name="password" class="password_field" />
                 <input name="ManualLifePercentage" type="number" step="1" min="0" max="100" />
-                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
+                <input onclick="submitMessage.call(this)" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
-
 
         </div> <!-- closes .settings-card for Advanced -->
       </div>
@@ -2020,21 +2075,20 @@ Contact me at mark@xengineering.net       -->
       <div id="settings-battery" class="sub-tab-content">
         <div class="settings-card">
           <div class="section-title">Battery Monitor</div>
-          <hr />
           <div class="form-row">
-            <div class="form-label">Battery Capacity (Amp hr) (<span id="BatteryCapacity_Ah_echo">0</span>):</div>
+            <div class="form-label">Battery Capacity (Amp hr) (<span id="BatteryCapacity_Ah_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
                 <input name="BatteryCapacity_Ah" type="number" step="1" min="1" max="10000" />
-                <input onclick="submitMessage()" type="submit" value="Set" class="btn-primary" />
+                <input onclick="submitMessage.call(this)" type="submit" value="Set" class="btn-primary" />
               </form>
             </div>
           </div>
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Current Threshold (A) (<span id="CurrentThreshold_echo">0</span>):</div>
+            <div class="form-label">Current Threshold (A) (<span id="CurrentThreshold_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -2058,7 +2112,7 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Charge Detection Time (s) (<span id="ChargedDetectionTime_echo">0</span>):</div>
+            <div class="form-label">Charge Detection Time (s) (<span id="ChargedDetectionTime_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -2071,7 +2125,7 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Peukert Exponent (<span id="PeukertExponent_echo">0</span>):</div>
+            <div class="form-label">Peukert Exponent (<span id="PeukertExponent_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -2082,7 +2136,7 @@ Contact me at mark@xengineering.net       -->
           </div>
           <hr />
           <div class="form-row">
-            <div class="form-label">Charge Efficiency (%) (<span id="ChargeEfficiency_echo">0</span>):</div>
+            <div class="form-label">Charge Efficiency (%) (<span id="ChargeEfficiency_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -2093,7 +2147,7 @@ Contact me at mark@xengineering.net       -->
           </div>
           <hr />
           <div class="form-row">
-            <div class="form-label">Max Charge Detect Voltage (<span id="ChargedVoltage_echo">0</span>):</div>
+            <div class="form-label">Max Charge Detect Voltage (<span id="ChargedVoltage_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -2106,7 +2160,7 @@ Contact me at mark@xengineering.net       -->
           <hr />
           <div class="form-row">
             <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-              <span>Shunt Resitance uOhms (micro)(<span id="ShuntResistanceMicroOhm_echo">0</span>):</span>
+              <span>Shunt Resitance uOhms (micro)(<span id="ShuntResistanceMicroOhm_echo">?</span>):</span>
               <span class="tooltip" onclick="this.classList.toggle('active')">
                 ℹ️
                 <span class="tooltip-box">Most common (Victron) = 100u</span>
@@ -2124,7 +2178,7 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Set SoC Manually (%) (<span id="ManualSOCPoint_echo">0</span>):</div>
+            <div class="form-label">Set SoC Manually (%) (<span id="ManualSOCPoint_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -2156,7 +2210,7 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">VE.Direct Data (<span id="VeData_echo">0</span>):</div>
+            <div class="form-label">VE.Direct Data (<span id="VeData_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -2174,7 +2228,7 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">NMEA 0183 Data (<span id="NMEA0183Data_echo">0</span>):</div>
+            <div class="form-label">NMEA 0183 Data (<span id="NMEA0183Data_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -2192,7 +2246,7 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">NMEA2K Data (<span id="NMEA2KData_echo">0</span>):</div>
+            <div class="form-label">NMEA2K Data (<span id="NMEA2KData_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -2210,7 +2264,7 @@ Contact me at mark@xengineering.net       -->
 
           <hr />
           <div class="form-row">
-            <div class="form-label">Battery Voltage Source (<span id="BatteryVoltageSource_echo">0</span>):</div>
+            <div class="form-label">Battery Voltage Source (<span id="BatteryVoltageSource_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -2227,7 +2281,7 @@ Contact me at mark@xengineering.net       -->
           </div>
           <hr />
           <div class="form-row">
-            <div class="form-label">Invert Battery Amps (<span id="InvertBattAmps_echo">0</span>):</div>
+            <div class="form-label">Invert Battery Amps (<span id="InvertBattAmps_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -2244,7 +2298,7 @@ Contact me at mark@xengineering.net       -->
           </div>
           <hr />
           <div class="form-row">
-            <div class="form-label">Invert Alternator Amps (<span id="InvertAltAmps_echo">0</span>):</div>
+            <div class="form-label">Invert Alternator Amps (<span id="InvertAltAmps_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -2261,7 +2315,7 @@ Contact me at mark@xengineering.net       -->
           </div>
           <hr />
           <div class="form-row">
-            <div class="form-label">Alternator Current Offset (A) (<span id="AlternatorCOffset_echo">0</span>):</div>
+            <div class="form-label">Alternator Current Offset (A) (<span id="AlternatorCOffset_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -2272,7 +2326,7 @@ Contact me at mark@xengineering.net       -->
           </div>
           <hr />
           <div class="form-row">
-            <div class="form-label">Battery Current Offset (A) (<span id="BatteryCOffset_echo">0</span>):</div>
+            <div class="form-label">Battery Current Offset (A) (<span id="BatteryCOffset_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -2283,7 +2337,7 @@ Contact me at mark@xengineering.net       -->
           </div>
           <hr />
           <div class="form-row">
-            <div class="form-label">Plot Points (X axis length) (<span id="maxPoints_echo">0</span>):</div>
+            <div class="form-label">Plot Points (X axis length) (<span id="maxPoints_echo">?</span>):</div>
             <div class="form-input">
               <form action="/get" method="GET" target="hidden-form">
                 <input type="hidden" name="password" class="password_field">
@@ -2296,7 +2350,7 @@ Contact me at mark@xengineering.net       -->
           <hr />
           <div class="form-row">
             <div class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-              <span>Switch Panel Override (<span id="SwitchControlOverride_echo">0</span>):</span>
+              <span>Switch Panel Override (<span id="SwitchControlOverride_echo">?</span>):</span>
               <span class="tooltip" onclick="this.classList.toggle('active')">
                 ℹ️
                 <span class="tooltip-box">Obsolete, ignore</span>
@@ -2343,7 +2397,7 @@ Contact me at mark@xengineering.net       -->
             </div>
           </div>
 
-
+          <hr />
           <div class="form-row">
             <div class="form-label">Change Password:</div>
             <div class="form-input">
@@ -2482,7 +2536,7 @@ Contact me at mark@xengineering.net       -->
 
             <div class="card">
               <p>Time to Full Discharge</p>
-              <p class="reading"><span id="timeToFullChargeMinID">0</span> min</p>
+              <p class="reading"><span id="timeToFullDischargeMinID">0</span> min</p>
             </div>
 
             <div class="card">
@@ -2701,27 +2755,108 @@ Contact me at mark@xengineering.net       -->
         <div class="settings-card">
           <div class="section-title">ESP32</div>
           <div class="grid">
+            <!-- Current Session Performance -->
+
             <div class="card">
               <p style="display: flex; align-items: center; justify-content: space-between;">
                 <span>Maximum Loop Time</span>
                 <span class="tooltip" onclick="this.classList.toggle('active')">
                   ℹ️
-                  <span class="tooltip-box">15,000uS typ.</span>
+                  <span class="tooltip-box">19,000uS typical.</span>
                 </span>
               </p>
               <p class="reading"><span id="MaximumLoopTimeID">0</span> μs</p>
             </div>
 
+
             <div class="card">
-              <p>Maximum Loop Time</p>
-              <p class="reading"><span id="MaximumLoopTimeID">0</span> μs</p>
+              <p style="display: flex; align-items: center; justify-content: space-between;">
+                <span>Free Heap Memory</span>
+                <span class="tooltip" onclick="this.classList.toggle('active')">
+                  ℹ️
+                  <span class="tooltip-box">132kB+ typical. Critical below 20kB, warning below 50kB.</span>
+                </span>
+              </p>
+              <p class="reading"><span id="FreeHeapID">0</span> kB</p>
             </div>
+
+            <div class="card">
+              <p style="display: flex; align-items: center; justify-content: space-between;">
+                <span>WiFi Strength</span>
+                <span class="tooltip" onclick="this.classList.toggle('active')">
+                  ℹ️
+                  <span class="tooltip-box">Above -67dBm good. Below -75dBm unstable.</span>
+                </span>
+              </p>
+              <p class="reading"><span id="WifiStrengthID">0</span> dBm</p>
+            </div>
+
+            <div class="card">
+              <p>Current Session Duration</p>
+              <p class="reading"><span id="CurrentSessionDurationID">0</span> min</p>
+            </div>
+
+            <div class="card">
+              <p>Current WiFi Session Duration</p>
+              <p class="reading"><span id="CurrentWifiSessionDurationID">0</span> min</p>
+            </div>
+
+            <!-- Last Session Statistics -->
+            <div class="card">
+              <p style="display: flex; align-items: center; justify-content: space-between;">
+                <span>Last Session Max Loop Time</span>
+                <span class="tooltip" onclick="this.classList.toggle('active')">
+                  ℹ️
+                  <span class="tooltip-box">Peak loop time from previous power cycle.</span>
+                </span>
+              </p>
+              <p class="reading"><span id="LastSessionMaxLoopTimeID">0</span> μs</p>
+            </div>
+
+            <div class="card">
+              <p style="display: flex; align-items: center; justify-content: space-between;">
+                <span>Last Session Min Heap</span>
+                <span class="tooltip" onclick="this.classList.toggle('active')">
+                  ℹ️
+                  <span class="tooltip-box">Lowest heap memory from previous power cycle.</span>
+                </span>
+              </p>
+              <p class="reading"><span id="LastSessionMinHeapID">0</span> kB</p>
+            </div>
+
+            <div class="card">
+              <p>Last Session Duration</p>
+              <p class="reading"><span id="LastSessionDurationID">0</span> min</p>
+            </div>
+
+            <!-- WiFi Statistics -->
+            <div class="card">
+              <p>WiFi Reconnects (This Session)</p>
+              <p class="reading"><span id="WifiReconnectsThisSessionID">0</span></p>
+            </div>
+
+            <div class="card">
+              <p>WiFi Reconnects (Total)</p>
+              <p class="reading"><span id="WifiReconnectsTotalID">0</span></p>
+            </div>
+
+            <div class="card">
+              <p>Last Reset Reason</p>
+              <p class="reading"><span id="LastResetReasonID">Unknown</span></p>
+            </div>
+
+            <div class="card">
+              <p>Last WiFi Reset Reason</p>
+              <p class="reading"><span id="LastWifiResetReasonID">Unknown</span></p>
+            </div>
+
+            <!-- Performance Timing (moved to bottom) -->
             <div class="card">
               <p style="display: flex; align-items: center; justify-content: space-between;">
                 <span>Analog Read Time (Max)</span>
                 <span class="tooltip" onclick="this.classList.toggle('active')">
                   ℹ️
-                  <span class="tooltip-box">1,000uS typ.</span>
+                  <span class="tooltip-box">1,000μs typical for sensor readings.</span>
                 </span>
               </p>
               <p class="reading"><span id="AnalogReadTimeID">0</span> μs</p>
@@ -2729,10 +2864,10 @@ Contact me at mark@xengineering.net       -->
 
             <div class="card">
               <p style="display: flex; align-items: center; justify-content: space-between;">
-                <span>Wifi Send Time</span>
+                <span>WiFi Send Time</span>
                 <span class="tooltip" onclick="this.classList.toggle('active')">
                   ℹ️
-                  <span class="tooltip-box">14,000us typ.</span>
+                  <span class="tooltip-box">14,000μs typical for data transmission.</span>
                 </span>
               </p>
               <p class="reading"><span id="SendWifiTimeID">0</span> μs</p>
@@ -2740,10 +2875,10 @@ Contact me at mark@xengineering.net       -->
 
             <div class="card">
               <p style="display: flex; align-items: center; justify-content: space-between;">
-                <span>VE Dir. Read Time</span>
+                <span>VE Direct Read Time</span>
                 <span class="tooltip" onclick="this.classList.toggle('active')">
                   ℹ️
-                  <span class="tooltip-box">12,000us typ.</span>
+                  <span class="tooltip-box">12,000μs typical for Victron data.</span>
                 </span>
               </p>
               <p class="reading"><span id="VeTimeID">0</span> μs</p>
@@ -2751,39 +2886,14 @@ Contact me at mark@xengineering.net       -->
 
             <div class="card">
               <p style="display: flex; align-items: center; justify-content: space-between;">
-                <span>Wifi Strength</span>
+                <span>WiFi Heartbeat</span>
                 <span class="tooltip" onclick="this.classList.toggle('active')">
                   ℹ️
-                  <span class="tooltip-box">Above –67 dBm good. Below –75 dBm unstable</span>
+                  <span class="tooltip-box">Increments with each data transmission.</span>
                 </span>
               </p>
-              <p class="reading"><span id="WifiStrengthID">0</span> dB</p>
+              <p class="reading"><span id="WifiHeartBeatID">0</span></p>
             </div>
-
-            <div class="card">
-              <p style="display: flex; align-items: center; justify-content: space-between;">
-                <span>Wifi Heartbeat</span>
-                <span class="tooltip" onclick="this.classList.toggle('active')">
-                  ℹ️
-                  <span class="tooltip-box">Increments...</span>
-                </span>
-              </p>
-              <p class="reading"><span id="WifiHeartBeatID">0</span> #</p>
-            </div>
-
-            <div class="card">
-              <p style="display: flex; align-items: center; justify-content: space-between;">
-                <span>Free Heap Memory</span>
-                <span class="tooltip" onclick="this.classList.toggle('active')">
-                  ℹ️
-                  <span class="tooltip-box">132 kB+ typ., danger below 20 kB</span>
-                </span>
-              </p>
-              <p class="reading"><span id="FreeHeapID">0</span> kB</p>
-            </div>
-
-
-
 
           </div>
         </div>
@@ -2849,6 +2959,28 @@ Contact me at mark@xengineering.net       -->
 
   <script>
 
+
+    // Reset reason lookup tables
+    const resetReasonLookup = {
+      0: "Unknown",
+      1: "Software reset (controlled)",
+      2: "Woke from deep sleep",
+      3: "External reset (button)",
+      4: "Watchdog reset (code hung)",
+      5: "Panic/Exception reset (crash)",
+      6: "Brownout reset (power issue)",
+      7: "Scheduled maintenance restart",
+      8: "Other reset"
+    };
+
+    const wifiResetReasonLookup = {
+      0: "Unknown WiFi disconnect",
+      1: "WiFi signal lost",
+      2: "WiFi password problem",
+      3: "Can't connect to WiFi",
+      4: "Other WiFi issue"
+    };
+
     function debounce(fn, delay) {
       let timer = null;
       return function (...args) {
@@ -2906,7 +3038,7 @@ Contact me at mark@xengineering.net       -->
       TargetFloatVoltage: 35,
       SwitchingFrequency: 36,
       interval: 37,
-      FieldAdjustmentinterval: 38,
+      FieldAdjustmentInterval: 38,
       ManualDuty: 39,
       SwitchControlOverride: 40,
       OnOff: 41,
@@ -2990,17 +3122,27 @@ Contact me at mark@xengineering.net       -->
       fieldActiveStatus: 119,
       timeToFullChargeMin: 120,
       timeToFullDischargeMin: 121,
-      AutoShuntGainCorrection: 122,
-      DynamicShuntGainFactor: 123,
-      AutoAltCurrentZero: 124,
-      DynamicAltCurrentZero: 125,
+      AutoShuntGainCorrection: 122, // boolean
+      DynamicShuntGainFactor: 123, // actual factor
+      AutoAltCurrentZero: 124,     // boolean
+      DynamicAltCurrentZero: 125,  // actual factor
       InsulationLifePercent: 126,
       GreaseLifePercent: 127,
       BrushLifePercent: 128,
       PredictedLifeHours: 129,
       LifeIndicatorColor: 130,
       WindingTempOffset: 131,
-      PulleyRatio: 132
+      PulleyRatio: 132,
+      LastSessionDuration: 133,
+      LastSessionMaxLoopTime: 134,
+      LastSessionMinHeap: 135,
+      WifiReconnectsThisSession: 136,
+      WifiReconnectsTotal: 137,
+      CurrentSessionDuration: 138,
+      CurrentWifiSessionDuration: 139,
+      LastResetReason: 140,          // Integer code
+      LastWifiResetReason: 141,       // Integer code
+      ManualLifePercentage: 142
 
     };
 
@@ -3825,7 +3967,8 @@ Contact me at mark@xengineering.net       -->
       initTemperaturePlot();
 
       if (!!window.EventSource) {
-        const telemetryFields = [      //Telemetry: Live sensor data that changes frequently
+        const telemetryFields = [
+          //Telemetry: Live sensor data that changes frequently
           ["AltTempID", "AlternatorTemperatureF"],         // 0
           ["DutyCycleID", "DutyCycle"],                    // 1
           ["BatteryVID", "BatteryV"],                      // 2
@@ -3877,8 +4020,16 @@ Contact me at mark@xengineering.net       -->
           ["InsulationLifePercentID", "InsulationLifePercent"],
           ["GreaseLifePercentID", "GreaseLifePercent"],
           ["BrushLifePercentID", "BrushLifePercent"],
-          ["PredictedLifeHoursID", "PredictedLifeHours"]
-
+          ["PredictedLifeHoursID", "PredictedLifeHours"],
+          ["LastSessionDurationID", "LastSessionDuration"],
+          ["LastSessionMaxLoopTimeID", "LastSessionMaxLoopTime"],
+          ["LastSessionMinHeapID", "LastSessionMinHeap"],
+          ["WifiReconnectsThisSessionID", "WifiReconnectsThisSession"],
+          ["WifiReconnectsTotalID", "WifiReconnectsTotal"],
+          ["CurrentSessionDurationID", "CurrentSessionDuration"],
+          ["CurrentWifiSessionDurationID", "CurrentWifiSessionDuration"],
+          ["LastResetReasonID", "LastResetReason"],
+          ["LastWifiResetReasonID", "LastWifiResetReason"]
         ];
 
         // this is the numerical displays, with scaling done locally
@@ -3980,7 +4131,7 @@ Contact me at mark@xengineering.net       -->
             TargetFloatVoltage: values[fieldIndexes.TargetFloatVoltage],
             SwitchingFrequency: values[fieldIndexes.SwitchingFrequency],
             interval: values[fieldIndexes.interval],
-            FieldAdjustmentinterval: values[fieldIndexes.FieldAdjustmentinterval],
+            FieldAdjustmentInterval: values[fieldIndexes.FieldAdjustmentInterval],
             ManualDuty: values[fieldIndexes.ManualDuty],
             SwitchControlOverride: values[fieldIndexes.SwitchControlOverride],
             OnOff: values[fieldIndexes.OnOff],
@@ -4068,7 +4219,17 @@ Contact me at mark@xengineering.net       -->
             PredictedLifeHours: values[fieldIndexes.PredictedLifeHours],
             LifeIndicatorColor: values[fieldIndexes.LifeIndicatorColor],
             WindingTempOffset: values[fieldIndexes.WindingTempOffset],
-            PulleyRatio: values[fieldIndexes.PulleyRatio]
+            PulleyRatio: values[fieldIndexes.PulleyRatio],
+            LastSessionDuration: values[fieldIndexes.LastSessionDuration],
+            LastSessionMaxLoopTime: values[fieldIndexes.LastSessionMaxLoopTime],
+            LastSessionMinHeap: values[fieldIndexes.LastSessionMinHeap],
+            WifiReconnectsThisSession: values[fieldIndexes.WifiReconnectsThisSession],
+            WifiReconnectsTotal: values[fieldIndexes.WifiReconnectsTotal],
+            CurrentSessionDuration: values[fieldIndexes.CurrentSessionDuration],
+            CurrentWifiSessionDuration: values[fieldIndexes.CurrentWifiSessionDuration],
+            LastResetReason: values[fieldIndexes.LastResetReason],
+            LastWifiResetReason: values[fieldIndexes.LastWifiResetReason],
+            ManualLifePercentage: values[fieldIndexes.ManualLifePercentage]
 
           };
 
@@ -4144,66 +4305,81 @@ Contact me at mark@xengineering.net       -->
           let lastValues = {};
 
           // Modify your existing updateFields with MINIMAL changes:
+          // Enhanced updateFields function that handles reset reason lookups
           const updateFields = (fieldArray) => {
             for (const [elementId, key] of fieldArray) {
               const el = document.getElementById(elementId);
               if (!el) continue;
               const value = data[key];
 
-              // Calculate what the new text content would be (your existing logic)
+              // Calculate what the new text content would be
               let newTextContent;
               if (value === undefined || isNaN(value)) {
                 newTextContent = "—";
               }
-              // Values scaled by 100 on server (transmitted as integer × 100)
+              // Special handling for reset reason lookups
+              else if (key === "LastResetReason") {
+                newTextContent = resetReasonLookup[value] || `Unknown (${value})`;
+              }
+              else if (key === "LastWifiResetReason") {
+                newTextContent = wifiResetReasonLookup[value] || `Unknown WiFi issue (${value})`;
+              }
+              // Values scaled by 100 on server (existing logic)
               else if (["BatteryV", "Channel3V", "IBV", "VictronVoltage", "vvout", "FullChargeVoltage", "VictronCurrent",
                 "TargetFloatVoltage", "IBVMax", "Bcur", "MeasuredAmps", "MeasuredAmpsMax", "SoC_percent", "AlternatorCOffset", "BatteryCOffset", "R_fixed", "Beta", "T0_C"].includes(key)) {
                 newTextContent = (value / 100).toFixed(2);
               }
-              // Values scaled by 10 on server (transmitted as integer × 10)  
+              // Values scaled by 10 on server (existing logic)  
               else if (["iiout"].includes(key)) {
                 newTextContent = (value / 10).toFixed(1);
               }
-              // Energy values - transmitted as integer Wh (no scaling needed)
+              // Energy values (existing logic)
               else if (["ChargedEnergy", "DischargedEnergy", "AlternatorChargedEnergy"].includes(key)) {
-                newTextContent = value;  // Display as-is (integer Wh)
+                newTextContent = value;
               }
-              // Fuel in mL - transmitted as integer mL, display as L with decimals
+              // Fuel in mL (existing logic)
               else if (["AlternatorFuelUsed"].includes(key)) {
-                newTextContent = (value / 1000).toFixed(3);  // Convert mL to L with 3 decimal places
+                newTextContent = (value / 1000).toFixed(3);
               }
-              // Time values - convert seconds to H:M:S format
+              // Time values (existing logic)
               else if (["EngineRunTime", "AlternatorOnTime"].includes(key)) {
-                const totalSeconds = value;  // Changed from totalMinutes
-                const hours = Math.floor(totalSeconds / 3600);  // 3600 seconds per hour
-                const minutes = Math.floor((totalSeconds % 3600) / 60);  // Remaining seconds to minutes
-                const seconds = totalSeconds % 60;  // Remaining seconds
+                const totalSeconds = value;
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
                 newTextContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
               }
-              // cool dynamic adjustments
+              // Session duration in minutes (new logic)
+              else if (["LastSessionDuration", "CurrentSessionDuration", "CurrentWifiSessionDuration"].includes(key)) {
+                if (value < 60) {
+                  newTextContent = `${value}`;  // Less than 1 hour, show minutes
+                } else {
+                  const hours = Math.floor(value / 60);
+                  const minutes = value % 60;
+                  newTextContent = `${hours}h ${minutes}m`;
+                }
+              }
+              // Cool dynamic adjustments (existing logic)
               else if (["DynamicShuntGainFactor", "DynamicAltCurrentZero"].includes(key)) {
                 newTextContent = (value / 1000).toFixed(3);
               }
-              //alternator life parameter scaling
-              // Values scaled by 100 on server (transmitted as integer × 100)
+              // Alternator life parameters (existing logic)
               else if (["InsulationLifePercent", "GreaseLifePercent", "BrushLifePercent"].includes(key)) {
                 newTextContent = (value / 100).toFixed(1);
               }
-              // Values scaled by 10 on server (transmitted as integer × 10)
               else if (["WindingTempOffset"].includes(key)) {
                 newTextContent = (value / 10).toFixed(1);
               }
-              // Values scaled by 100 on server (transmitted as integer × 100)  
               else if (["PulleyRatio"].includes(key)) {
                 newTextContent = (value / 100).toFixed(2);
               }
-              // Settings echo values that need scaling
+              // Settings echo values (existing logic)
               else if (["TargetAmps", "TargetAmpL"].includes(key)) {
-                newTextContent = value;  // These are not scaled - transmitted as integer amps
+                newTextContent = value;
               }
-              // Default: display as integer
+              // Default: display as integer (existing logic)
               else {
-                newTextContent = Math.round(value);  // Keep your exact original logic
+                newTextContent = Math.round(value);
               }
 
               // ONLY UPDATE DOM IF VALUE ACTUALLY CHANGED
@@ -4237,8 +4413,8 @@ Contact me at mark@xengineering.net       -->
           if ('interval' in data) {
             document.getElementById('interval_echo').textContent = (data.interval / 100).toFixed(3);
           }
-          if ('FieldAdjustmentinterval' in data) {
-            document.getElementById('FieldAdjustmentinterval_echo').textContent = (data.FieldAdjustmentinterval / 100).toFixed(2);
+          if ('FieldAdjustmentInterval' in data) {
+            document.getElementById('FieldAdjustmentInterval_echo').textContent = (data.FieldAdjustmentInterval / 100).toFixed(2);
           }
           if ('ManualDuty' in data) {
             document.getElementById('ManualDuty_echo').textContent = data.ManualDuty;
@@ -4457,7 +4633,7 @@ Contact me at mark@xengineering.net       -->
             document.getElementById('FLOAT_DURATION_echo').textContent = Math.round(data.FLOAT_DURATION / 3600);
           }
           if ('AutoShuntGainCorrection' in data) {
-            document.getElementById('AutoShuntGainCorrection_echo').textContent = data.AutoShuntGainCorrection;
+            document.getElementById('AutoShuntGainCorrection_echo').textContent = data.AutoShuntGainCorrection; // BOOLEAN
           }
           if ('AutoAltCurrentZero' in data) {
             document.getElementById('AutoAltCurrentZero_echo').textContent = data.AutoAltCurrentZero;
@@ -4471,6 +4647,20 @@ Contact me at mark@xengineering.net       -->
           if ('ManualLifePercentage' in data) {
             document.getElementById('ManualLifePercentage_echo').textContent = data.ManualLifePercentage;
           }
+
+          if ('DynamicShuntGainFactor' in data) {
+            const displayEl = document.getElementById('DynamicShuntGainFactor_display');
+            if (displayEl) {
+              displayEl.textContent = (data.DynamicShuntGainFactor / 1000).toFixed(3);
+            }
+          }
+          if ('DynamicAltCurrentZero' in data) {
+            const displayEl = document.getElementById('DynamicAltCurrentZero_display');
+            if (displayEl) {
+              displayEl.textContent = (data.DynamicAltCurrentZero / 1000).toFixed(3) + ' A';
+            }
+          }
+
           if ('AlarmLatchState' in data) {
             const latchDisplay = document.getElementById('AlarmLatchState_display');
             if (data.AlarmLatchState === 1) {
@@ -5081,7 +5271,7 @@ Contact me at mark@xengineering.net       -->
     <span id="TargetFloatVoltage_echo" style="display:none;">0</span>
     <span id="SwitchingFrequency_echo" style="display:none;">0</span>
     <span id="interval_echo" style="display:none;">0</span>
-    <span id="FieldAdjustmentinterval_echo" style="display:none;">0</span>
+    <span id="FieldAdjustmentInterval_echo" style="display:none;">0</span>
     <span id="ManualDuty_echo" style="display:none;">0</span>
     <span id="SwitchControlOverride_echo" style="display:none;">0</span>
     <span id="OnOff_echo" style="display:none;">0</span>
@@ -5164,10 +5354,18 @@ Contact me at mark@xengineering.net       -->
     <span id="FLOAT_DURATION_echo" style="display:none;">0</span>
     <span id="AutoShuntGainCorrection_echo" style="display:none;">0</span>
     <span id="AutoAltCurrentZero_echo" style="display:none;">0</span>
-    <span id="WindingTempOffset_echo" style="display:none;">50.0</span>
-    <span id="PulleyRatio_echo" style="display:none;">2.00</span>
-    <span id="ManualLifePercentage_echo" style="display:none;">100</span>
-
+    <span id="WindingTempOffset_echo" style="display:none;">0</span>
+    <span id="PulleyRatio_echo" style="display:none;">0</span>
+    <span id="ManualLifePercentage_echo" style="display:none;">0</span>
+    <span id="LastSessionDurationID" style="display:none;">0</span>
+    <span id="LastSessionMaxLoopTimeID" style="display:none;">0</span>
+    <span id="LastSessionMinHeapID" style="display:none;">0</span>
+    <span id="WifiReconnectsThisSessionID" style="display:none;">0</span>
+    <span id="WifiReconnectsTotalID" style="display:none;">0</span>
+    <span id="CurrentSessionDurationID" style="display:none;">0</span>
+    <span id="CurrentWifiSessionDurationID" style="display:none;">0</span>
+    <span id="LastResetReasonID" style="display:none;">0</span>
+    <span id="LastWifiResetReasonID" style="display:none;">0</span>
 
 
     <!-- Input values for settings -->
@@ -5177,7 +5375,7 @@ Contact me at mark@xengineering.net       -->
     <input id="TargetFloatVoltage" style="display:none;" value="0" />
     <input id="SwitchingFrequency" style="display:none;" value="0" />
     <input id="interval" style="display:none;" value="0" />
-    <input id="FieldAdjustmentinterval" style="display:none;" value="0" />
+    <input id="FieldAdjustmentInterval" style="display:none;" value="0" />
     <input id="ManualDuty" style="display:none;" value="0" />
     <input id="SwitchControlOverride" style="display:none;" value="0" />
     <input id="ManualFieldToggle" style="display:none;" value="0" />
